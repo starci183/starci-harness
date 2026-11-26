@@ -7,6 +7,9 @@
  *
  *   - `catch-must-account` refuses a `catch` (and a promise `.catch`) that swallows. A handler passes when it rethrows,
  *     returns an outcome carrying the caught error, or calls a method on a receiver typed `Logger` from `platform/logging`.
+ *     A failure is logged once, where it is answered (BE-ERROR-4): outside the owners that answer failures (`platform/errors`,
+ *     `platform/logging`, and the handler bases of `platform/cqrs` and `platform/jobs`) a handler that logs through the `Logger`
+ *     and also lets a throw escape is refused as a double log, since the base or the global filter logs it again.
  *   - `replacement-throw-carries-cause` (R108 `BE_ERROR_CAUSE_DROPPED`) refuses a `throw` that escapes a `catch` (or a
  *     promise `.catch` handler) and neither rethrows the caught value nor carries it: the replacement capability error
  *     takes the exact caught value as `cause` (BE-ERROR-4). A value the rule cannot see through (a parameter, a call that
@@ -34,6 +37,7 @@ import {
     derivesFromErrorBase,
     errorHomeOf,
     isCommonType,
+    isOwnedBy,
     isOwnedType,
     ownerName,
     partsOf,
@@ -71,6 +75,9 @@ const paramName = (fn: Handler): string | null => {
     return first?.type === "Identifier" ? first.name : null
 }
 
+/** The platform capabilities that answer a failure, and so may log one they also rethrow: the global filter, the adapter and the handler bases. */
+const FAILURE_ANSWERERS = Object.freeze(["errors", "logging", "cqrs", "jobs"])
+
 /** Every failure is rethrown, logged through the logger port, or returned as an outcome carrying its cause. */
 export const catchMustAccount: RuleModule = {
     meta: {
@@ -81,9 +88,14 @@ export const catchMustAccount: RuleModule = {
             empty: "This `catch` is empty, so the failure vanishes. Rethrow it, log it through the `Logger` of `platform/logging`, or return a typed outcome carrying it as `cause`.",
             swallowed:
                 "This `catch` neither rethrows, logs through the `Logger` of `platform/logging`, nor returns an outcome carrying the caught error, so the failure leaves no trace. Rethrow it, log it through the `Logger`, or return a typed outcome with `cause`.",
+            loggedAndThrown:
+                "This `catch` logs the failure through the `Logger` and then throws, so it is logged twice: the handler base or the global errors filter logs what escapes (BE-ERROR-4). Throw without logging here (carry the caught value as `cause`), or handle it here without throwing.",
         },
     },
     create(context) {
+        const filename = context.filename || context.getFilename()
+        // the owners that answer a failure: the global filter, the adapter, and the handler bases that log once and rethrow
+        const answers = FAILURE_ANSWERERS.some((capability) => isOwnedBy(hfsOf(context), filename, "platform", capability))
         /** A call of a method on a receiver whose type is the `Logger` port declared by `platform/logging`. */
         const isLoggerCall = (node: Node): boolean =>
             node.type === "CallExpression" &&
@@ -98,9 +110,11 @@ export const catchMustAccount: RuleModule = {
                     (node.type === "ReturnStatement" && node.argument !== null && carriesCaught(node.argument, param)),
                 { intoFunctions: false },
             )
+        const logs = (body: Node): boolean => some(body, isLoggerCall, { intoFunctions: false })
         const checkBlock = (reportNode: Node, body: TSESTree.BlockStatement, param: string | null): void => {
             if (body.body.length === 0) context.report({ node: reportNode, messageId: "empty" })
             else if (!accounts(body, param)) context.report({ node: reportNode, messageId: "swallowed" })
+            else if (!answers && escapingThrows(body).length > 0 && logs(body)) context.report({ node: reportNode, messageId: "loggedAndThrown" })
         }
         return {
             CatchClause(node) {

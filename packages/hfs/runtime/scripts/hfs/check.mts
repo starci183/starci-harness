@@ -31,6 +31,7 @@
 //   BE_FAILURE_CLASS_BY_TEXT      (R432, rules/failure-class.mts) a back-end source matches a failure code text to decide what a failure is
 //   HFS_CONCEPT_CONVENTIONS_MISSING (R433, rules/concepts-conventions.mts) the app root has no conventions concept or its catalog does not link it
 //   HFS_CONCEPT_UNCATALOGUED      (R433, rules/concepts-conventions.mts) a concept no catalog row links, or a row whose concept is not tracked
+//   BE_LOGGER_REQUIRED            (R40, rules/log-push.mts) an environment declares monitoring.logPush but be/src/modules/platform/logging imports no winston-loki
 //   FE_STACK_FORBIDDEN            (rules/fe-stack.mts) a front-end manifest (the fe side's, or the app root's minus the back end's own libraries)
 //                                 declares a package knowledge/hfs/fe-stack.yaml forbids
 //   HFS_LITE_SECRET_CUSTODY       (R220, rules/secret-custody.mts) secret material or a forbidden custody path, beside the one R06 scan
@@ -86,6 +87,7 @@ import { contractFindings } from './rules/contract.mjs';
 import { mcpToolsSnapshotFindings } from './rules/mcp-tools.mjs';
 import { appRootFindings } from './rules/app-root.mjs';
 import { conceptConventionsFindings } from './rules/concepts-conventions.mjs';
+import { logPushFindings } from './rules/log-push.mjs';
 import { failureClassFindings } from './rules/failure-class.mjs';
 import { frontendFindings } from './rules/frontend-tree.mjs';
 import { localeCatalogFindings } from './rules/i18n-locales.mjs';
@@ -288,6 +290,7 @@ function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pin
     findings.push(
       ...appRootFindings({ repoRoot, files, all, repo, resolver, pins, phase }),
       ...conceptConventionsFindings({ repoRoot, files: files.filter((file) => inScope(file) || file.startsWith('.starciwork/concepts/')) }),
+      ...logPushFindings({ repoRoot, all }),
       ...checkAppRoot({ root: repoRoot, resolver, tree: trackedTreeView(all) }).violations.map((item) => ({ code: item.ruleId, level: 'error', path: item.path, line: item.line, column: item.column, source: 'machine', message: `${item.path}: ${item.message}` })),
     );
   } else if (repo.profile === 'be') {

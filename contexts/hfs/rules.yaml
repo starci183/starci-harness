@@ -344,7 +344,7 @@ rules:
       - {kind: eslint-be, id: error-masked}
   - id: R40
     code: BE_LOGGER_REQUIRED
-    law: The `Logger` port of `platform/logging` is the only logger; every `catch` logs, rethrows or returns a reasoned outcome, and every log call names an event from an owner's log-events enum.
+    law: The `Logger` port of `platform/logging` is the only logger; every `catch` logs, rethrows or returns a reasoned outcome and logs a failure once (outside `platform/errors`, `platform/logging` and the `platform/cqrs` and `platform/jobs` handler bases a catch never both logs and throws, and no `Logger.error` takes a cause typed as a `DomainError`); every log call names an event from an owner's log-events enum; and an app whose environment declares `monitoring.logPush` carries the Loki transport (`winston-loki`) in `platform/logging`.
     failureCodes:
       - BE_LOGGER_REQUIRED
     enforcers:
@@ -352,6 +352,8 @@ rules:
       - {kind: eslint-be, id: no-error-wording-as-log-identity}
       - {kind: eslint-be, id: no-interpolated-log-message}
       - {kind: eslint-be, id: no-framework-logger}
+      - {kind: eslint-be, id: no-domain-error-logged}
+      - {kind: hfs, id: log-push}
   - id: R41
     code: BE_DEFAULT_DENY
     law: Access is denied by default through the app guard, every public door declares `@Public` with a `PublicReason`, `@UseGuards` is not used, bodies are typed and secrets compare in constant time.
