@@ -12,7 +12,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 2 KB — CI is the critic.
-- [authority/lanes.md](../authority/lanes.md) · 30 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
+- [authority/lanes.md](../authority/lanes.md) · 31 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
   - sections: The lane's name and its folder · Slots · The shared stack · Gate and land · Hotfix · Shots and looks: the one web and one api server of the app · Processes and cleanup
 - [authority/packages.md](../authority/packages.md) · 11 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
@@ -164,7 +164,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: CONTRIB-10, PROJECT-LINT-7, app-lint, app-typecheck, check-cache-folder, git-merge-or-abort, git-outcome, git-worktree-remove, local-registry-publish, npm-ci
 - [harness/check-cache.md](../harness/check-cache.md) · 7 KB — The harness repository commits the verdicts of its own per-package checks in `.cache/`, keyed by content, the way an app commits its results in `.starcistacks/cache/` ...
   - sections: Layout and format · The key · Who reuses what · Forged records · The nightly verify
-- [harness/host.md](../harness/host.md) · 25 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
+- [harness/host.md](../harness/host.md) · 26 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
   - sections: Spawning a process · The host stack · Roles and machines · Host services · WSL memory · Dependencies through a link · Files and folders
   - ids: Self-healing
 - [harness/managed-vps.md](../harness/managed-vps.md) · 17 KB — The harness manages the owner's fleet of VPS servers from the harness host: it brings each server to one policy, watches its health, opens its doors under the owner's domain and ...
