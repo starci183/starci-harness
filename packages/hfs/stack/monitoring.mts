@@ -52,9 +52,14 @@ export interface MonitoringOptIn {
   /** The services that send traces (OTLP) and profiles: `true` is every `metrics` service, a list names them. */
   traces: string[];
   profiles: string[];
-  /** The sealed member that holds this environment's own alert bot (ALERTS_TELEGRAM_BOT_TOKEN, ALERTS_TELEGRAM_CHAT_ID), or null: its alerts are held. */
+  /** The sealed member that holds this environment's own alert bot (ALERTS_TELEGRAM_BOT_TOKEN; ALERTS_TELEGRAM_CHAT_ID in a legacy member), or null: its alerts are held. */
   alertsMember: string | null;
+  /** The owner's Telegram username (`alerts.telegram.owner`), lower case without its `@`, or null: the member must seal the chat (legacy). */
+  alertsOwner: string | null;
 }
+
+/** A Telegram username as the owner writes it: `@name` or `name`, 5 to 32 letters, digits and underscores, a letter first. */
+export const TELEGRAM_USERNAME = /^@?[A-Za-z][A-Za-z0-9_]{4,31}$/u;
 
 /** The keys of an environment's alert-bot member (`monitoring.alerts.telegram.member`). */
 export const ALERT_BOT_KEYS = { token: 'ALERTS_TELEGRAM_BOT_TOKEN', chat: 'ALERTS_TELEGRAM_CHAT_ID' } as const;
@@ -154,14 +159,18 @@ export function monitoringOf(environment: Parsed, context: { services: Set<strin
     }
   }
   let alertsMember: string | null = null;
+  let alertsOwner: string | null = null;
   if (block.alerts !== undefined) {
+    const owner = block.alerts?.telegram?.owner;
+    if (owner !== undefined && (typeof owner !== 'string' || !TELEGRAM_USERNAME.test(owner))) problems.push(`alerts.telegram.owner ${JSON.stringify(owner)} is no Telegram username (@name: 5 to 32 letters, digits and underscores, a letter first)`);
+    else if (typeof owner === 'string') alertsOwner = owner.replace(/^@/u, '').toLowerCase();
     const member = block.alerts?.telegram?.member;
     if (typeof member !== 'string' || !/^[a-z][a-z0-9-]*$/u.test(member)) problems.push('alerts.telegram.member is no member name');
     else if (!members.has(member)) problems.push(`alerts.telegram.member names ${member}, which is not sealed for ${env} (seal ${ALERT_BOT_KEYS.token} into .starcistacks/${env}/secrets/${member}.enc.yaml)`);
     else alertsMember = member;
   }
   if (problems.length > 0) throw refusal(DEPLOY_CONFIG_CODE, `environments.${env}.monitoring: ${problems.slice(0, 6).join('; ')}`);
-  return { network: String(network), logs: block.logs !== false, logPush, metrics, sidecars, probes, probeCarrier, traces, profiles, alertsMember };
+  return { network: String(network), logs: block.logs !== false, logPush, metrics, sidecars, probes, probeCarrier, traces, profiles, alertsMember, alertsOwner };
 }
 
 /** The secret grants of the exporter sidecars: each password key mounted as a file (no `_FILE` pointer; the sidecar's environment names it). */

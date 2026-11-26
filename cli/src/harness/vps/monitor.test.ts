@@ -10,7 +10,7 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { parse } from "yaml"
 import { edgeStackFile } from "./plan.js"
-import { alertBotLines, appAlertBots, chatPlaceholder, heldLine, serverAlerts } from "./alerts.js"
+import { alertBotLines, appAlertBots, chatPlaceholder, heldLine, routableAlerts, serverAlerts } from "./alerts.js"
 import type { AlertBot } from "./alerts.js"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -80,11 +80,11 @@ const SERVER = "age1serverfixture"
 const sealedMember = (keys: readonly string[]): string => [...keys.map((key) => `${key}: ENC[AES256_GCM,data:fixture,type:str]`), "sops:", "    age:", `        - recipient: ${SERVER}`, ""].join("\n")
 
 /** An app checkout with one environment on the server: its alert member holding `keys`, or no alerts block at all. */
-const appAt = (root: string, project: string, env: string, keys: readonly string[] | null): string => {
+const appAt = (root: string, project: string, env: string, keys: readonly string[] | null, owner?: string): string => {
     const dir = join(root, project)
     mkdirSync(join(dir, ".starcistacks", env, "secrets"), { recursive: true })
     writeFileSync(join(dir, "hfs.json"), JSON.stringify({ project }))
-    const monitoring = keys === null ? "" : "\n    monitoring:\n      alerts: {telegram: {member: alerts}}"
+    const monitoring = keys === null ? "" : `\n    monitoring:\n      alerts: {telegram: {member: alerts${owner === undefined ? "" : `, owner: "${owner}"`}}}`
     writeFileSync(join(dir, ".starcistacks", "application-stacks.yaml"), `environments:
   ${env}:
     deploy:
@@ -104,21 +104,27 @@ void test("each app's ready bot is found from its sealed member's key names; the
     })
     const ready = appAt(root, "nivo", "production", ["ALERTS_TELEGRAM_BOT_TOKEN", "ALERTS_TELEGRAM_CHAT_ID"])
     const noChat = appAt(root, "next", "production", ["ALERTS_TELEGRAM_BOT_TOKEN"])
+    const owned = appAt(root, "shop", "production", ["ALERTS_TELEGRAM_BOT_TOKEN"], "@StarCi183")
     const none = appAt(root, "plain", "staging", null)
     const found = appAlertBots(ready, SERVER)
-    assert.deepEqual(found.bots.map((bot) => [bot.project, bot.env, bot.stack]), [["nivo", "production", "nivo-production"]])
+    assert.deepEqual(found.bots.map((bot) => [bot.project, bot.env, bot.stack, bot.chat, bot.owner]), [["nivo", "production", "nivo-production", true, null]], "a legacy member names its chat")
     assert.equal(found.envs, 1, "an environment on another server is not this one's")
-    const alerts = serverAlerts(["nivo", "next", "plain", "ghost"], [ready, noChat, none], SERVER)
-    assert.equal(alerts.bots.length, 1)
+    assert.deepEqual(appAlertBots(owned, SERVER).bots.map((bot) => [bot.chat, bot.owner]), [[false, "starci183"]], "an owner username is ready with no chat id, lower-cased")
+    const alerts = serverAlerts(["nivo", "next", "shop", "plain", "ghost"], [ready, noChat, owned, none], SERVER)
+    assert.equal(alerts.bots.length, 2)
     const line = heldLine(alerts) ?? ""
     assert.match(line, /alerts are held/)
-    assert.match(line, /next\/production: alerts holds no ALERTS_TELEGRAM_CHAT_ID \(\/start the bot, then starci app alerts discover-chat --env production\)/)
+    assert.match(line, /next\/production names no owner \(environments\.production\.monitoring\.alerts\.telegram\.owner: "@<username>"; starci app alerts setup --env production\)/)
+    const noBot = routableAlerts(alerts, false)
+    assert.deepEqual(noBot.bots.map((bot) => bot.project), ["nivo"], "without the monitor bot an owner username cannot be routed")
+    assert.match(heldLine(noBot) ?? "", /shop\/production: its owner @starci183 is connected by the monitor bot, which is off on this server/)
+    assert.equal(routableAlerts(alerts, true), alerts)
     assert.match(line, /plain\/staging declares no alert bot/)
     assert.match(line, /ghost: no checkout of it is known here/)
     assert.equal(heldLine(serverAlerts([], [], SERVER)), null)
 })
 
-const bot = (project: string, env: string, admins = false): AlertBot => ({ project, env, stack: `${project}-${env}`, file: `${project}.enc.yaml`, sealed: sealedMember(["ALERTS_TELEGRAM_BOT_TOKEN", "ALERTS_TELEGRAM_CHAT_ID"]), admins })
+const bot = (project: string, env: string, admins = false, owner: string | null = null): AlertBot => ({ project, env, stack: `${project}-${env}`, file: `${project}.enc.yaml`, sealed: sealedMember(owner === null ? ["ALERTS_TELEGRAM_BOT_TOKEN", "ALERTS_TELEGRAM_CHAT_ID"] : ["ALERTS_TELEGRAM_BOT_TOKEN"]), admins, chat: owner === null, owner })
 
 void test("with no app bot ready every alert goes to the null receiver, no token is mounted and nothing is opened", () => {
     const files = render({ target: { kind: "server", server }, alertBots: [] })
@@ -235,4 +241,20 @@ void test("the monitor bot runs by default only where an app has a bot ready; Al
     assert.doesNotMatch(lines, /alertmanager\.yml/, "behind the bot Alertmanager's file is not filled on the server")
     const none = render({ target: { kind: "server", server }, alertBots: [] }, { "monitor-bot": true })
     assert.match(none["monitor-bot/config.json"] ?? "", /"bots": \[\]/, "turned on with no bot it polls nothing")
+})
+
+void test("a bot with only its owner username: the config carries the owner, its chat is null on the server, and the bot keeps what it learns on a volume", () => {
+    const bots = [bot("nivo", "staging", false, "starci183"), bot("next", "production")]
+    const files = render({ target: { kind: "server", server }, alertBots: bots })
+    const config = files["monitor-bot/config.json.tmpl"] ?? ""
+    assert.match(config, /"chat": __STARCI_ALERTS_CHAT_0__,\s*"owner": "starci183",/)
+    assert.match(config, /"chat": __STARCI_ALERTS_CHAT_1__,\s*"owner": null,/)
+    assert.match(config, /"state": "\/home\/node\/owner-chats\.json"/)
+    const lines = alertBotLines(bots, "/opt/starci/monitor", "STARCI_EOF", [{ rel: "monitor-bot/config.json", env: "STARCI_MON_BOT_CONFIG" }]).join("\n")
+    assert.equal((lines.match(/--extract '\["ALERTS_TELEGRAM_CHAT_ID"\]'/g) ?? []).length, 1, "the chat is opened only where the member seals it")
+    assert.match(lines, /K=null\n/)
+    const stack = parse(files["stack.yml"] ?? "") as { services: Record<string, { volumes?: string[] }>; volumes: Record<string, unknown> }
+    assert.deepEqual(stack.services["monitor-bot"]?.volumes, ["monitor-bot-data:/home/node"])
+    assert.ok("monitor-bot-data" in stack.volumes)
+    assert.throws(() => render({ target: { kind: "server", server }, alertBots: bots }, { "monitor-bot": false }), /needs the monitor bot/)
 })

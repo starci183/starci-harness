@@ -18,6 +18,7 @@ import { parseConfig } from "./config.js"
 import type { BotConfig, BotEntry } from "./config.js"
 import type { Sources } from "./handlers.js"
 import { everyDay, localDate } from "./schedule.js"
+import { alertQueue, fileStore } from "./owners.js"
 import { TelegramError, telegram } from "./telegram.js"
 
 const log = (line: string): void => {
@@ -92,6 +93,9 @@ export const start = async (config: BotConfig, fetcher: Fetch): Promise<() => vo
     }
     const tokens = new Map(config.bots.map((entry) => [entry.slot, readFileSync(entry.tokenFile, "utf8").trim()]))
     const groups = groupByToken(config.bots, (entry) => tokens.get(entry.slot) ?? "", log)
+    // One store of learned owner chats for every bot, on the container's volume (config.state), and one queue of the alerts that wait for them.
+    const store = fileStore(config.state, log)
+    const queue = alertQueue()
     const bySlot = new Map<number, MonitorBot>()
     let stopped = false
     const bots: MonitorBot[] = []
@@ -101,7 +105,7 @@ export const start = async (config: BotConfig, fetcher: Fetch): Promise<() => vo
             log(`${group.entries.map((entry) => `${entry.project}/${entry.env}`).join(", ")}: getMe failed: ${error instanceof Error ? error.message : String(error)}`)
             return null
         })
-        const bot = createBot(group.entries, { telegram: client, username: username ?? "", sources, id: () => randomBytes(6).toString("base64url"), log })
+        const bot = createBot(group.entries, { telegram: client, username: username ?? "", sources, id: () => randomBytes(6).toString("base64url"), log, store, queue })
         bots.push(bot)
         for (const entry of group.entries) bySlot.set(entry.slot, bot)
         const name = group.entries.map((entry) => `${entry.project}/${entry.env}`).join(", ")
