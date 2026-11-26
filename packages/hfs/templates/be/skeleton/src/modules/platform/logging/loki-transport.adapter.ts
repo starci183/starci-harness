@@ -10,6 +10,13 @@ const MAX_BUFFERED = 10_000
 /** winston-loki's own `log`, which the bounded transport calls once a line fits (its typing declares the method optional). */
 const lokiLog = LokiTransport.prototype.log
 
+/** The URL without the slashes it ends with: winston-loki appends `/loki/api/v1/push` to it. */
+const withoutTrailingSlash = (url: string): string => {
+    let end = url.length
+    while (end > 0 && url[end - 1] === "/") end -= 1
+    return url.slice(0, end)
+}
+
 /** What the transport tells its owner when Loki cannot be reached: the cause, never a line. */
 export type LokiFailure = (cause: unknown) => void
 
@@ -22,7 +29,8 @@ const bufferedLines = (transport: object): number => {
     const streams: unknown = Reflect.get(batch, "streams")
     if (!Array.isArray(streams)) return 0
     return streams.reduce<number>((sum, stream: unknown) => {
-        const entries: unknown = typeof stream === "object" && stream !== null ? Reflect.get(stream, "entries") : undefined
+        const entries: unknown =
+            typeof stream === "object" && stream !== null ? Reflect.get(stream, "entries") : undefined
         return sum + (Array.isArray(entries) ? entries.length : 0)
     }, 0)
 }
@@ -39,7 +47,7 @@ export class BoundedLokiTransport extends LokiTransport {
 
     constructor(options: LokiOptions, onFailure: LokiFailure) {
         super({
-            host: options.url.replace(/\/+$/, ""),
+            host: withoutTrailingSlash(options.url),
             // `stack` is the app under the name the collector's lines carry, so one Grafana or bot query reads pushed and collected lines alike
             labels: { stack: options.labels.app, ...options.labels },
             // a format of its own makes winston-loki push the finished line (MESSAGE) the console wrote, unchanged

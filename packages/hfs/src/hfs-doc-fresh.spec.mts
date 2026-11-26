@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CATALOG } from '../runtime/packages/cli/src/catalog.generated.mjs';
+import { checkCommand, extractCommands } from '../runtime/scripts/hfs/doc-commands.mjs';
+import type { CommandCatalog } from '../runtime/scripts/hfs/doc-commands.mjs';
 import { docFreshFindings } from '../runtime/scripts/hfs/rules/doc-fresh.mjs';
 import { a15Findings } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
@@ -110,12 +112,14 @@ for (const edition of ['lite'] as const) {
     assert.ok(CATALOG.groups['explain']!.self, 'a one-word verb is its group\'s self');
   });
 
-  test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: a group that is also a verb (starci check, starci check lint) resolves both`, (t) => {
+  // the doc check of an app judges `starci app` commands only (doc-fresh.mts commandFindings); the resolver it shares judges every group
+  test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: a group that is also a verb (starci check, starci check lint) resolves both`, () => {
     assert.ok(CATALOG.groups['check']!.self, 'starci check is the check group\'s self');
-    const context = fixture(t, edition, { ...manifests, 'README.md': 'Run `starci check --release`, `starci check --level dev`, `starci check lint --base origin/dev` and `starci check missing-verb`.' });
-    const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN');
-    assert.equal(hits.length, 1, JSON.stringify(hits));
-    assert.match(hits[0]!.message, /missing-verb/u);
+    const text = 'Run `starci check --release`, `starci check --level dev`, `starci check lint --base origin/dev`, `starci explain lanes` and `starci check missing-verb`.';
+    // the generated catalog is deeply readonly; the resolver reads a plain copy of it, as doc-fresh.mts hands it the parsed catalog
+    const commands: CommandCatalog = JSON.parse(JSON.stringify(CATALOG));
+    const issues = extractCommands(text).map((occurrence) => checkCommand(occurrence, commands, { strictProse: true }));
+    assert.deepEqual(issues, [[], [], [], [], ['unknown verb "check missing-verb"']]);
   });
 
   test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: workspace commands resolve the workspace manifests`, (t) => {
