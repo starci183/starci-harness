@@ -838,6 +838,80 @@
     .starci-core-avatar-skeleton { display: inline-flex; }
 
     /*
+     * Round at every size (0.60.0, owner 2026-11-26, "logo nhóm sao không tròn"): a circle avatar is a square box (its size on both axes, an aspect ratio of 1, never
+     * squeezed by a flex row or stretched by a grid slot) clipped by a 50% radius, so the image, the initials and the plate are all inside one true circle at `md`, at
+     * `sm` and wherever a size variable lands. `square` keeps its own rule below.
+     */
+    .starci-core-avatar:is([data-grammar-avatar-shape="circle"], :not([data-grammar-avatar-shape])) {
+        aspect-ratio: 1 / 1;
+        min-inline-size: var(--avatar-size);
+        min-block-size: var(--avatar-size);
+        flex: none;
+        border-radius: var(--grammar-radius-round);
+        overflow: hidden;
+    }
+
+    .starci-core-avatar:is([data-grammar-avatar-shape="circle"], :not([data-grammar-avatar-shape])) > :is(img, [data-grammar-avatar-fallback], .starci-core-avatar-initials) {
+        inline-size: 100%;
+        block-size: 100%;
+        border-radius: inherit;
+    }
+
+    /*
+     * THE CHANNEL BADGE (0.60.0, `Avatar channel`): the customer's channel as a small round logo on the avatar's bottom end corner. It stands OUTSIDE the avatar's round
+     * clip (the wrapper is not clipped), on the white logo plate, ringed in the surface so it reads over a photo and over initials alike. A third of the avatar, and
+     * 0.4 at the 24px size where a third would be a speck.
+     */
+    .starci-core-avatar-badged {
+        --starci-avatar-badge-size: calc(var(--grammar-avatar-md-size) * 0.4);
+        position: relative;
+        display: inline-flex;
+        flex: none;
+        vertical-align: middle;
+    }
+
+    .starci-core-avatar-badged[data-grammar-avatar-size="sm"] {
+        --starci-avatar-badge-size: calc(var(--grammar-avatar-sm-size) * 0.5);
+    }
+
+    .starci-core-avatar-channel {
+        --starci-avatar-channel-ink: var(--grammar-logo-ink);
+        position: absolute;
+        inset-block-end: calc(var(--starci-avatar-badge-size) * -0.12);
+        inset-inline-end: calc(var(--starci-avatar-badge-size) * -0.12);
+        display: grid;
+        place-items: center;
+        box-sizing: border-box;
+        inline-size: var(--starci-avatar-badge-size);
+        block-size: var(--starci-avatar-badge-size);
+        aspect-ratio: 1 / 1;
+        border-radius: var(--grammar-radius-round);
+        background: var(--grammar-logo-surface);
+        color: var(--starci-avatar-channel-ink);
+        box-shadow: 0 0 0 var(--grammar-ring-width) var(--surface);
+        pointer-events: none;
+    }
+
+    .starci-core-avatar-channel[data-grammar-avatar-channel="messenger"] { --starci-avatar-channel-ink: var(--grammar-channel-messenger); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="instagram"] { --starci-avatar-channel-ink: var(--grammar-channel-instagram); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="facebook"] { --starci-avatar-channel-ink: var(--grammar-channel-facebook); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="whatsapp"] { --starci-avatar-channel-ink: var(--grammar-channel-whatsapp); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="telegram"] { --starci-avatar-channel-ink: var(--grammar-channel-telegram); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="zalo"] { --starci-avatar-channel-ink: var(--grammar-channel-zalo); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="gmail"] { --starci-avatar-channel-ink: var(--grammar-channel-gmail); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="line"] { --starci-avatar-channel-ink: var(--grammar-channel-line); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="viber"] { --starci-avatar-channel-ink: var(--grammar-channel-viber); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="wechat"] { --starci-avatar-channel-ink: var(--grammar-channel-wechat); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="youtube"] { --starci-avatar-channel-ink: var(--grammar-channel-youtube); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="discord"] { --starci-avatar-channel-ink: var(--grammar-channel-discord); }
+    .starci-core-avatar-channel[data-grammar-avatar-channel="googlechat"] { --starci-avatar-channel-ink: var(--grammar-channel-googlechat); }
+
+    .starci-core-avatar-channel > svg {
+        inline-size: 62%;
+        block-size: 62%;
+    }
+
+    /*
      * A square brand mark (Avatar shape="square"): no clipping; the image is contained, so a round,
      * square or wide logo shows whole in its own shape.
      */
@@ -1944,19 +2018,9 @@
     }
 
     /*
-     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, a caret 1em of the term (12, the text-sized glyph rule
-     * of styles.css), pushed to the term's end (the term hugs its words, so it stands right after them), and the cell takes the
-     * row hover fill (--surface-secondary) under a pointer, with the pointer cursor. The whole cell stays the one press target.
+     * A figure that is a link draws no chevron or arrow (0.60.0, owner 2026-11-26): the whole cell is the one press target and shows it with the pointer cursor
+     * and the row hover fill (--surface-secondary) under a pointer.
      */
-    .starci-core-description-stat-term > .starci-core-figure-cue {
-        display: inline-flex;
-        flex: none;
-        margin-inline-start: auto;
-        color: var(--muted);
-    }
-
-    [dir="rtl"] .starci-core-figure-cue { scale: -1 1; }
-
     .starci-core-description-pair[data-grammar-figure-destination="true"]:has(> dd > .starci-core-figure-link) { cursor: pointer; }
 
     @media (hover: hover) {

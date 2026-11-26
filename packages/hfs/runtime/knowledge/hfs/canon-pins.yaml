@@ -45,8 +45,8 @@ pins:
     source: packages/next-data/package.json
     why: 'the SWR data helpers of every front end (fe-stack data): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
   '@starci/grammar':
-    version: 0.60.3
-    range: '~0.60.3'
+    version: 0.61.0
+    range: '~0.61.0'
     group: starci
     install: registry
     side: fe

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { Button } from "../../leaf/Button/index.js"
+import { StatusDot, type StatusDotTone } from "../../leaf/StatusDot/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { DescriptionList, type DescriptionListItem } from "../DescriptionList/index.js"
 import { MessageBubble, type MessageBubbleGroupPosition, type MessageBubbleMeasure, type MessageReaction, type MessageReactionLabels } from "../MessageBubble/index.js"
@@ -32,6 +33,13 @@ export type MessageCardProps = NoChildren & MessageCardBody & {
     readonly title: string
     /** The status beside the title: one `Badge`. */
     readonly chip?: ReactNode
+    /**
+     * A REAL state as a small dot before the title (0.60.0): the tone and the state in words (the dot's name and tooltip), for a card whose subject is in a state
+     * (overdue, cancelled, paused, failed). A card that only informs has none: a dot never decorates.
+     */
+    readonly status?: { readonly tone: StatusDotTone; readonly label: string }
+    /** `compact` (0.60.0): the notification card of a chat frame, a tighter inset and gap than the default card. */
+    readonly density?: "default" | "compact"
     /** The actions row; the primary first, an `open` action last. */
     readonly actions?: ReadonlyArray<MessageCardAction>
     /** The meta line under the card, muted at xs ("Sales · 04:38"). */
@@ -65,7 +73,7 @@ const ActionButton = ({ action }: { readonly action: MessageCardAction }) => {
  * list or a composer in `body` spans it), so an app needs no CSS of its own. Its face is the flat surface (the 1px edge line, no shadow) on the thread;
  * the replies it offers are `Section kind="list" layout="suggestions"` in `body` (flat rows, a pressable plain-text row per reply).
  */
-export const MessageCard = ({ author, avatar, title, chip, body, details, actions, meta, measure, id, groupPosition, reactions, onReact, onReply, onShare, reactionLabels }: MessageCardProps) => {
+export const MessageCard = ({ author, avatar, title, chip, status, density = "default", body, details, actions, meta, measure, id, groupPosition, reactions, onReact, onReply, onShare, reactionLabels }: MessageCardProps) => {
     const ordered = actions === undefined ? [] : [...actions].sort((a, b) => ORDER[a.kind ?? "neutral"] - ORDER[b.kind ?? "neutral"])
     return (
         <MessageBubble
@@ -81,8 +89,9 @@ export const MessageCard = ({ author, avatar, title, chip, body, details, action
             {...(onShare === undefined ? {} : { onShare })}
             {...(reactionLabels === undefined ? {} : { reactionLabels })}
             body={
-                <div className="starci-core-message-card" data-component="MessageCard" data-tier="composite" data-contract="GAP-2 PADDING-4">
+                <div className="starci-core-message-card" data-component="MessageCard" data-tier="composite" data-contract="GAP-2 PADDING-4" data-grammar-message-card-density={density}>
                     <div className="starci-core-message-card-head">
+                        {status === undefined ? null : <StatusDot tone={status.tone} aria-label={status.label} size="sm" />}
                         <Text role="label.item">{title}</Text>
                         {chip}
                     </div>

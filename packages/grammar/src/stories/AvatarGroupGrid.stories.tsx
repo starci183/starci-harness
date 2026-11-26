@@ -23,11 +23,11 @@ const thirtyMembers: ReadonlyArray<G.AvatarGroupItem> = [
   ...Array.from({ length: 24 }, (_, index) => ({ id: `member-${index}`, name: `Member ${index + 7}` })),
 ];
 
-/** One group identity remains the size of its adjacent person avatar at every supported size. */
+/** One group identity (a 2 by 2 cluster of small round members) stays the size of its adjacent person avatar at every supported size. */
 export const Grid: Story = {
   render: () => (
     <Matrix>
-      <State label="One, two (split), three (one above two), four and total counts 5, 6 and 30">
+      <State label="The cluster: one, two (diagonal), three (two over one), four and the headcount 5, 6 and 30 in the last cell">
         {[1, 2, 3, 4, 5, 6, 30].map((count) => <G.AvatarGroup key={count} label={`Conversation with ${count} members`} layout="grid" items={thirtyMembers.slice(0, count)} overflowLabel={overflowLabel} />)}
       </State>
       <State label="Same sizes as Avatar: sm 24 and md 40">

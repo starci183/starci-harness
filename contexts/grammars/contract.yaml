@@ -366,15 +366,15 @@ roles:
     ui: ui/components/identity-mark.md
     renderers: [Avatar, AvatarButton, AvatarGroup, AgentName, IconTile]
     vendorParity: [avatar, avatar-group, chip]
-    slots: [src, name, seed, kind, "mark: an icon on a brand-colour circle (a Grammar token or a brand colour passed in), for a provider or a channel", "tone: danger rings a broken account", "AvatarGroup items: a person or a mark, max, size sm 24 or md 40; hover, focus or a tap opens the member list (avatar, name, the AI Chip)", "isAgent and agentLabel on the name slots of ListRow, the card head, MessageBubble and the members list (ListBox)"]
+    slots: [src, name, seed, kind, "mark: an icon on a brand-colour circle (a Grammar token or a brand colour passed in), for a provider or a channel", "tone: danger rings a broken account", "AvatarGroup items: a person or a mark, max, size sm 24 or md 40; hover, focus or a tap opens the member list (avatar, name, the AI Chip)", "AvatarGroup layout grid: the Zalo-style cluster of small round members (two on the diagonal, three as two over one, four or more as three and the headcount), photo: a group photo that replaces it", "Avatar channel and channelLabel: a customer's channel as a small round logo badge on the avatar's corner (simple-icons logos)", "isAgent and agentLabel on the name slots of ListRow, the card head, MessageBubble and the members list (ListBox)"]
     variants:
       kind: { values: [person, agent], chosenBy: app from the fact, meaning: "names the avatar for assistive technology; the avatar draws no badge, the AI Chip follows the NAME (AgentName)" }
       item: { values: [person, mark], chosenBy: app from what the item is (a member, a provider or a channel) }
       groupLayout: { values: [row, grid], chosenBy: app }
     sizes: { steps: [sm, md, lg], default: md, bar: control }
-    states: [image, initials fallback, mark, "ringed (tone danger)", skeleton]
+    states: [image, initials fallback, mark, "ringed (tone danger)", "channel badge", "group cluster", "group photo", skeleton]
     grammarMayChange: [ring, fallback paint]
-    dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AGENT-NAMED, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-IMAGE-EAGER-PAINTS, DNA-COMMON-ICON-TILE-ROUND, DNA-COMMON-STATUS-MARK-40]
+    dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-ROUND, DNA-COMMON-AVATAR-CLUSTER, DNA-COMMON-AVATAR-CHANNEL-BADGE, DNA-COMMON-AGENT-NAMED, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-IMAGE-EAGER-PAINTS, DNA-COMMON-ICON-TILE-ROUND, DNA-COMMON-STATUS-MARK-40]
     lint: [starci-grammar/avatar-row-uses-group]
 
   - id: mascot
@@ -394,7 +394,7 @@ roles:
     ui: ui/components/pane-grid.md
     renderers: [PaneGrid, Pane, PaneSection, ChatFrame, PaneHeader]
     vendorParity: [Drawer]
-    slots: ["Pane children: PaneSection bands (or one nested PaneGrid), placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes", "PaneSection children: the band's content, at the pane inset", "PaneHeader: title, description, mark, status, actions, back (label, onPress): the head band of one pane", "ChatFrame: label (the thread's name), header (a PaneHeader and, for a customer chat, the owner row in the same zone), children (the thread: MessageBubbles and day Dividers, oldest first), footer (the composer or the decision actions), scrollRef, isLoading, error: the one chat on a Pane content=chat, a Drawer body or a page section"]
+    slots: ["Pane children: PaneSection bands (or one nested PaneGrid), placed by area", "collapseLabel, openLabel, closeLabel: the drawer a collapsing pane becomes", "PaneSection children: the band's content, at the pane inset", "PaneHeader: title, description, mark, status, actions, back (label, onPress): the head band of one pane", "ChatFrame: label (the thread's name), header (a PaneHeader and, for a customer chat, the owner row in the same zone), children (the thread: MessageBubbles and day Dividers, oldest first), footer (the composer or the decision actions), empty (what an empty thread shows, centred in the thread), scrollRef, isLoading, error: the one chat on a Pane content=chat, a Drawer body or a page section"]
     variants:
       surface: [true, false]
       scroll: [true, false]
@@ -408,7 +408,7 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-FLAT, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-CHAT-SKELETON-SOFT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-FLAT, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-CHAT-SKELETON-SOFT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL, DNA-COMMON-CHAT-EMPTY-CENTRED]
     lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
@@ -497,6 +497,18 @@ roles:
     states: [hidden, "shown on hover, long press or keyboard focus inside", picker open, menu open, region loading draws nothing]
     grammarMayChange: [the rail's place and fade, the picker pill]
     dna: []
+
+  - id: message-frame
+    ui: ui/components/message-bubble.md
+    renderers: [MessageFrame]
+    vendorParity: [button]
+    slots: ["kind: the frame's kind as the sender wrote it, named in the markup and deciding nothing else", "card: title, status (tone and words, only for a real state), fields (label and value), actions (at most three, the first primary), meta; absent or without a title, the frame is its text", "text: the text line, the whole message of a plain frame and the fallback of an unknown kind, read as safe Markdown (format markdown or plain)", "author, isAgent, avatar, side, meta, measure, groupPosition: the bubble's own"]
+    variants:
+      frame: { values: [card, text], chosenBy: "the frame: a card the app built for a kind it knows, else its text line", default: text }
+    sizes: "the compact card: a row step of inset, an inline gap between its parts"
+    states: [card, "card with a status dot", text line, region loading draws through the card or the bubble]
+    grammarMayChange: [card paint through tokens]
+    dna: [DNA-COMMON-FRAME-CARD-ONE-PRIMARY, DNA-COMMON-FRAME-CARD-MAX-ACTIONS]
 
   - id: calendar-day
     ui: ui/components/calendar-day.md
@@ -1452,8 +1464,8 @@ mustKeep:
       owner: ui/components/sidebar.md
     - id: DNA-COMMON-FIGURE-LINK-CUE
       role: section
-      law: "A figure that is a link shows it at rest: its term ends with the muted chevron of a pressable row."
-      measure: { kind: count, scope: '.starci-core-description-pair[data-grammar-figure-destination="true"]:has(.starci-core-figure-link)', select: '[data-grammar-figure-cue="true"]', op: "=", value: 1 }
+      law: "A figure that is a link draws no chevron or arrow: the whole cell is the one press target, shown by the pointer cursor and the row hover surface."
+      measure: { kind: count, scope: '.starci-core-description-pair[data-grammar-figure-destination="true"]:has(.starci-core-figure-link)', select: '[data-grammar-figure-cue="true"]', op: "=", value: 0 }
       owner: ui/components/list-table.md
     - id: DNA-COMMON-LINK-HEAD-HIT-44
       role: link
@@ -1891,6 +1903,36 @@ mustKeep:
       measure: { kind: uniform, scope: '[data-component="AvatarGroup"]', select: '[data-component="Avatar"]', metric: [width, height], op: "=" }
       owner: FE-CSS-1
       followUp: "overlapped members of an AvatarGroup measure a clipped width (15.5 of 32); the measure or the overlap needs a ruling"
+    - id: DNA-COMMON-AVATAR-ROUND
+      role: avatar
+      law: "A circle Avatar is a true circle at every size: a square box clipped by a 50% radius, never squeezed or stretched into an oval by its row or its slot."
+      measure: { kind: style, select: '.starci-core-avatar:not([data-grammar-avatar-shape="square"])', metric: border-radius, op: "=", value: { token: --grammar-radius-round } }
+      owner: ui/components/identity-mark.md
+    - id: DNA-COMMON-AVATAR-CLUSTER
+      role: avatar
+      law: "A group identity (AvatarGroup layout grid) is not one big circle cut into tiles: it is the square of one Avatar holding small round member avatars close in a 2 by 2 cluster (two on the diagonal, three as two over one, four or more as three and a count cell that reads the number of members); every member and the count cell is its own circle, and the cluster itself neither clips nor rounds."
+      measure: { kind: style, select: '.starci-core-avatar-cluster > :is(.starci-core-avatar-group-member, .starci-core-avatar-group-count)', metric: border-radius, op: "=", value: { token: --grammar-radius-round } }
+      owner: ui/components/identity-mark.md
+    - id: DNA-COMMON-AVATAR-CHANNEL-BADGE
+      role: avatar
+      law: "A customer's channel is a small round logo badge on the avatar's bottom end corner (Avatar channel), outside the avatar's clip, named by its label; it is never drawn inside the circle and never replaces the person's own image or initials."
+      measure: { kind: style, select: '.starci-core-avatar-channel', metric: border-radius, op: "=", value: { token: --grammar-radius-round } }
+      owner: ui/components/identity-mark.md
+    - id: DNA-COMMON-CHAT-EMPTY-CENTRED
+      role: pane-grid
+      law: "An empty thread (ChatFrame empty, no message) stands in the middle of the message area on both axes, never at the foot with the messages' gravity."
+      measure: { kind: style, select: '.starci-core-chat-frame-thread-content[data-grammar-chat-empty="true"]', checks: [{ metric: justify-content, op: "=", value: center }, { metric: align-items, op: "=", value: center }] }
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-FRAME-CARD-ONE-PRIMARY
+      role: message-frame
+      law: "A chat frame's card has at most one primary action, the first; the others are secondary."
+      measure: { kind: count, scope: '[data-component="MessageFrame"][data-grammar-frame="card"]', select: '.starci-core-message-card-actions [data-grammar-variant="primary"]', op: "<=", value: 1 }
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-FRAME-CARD-MAX-ACTIONS
+      role: message-frame
+      law: "A chat frame's card draws at most three actions."
+      measure: { kind: count, scope: '[data-component="MessageFrame"][data-grammar-frame="card"]', select: '.starci-core-message-card-actions [data-component="Button"]', op: "<=", value: 3 }
+      owner: ui/components/message-bubble.md
     - id: DNA-COMMON-AVATAR-INITIALS
       role: avatar
       law: An avatar without an image draws the initials of the first and last words of its name.

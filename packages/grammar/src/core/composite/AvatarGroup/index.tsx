@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type 
 import { Popover as AriaPopover } from "react-aria-components"
 import { AgentName } from "../../leaf/AgentName/index.js"
 import { useOverlayContainer } from "../../overlayScope.js"
-import { Avatar, avatarA11yProps, avatarGroupSlots, avatarGroupTiles, avatarParts, avatarToneProps, vendorAvatarSize, type AvatarKind, type AvatarMark, type AvatarSize } from "../../leaf/Avatar/index.js"
+import { Avatar, avatarA11yProps, avatarClusterCells, avatarGroupSlots, avatarParts, avatarToneProps, vendorAvatarSize, type AvatarKind, type AvatarMark, type AvatarSize } from "../../leaf/Avatar/index.js"
 import type { NoChildren } from "../../tier.js"
 import type { ToneSlot } from "../../toneSlot.js"
 
@@ -39,15 +39,22 @@ export type AvatarGroupProps = NoChildren & {
     readonly label: string
     readonly items: ReadonlyArray<AvatarGroupItem>
     /**
-     * `row` (default) overlaps the items in a line, for providers and channels beside a name; `grid` makes one round group identity, the size of a single Avatar,
-     * Zalo style (up to four tiles in a 2 by 2). Both follow the same overflow rule.
+     * `row` (default) overlaps the items in a line, for providers and channels beside a name; `grid` is the group's identity, the size of a single Avatar, drawn the
+     * way Zalo draws it (owner 2026-11-26): NOT one big circle cut into tiles, but small round member avatars set close in a 2 by 2 cluster (two members stand on
+     * the diagonal, three are two over one, four or more are three members and a count cell that reads the number of members). The cluster is never clipped by an
+     * outer circle. `row` follows the overflow rule of `max`.
      */
     readonly layout?: "row" | "grid"
     /**
-     * The slots the group may use, "+N" included (default 4): up to `max - 1` items show and the last slot is "+N" for the rest; when every item fits, all show.
-     * 4 gives three items and "+N" in the 2 by 2. The grid never holds more than four; for five providers in a row with "+2", pass 6 with seven items.
+     * The slots the `row` may use, "+N" included (default 4): up to `max - 1` items show and the last slot is "+N" for the rest; when every item fits, all show.
+     * For five providers in a row with "+2", pass 6 with seven items. The `grid` cluster ignores it: it always holds up to three members and the count cell.
      */
     readonly max?: number
+    /**
+     * The group's own picture (a group photo): with `layout="grid"` it replaces the cluster, drawn as one round Avatar of the same size, named by `label`; the initials
+     * of `label` show while it loads or fails. Omitted, the members make the identity.
+     */
+    readonly photo?: string
     /**
      * `md` 40px (default), the common size: a header, a detail view, a list lead. `sm` 24px, the icon size: inline beside text, in a table cell or a chip, the agents on
      * an account row. There is no other size (owner 2026-11-22: "giữ 2 size phổ biến 40 và 24 thôi, không có 32").
@@ -71,9 +78,12 @@ export type AvatarGroupProps = NoChildren & {
 
 const itemTone = (item: AvatarGroupItem) => item.tone ?? "default"
 
-/** The "+N" mark: always the NEUTRAL muted pair (the default plate, the muted ink), never a hashed or accent colour (owner 2026-11-22: "+2 màu muted chớ"). */
-const OverflowCount = ({ count }: { readonly count: number }) => (
-    <span aria-hidden="true" className="starci-core-avatar-overflow" data-grammar-avatar-overflow-mark="muted">{`+${count}`}</span>
+/**
+ * The "+N" mark: always the NEUTRAL muted pair (the default plate, the muted ink), never a hashed or accent colour (owner 2026-11-22: "+2 màu muted chớ"). The cluster's
+ * count cell passes the number of members as its own `text` (no plus: Zalo reads "29", the whole group).
+ */
+const OverflowCount = ({ count, text }: { readonly count: number; readonly text?: string }) => (
+    <span aria-hidden="true" className="starci-core-avatar-overflow" data-grammar-avatar-overflow-mark="muted">{text ?? `+${count}`}</span>
 )
 
 /** How long the member list stays after the pointer leaves the group or the list, so the pointer can cross the gap between them. */
@@ -189,9 +199,11 @@ const MemberList = ({ id, label, items, agentLabel }: { readonly id: string; rea
  * Contract: each item and the count A11Y-2 (named once; initials, marks and "+N" silent); the group is named by `label` or `describe`, and it controls the member
  * list (`aria-expanded`, `aria-controls`).
  */
-const AvatarGroupInner = ({ label, items, layout = "row", max = 4, size = "md", overflowLabel, describe, agentLabel, hasMemberList = true }: AvatarGroupProps) => {
-    const { shown, hidden } = avatarGroupSlots(items.length, layout === "grid" ? Math.min(max, 4) : max)
-    const tiles = layout === "grid" ? avatarGroupTiles(items.length, max) : []
+const AvatarGroupInner = ({ label, items, layout = "row", max = 4, size = "md", photo, overflowLabel, describe, agentLabel, hasMemberList = true }: AvatarGroupProps) => {
+    const cells = layout === "grid" ? avatarClusterCells(items.length) : []
+    const { shown, hidden } = layout === "grid"
+        ? { shown: cells.filter((cell) => cell.kind === "member").length, hidden: items.length >= 4 ? items.length - 3 : 0 }
+        : avatarGroupSlots(items.length, max)
     const visible = items.slice(0, shown)
     const groupName = describe !== undefined ? describe(visible.map((item) => item.name), hidden) : label
     const listId = useId()
@@ -199,47 +211,44 @@ const AvatarGroupInner = ({ label, items, layout = "row", max = 4, size = "md", 
     const { anchor, container } = useOverlayContainer("AvatarGroup")
     const hasMembers = hasMemberList && items.length > 0
     const group = layout === "grid" ? (
-        <HeroAvatar
-            className="starci-core-avatar starci-core-avatar-group"
+        <span
+            className="starci-core-avatar-cluster"
             data-component="AvatarGroup"
             data-contract="COLLECTION-3 A11Y-2"
             data-tier="composite"
             data-grammar-avatar-size={size}
             data-grammar-avatar-layout="grid"
-            data-grammar-avatar-cells={tiles.length}
-            data-grammar-avatar-overflow={hidden > 0 ? "true" : "false"}
-            size={vendorAvatarSize(size)}
+            data-grammar-avatar-cells={photo !== undefined ? 1 : cells.length}
+            data-grammar-avatar-overflow={photo === undefined && hidden > 0 ? "true" : "false"}
+            {...(photo === undefined ? {} : { "data-grammar-avatar-photo": "true" })}
         >
-            {items.length === 0 ? avatarParts(label, undefined, undefined) : (
-                <span className="starci-core-avatar-group-grid">
-                    {tiles.map((tile) => {
-                        if (tile.kind === "more") return (
-                            <span aria-label={overflowLabel(tile.count)} className="starci-core-avatar-group-count" data-contract="A11Y-2" data-grammar-avatar-count="true" key="more" role="img">
-                                <OverflowCount count={tile.count} />
-                            </span>
-                        )
-                        const item = items[tile.index]
-                        if (item === undefined) return null
-                        const { plate, style } = avatarToneProps(itemTone(item))
-                        return (
-                            <HeroAvatar
-                                key={item.id}
-                                {...avatarA11yProps(item.name, false, item.kind)}
-                                className="starci-core-avatar-group-member"
-                                data-component="Avatar"
-                                data-contract="A11Y-2"
-                                data-grammar-avatar-kind={item.kind ?? "person"}
-                                data-grammar-avatar-tone={plate}
-                                {...(style === undefined ? {} : { style })}
-                                size={vendorAvatarSize(size)}
-                            >
-                                {avatarParts(item.name, item.src, item.fallback, item.seed, plate === "slot" ? "slot" : "default", item.mark)}
-                            </HeroAvatar>
-                        )
-                    })}
-                </span>
-            )}
-        </HeroAvatar>
+            {photo !== undefined ? <Avatar name={label} src={photo} size={size} isDecorative /> : items.length === 0 ? <Avatar name={label} size={size} isDecorative /> : cells.map((cell) => {
+                if (cell.kind === "count") return (
+                    <span aria-label={overflowLabel(cell.hidden)} className="starci-core-avatar-group-count" data-contract="A11Y-2" data-grammar-avatar-count="true" data-grammar-cluster-slot={cell.slot} key="count" role="img">
+                        <OverflowCount count={cell.hidden} text={String(cell.total)} />
+                    </span>
+                )
+                const item = items[cell.index]
+                if (item === undefined) return null
+                const { plate, style } = avatarToneProps(itemTone(item))
+                return (
+                    <HeroAvatar
+                        key={item.id}
+                        {...avatarA11yProps(item.name, false, item.kind)}
+                        className="starci-core-avatar-group-member"
+                        data-component="Avatar"
+                        data-contract="A11Y-2"
+                        data-grammar-avatar-kind={item.kind ?? "person"}
+                        data-grammar-avatar-tone={plate}
+                        data-grammar-cluster-slot={cell.slot}
+                        {...(style === undefined ? {} : { style })}
+                        size={vendorAvatarSize(size)}
+                    >
+                        {avatarParts(item.name, item.src, item.fallback, item.seed, plate === "slot" ? "slot" : "default", item.mark)}
+                    </HeroAvatar>
+                )
+            })}
+        </span>
     ) : (
         <HeroAvatarGroup
             className="starci-core-avatar-group"
