@@ -4440,7 +4440,21 @@
         transition: opacity var(--grammar-motion-duration-base) var(--grammar-motion-ease-out);
     }
     .starci-core-list-row:is(:hover, :focus-within)[data-grammar-row-draggable] > .starci-core-list-row-grip { opacity: 1; }
-    .starci-core-list-row[data-grammar-row-draggable] { cursor: grab; }
+    /*
+     * A touch screen lifts a card on a long press (react-aria's drag on the browser's own): the press must not open the system's callout or
+     * start a text selection instead, and with no hover to reveal it the grip stays drawn, so a card says it moves.
+     */
+    .starci-core-list-row[data-grammar-row-draggable] {
+        cursor: grab;
+        -webkit-touch-callout: none;
+        user-select: none;
+    }
+    @media (hover: none) {
+        .starci-core-list-row[data-grammar-row-draggable] > .starci-core-list-row-grip { opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-list-row-grip { transition: none; }
+    }
     .starci-core-list-row[data-grammar-row-origin="true"] {
         border: 1px dashed var(--border);
         background: transparent;
@@ -4471,6 +4485,9 @@
     .starci-core-board-slot-detail { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }
     .starci-core-board-column[data-grammar-drop="true"],
     .starci-core-board-column[data-grammar-drop="ask"] { background: color-mix(in oklab, var(--accent) 8%, var(--surface-secondary)); outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--starci-core-surface-radius); }
+    /* A keyboard or screen-reader drag focuses the place it would drop on; a place with no drop state of its own (its own stage) still shows where the focus is. */
+    .starci-core-board-column:focus-visible:not([data-grammar-drop]),
+    .starci-core-board-band:focus-visible:not([data-grammar-drop]) { outline: 2px solid var(--focus); outline-offset: 2px; }
     /* The end band: a wide dashed place under the columns, there only while a card is dragged. */
     .starci-core-board-band {
         display: flex;

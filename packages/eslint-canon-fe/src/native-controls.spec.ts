@@ -7,7 +7,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
-import { imageHasSize, noNativeFormControl, noNativeImg, rules } from "./native-controls.ts"
+import { imageHasSize, noNativeFormControl, rules } from "./native-controls.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
 
 const tester = canonTester(new RuleTester({
@@ -40,19 +40,6 @@ test("NATIVE-1: no bare select, input, textarea or button in product source", ()
       { filename: BLOCK, code: "const E = () => <select><option /></select>", errors: [{ messageId: "native" }] },
       { filename: BLOCK, code: "const E = () => <textarea />", errors: [{ messageId: "native" }] },
       { filename: "src/components/leaves/Toggle/index.tsx", code: "const E = () => <button />", errors: [{ messageId: "native" }] },
-    ],
-  }))
-})
-
-test("NATIVE-2: no bare img in product source", () => {
-  assert.doesNotThrow(() => tester.run("no-native-img", noNativeImg, {
-    valid: [
-      { filename: BLOCK, code: "const E = () => <Image src={src} alt={t('a')} width={40} height={40} />" },
-      { filename: BLOCK, code: "const E = () => <picture />" },
-    ],
-    invalid: [
-      { filename: BLOCK, code: "const E = () => <img src={src} alt={t('a')} />", errors: [{ messageId: "img" }] },
-      { filename: BLOCK, code: "const E = () => <div><img src={src} /></div>", errors: [{ messageId: "img" }] },
     ],
   }))
 })

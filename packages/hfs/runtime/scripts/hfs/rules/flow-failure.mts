@@ -51,8 +51,14 @@ function deletesFailed(source: string): boolean {
   });
 }
 
-/** True when some catch block of the source neither rethrows nor parks. */
-const swallows = (source: string): boolean => [...source.matchAll(CATCH)].some((match) => !HANDS_ON.test(blockAt(source, match.index + match[0].length)));
+/**
+ * True when some non-empty catch block of the source neither rethrows nor parks. An empty catch is the canon lint's `catch-must-account`
+ * (R40, its `empty` report) on every back-end file, so it is never a second finding here: one swallowed failure reaches one rule.
+ */
+const swallows = (source: string): boolean => [...source.matchAll(CATCH)].some((match) => {
+  const body = blockAt(source, match.index + match[0].length);
+  return body.trim() !== '' && !HANDS_ON.test(body);
+});
 
 /** The R377 findings: a flow file or job domain file that swallows a failure, and a source that deletes failed jobs. */
 export function flowFailureFindings({ repoRoot, files = [], all = files, repo, isRoot, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver?: Resolver; isRoot: boolean; inScope?: (file: string) => boolean }) {

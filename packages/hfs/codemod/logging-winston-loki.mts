@@ -25,9 +25,7 @@ export const ADAPTER_FILES = Object.freeze([
   'loki-transport.adapter.spec.ts',
   'log-redaction.policy.ts',
   'logging.config.ts',
-  'logging.config.spec.ts',
   'logging.options.ts',
-  'logging-shutdown.service.ts',
 ]);
 
 /** A file an app may have grown, the marker of its new form, and the edit a person makes when it is missing. */
@@ -35,7 +33,7 @@ interface Judged { file: string; marker: RegExp; code: string; reason: string }
 
 const JUDGED: readonly Judged[] = [
   { file: `${LOGGING}/logging.log-events.ts`, marker: /LokiUnreachable\s*=/, code: 'LOGGING_EVENT_MISSING', reason: 'add `LokiUnreachable = "platform.logging.loki.unreachable"` (documented) to LoggingLogEvent' },
-  { file: `${LOGGING}/logging.module.ts`, marker: /LoggingShutdownService/, code: 'LOGGING_MODULE_SHUTDOWN', reason: 'provide LoggingShutdownService beside CorrelationService, and keep `createJsonLogger(clock, ids, options)` as the LOGGER factory' },
+  { file: `${LOGGING}/logging.module.ts`, marker: /onApplicationShutdown/, code: 'LOGGING_MODULE_SHUTDOWN', reason: 'implement OnApplicationShutdown on LoggingModule (inject the Logger, call its `close()` when it has one) so the Loki push is flushed, and keep `createJsonLogger(clock, ids, options)` as the LOGGER factory' },
   { file: `${LOGGING}/logging.decorators.ts`, marker: /^(?![\s\S]*\bLOG_(?:OUT|ERR)\b)/, code: 'LOGGING_STREAM_TOKENS', reason: 'delete LOG_OUT, LOG_ERR, InjectLogOut and InjectLogErr: the adapter takes its streams as constructor arguments' },
   { file: `${LOGGING}/index.ts`, marker: /parseLoggingConfig/, code: 'LOGGING_BARREL', reason: 'export `parseLoggingConfig` from "./logging.config" and `type LoggingOptions` from "./logging.options"' },
   { file: 'src/modules/platform/cqrs/cqrs.handler.ts', marker: /isDomainError\(/, code: 'LOGGING_CQRS_DOMAIN_ERROR', reason: 'log OperationFailed only when `!isDomainError(error)` (export isDomainError from platform/errors): a DomainError is an answer, never logged (BE-ERROR-4)' },

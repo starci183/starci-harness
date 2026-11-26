@@ -1,7 +1,8 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { useId, type DragEvent, type KeyboardEvent } from "react"
+import { useId, useRef, useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type RefObject } from "react"
+import { useDrag, type DragPreviewRenderer } from "react-aria-components"
 import { staticRowClassName } from "../../classNames.js"
 import { LeadingNumber } from "../../LeadingNumber.js"
 import { StateMark } from "../../StateMark.js"
@@ -27,23 +28,41 @@ const DIFF_GLYPHS = { added: "+", removed: "−", changed: "~" } as const
 const DIFF_LABELS = { added: "Added", removed: "Removed", changed: "Changed" } as const
 
 /**
- * Starts a drag with a LIFTED copy of the row as the image under the pointer: the copy carries `data-grammar-row-lifted` (a soft shadow on the card face, no tilt, no scale), stands
- * out of the flow for one tick so the browser can take its picture, and is removed at once; the row itself stays put as the origin slot.
+ * The drag image of a row (react-aria's `preview`): a LIFTED copy of the row under the pointer. The copy carries `data-grammar-row-lifted` (a soft shadow on the card face, no tilt, no
+ * scale), stands out of the flow for one tick so the browser can take its picture, and is removed at once; the row itself stays put as the origin slot. A touch browser that draws its
+ * own lift (iOS) ignores it.
  */
-const liftRow = (event: DragEvent<HTMLLIElement>) => {
-    const row = event.currentTarget
-    const parent = row.parentElement
-    if (parent === null || typeof event.dataTransfer.setDragImage !== "function") return
+const liftRow = (row: HTMLLIElement | null, place: (node: HTMLElement | null) => void) => {
+    const parent = row === null ? null : row.parentElement
+    if (row === null || parent === null) {
+        place(null)
+        return
+    }
     const copy = row.cloneNode(true) as HTMLElement
     copy.setAttribute("data-grammar-row-lifted", "true")
     copy.removeAttribute("draggable")
     copy.removeAttribute("data-grammar-row-origin")
+    copy.removeAttribute("id")
     copy.setAttribute("aria-hidden", "true")
-    const box = row.getBoundingClientRect()
-    copy.style.width = `${box.width}px`
+    copy.style.width = `${row.getBoundingClientRect().width}px`
     parent.appendChild(copy)
-    event.dataTransfer.setDragImage(copy, Math.max(0, event.clientX - box.left), Math.max(0, event.clientY - box.top))
+    place(copy)
     window.setTimeout(() => copy.remove(), 0)
+}
+
+/** What a control inside a row is: a press on it is its own, never the start of a drag. */
+const CONTROL = "button, a[href], input, select, textarea, [role='button'], [role='menuitem'], [role='link']"
+
+/** Joins the descriptions a focused row carries (react-aria's "how to drag" and the app's key hint) into one `aria-describedby`. */
+const describedBy = (...ids: readonly (string | undefined)[]): { readonly "aria-describedby"?: string } => {
+    const joined = ids.filter((id): id is string => id !== undefined && id !== "").join(" ")
+    return joined === "" ? {} : { "aria-describedby": joined }
+}
+
+/** What the `<li>` of a draggable row carries: react-aria's drag props (mouse, touch, keyboard and screen-reader starts) and the row's own node for its lifted copy. */
+type RowDragDom = {
+    readonly props: HTMLAttributes<HTMLElement>
+    readonly ref: RefObject<HTMLLIElement | null>
 }
 
 export type ListRowProps = NoChildren & {
@@ -88,7 +107,7 @@ const RowAction = ({ action }: { readonly action: ItemAction }) => {
  * badges, one supporting line, one visible command and a menu, with an optional detail under the copy. It is an `<li>`
  * and is never rendered loose; the collection that holds it is the list.
  */
-const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
+const ListRowView = ({ row, isLoading = false, dragDom }: ListRowProps & { readonly dragDom?: RowDragDom | undefined }) => {
     const state = row.state ?? "neutral"
     const treatment = treatmentFor(state)
     const hasLeading = row.leading !== undefined
@@ -117,6 +136,8 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
             )}
         </span>
     )
+    // The row itself takes the focus when it moves and has no control of its own to carry the keys.
+    const rowFocusable = drag?.onMoveKey !== undefined && row.onPress === undefined && row.href === undefined
     const pressKeys = drag?.onMoveKey === undefined ? {} : {
         "aria-keyshortcuts": "Alt+ArrowLeft Alt+ArrowRight",
         ...(drag.keyHint === undefined ? {} : { "aria-describedby": hintId }),
@@ -201,14 +222,9 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(row.emphasis === undefined ? {} : { "data-grammar-emphasis": row.emphasis })}
                 {...(row.diff === undefined ? {} : { "data-grammar-diff": row.diff })}
                 {...(row.onPress === undefined && row.href === undefined ? {} : { "data-grammar-row-pressable": "true" })}
-                {...(drag === undefined ? {} : {
-                    draggable: true,
-                    "data-grammar-row-draggable": "true",
-                    onDragStart: (event: DragEvent<HTMLLIElement>) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", row.id); liftRow(event); drag.onDragStart() },
-                    onDragEnd: drag.onDragEnd,
-                })}
+                {...(dragDom === undefined ? {} : { ...dragDom.props, ref: dragDom.ref, "data-grammar-row-draggable": "true" })}
                 {...(drag?.isOrigin === true ? { "data-grammar-row-origin": "true" } : {})}
-                {...(drag?.onMoveKey !== undefined && row.onPress === undefined && row.href === undefined ? { tabIndex: 0, ...pressKeys } : {})}
+                {...(rowFocusable ? { tabIndex: 0, ...pressKeys, ...describedBy(dragDom?.props["aria-describedby"], drag?.keyHint === undefined ? undefined : hintId) } : {})}
                 data-grammar-row-id={row.id}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3"
             >
@@ -264,6 +280,39 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
         </>
     )
 }
+
+/**
+ * A row a `Board` lets move: react-aria's `useDrag` makes the `<li>` the drag source for every input. A mouse drags it at once; a touch screen
+ * lifts it on a long press (the browser's own drag on iOS and Android); a keyboard starts it with Enter on the focused row; a screen reader
+ * (VoiceOver, TalkBack, NVDA, JAWS) starts it by activating the row, then reaches the stages one by one. A press on a control inside the row
+ * (its title button, a link, its menu) stays that control's own and never starts a drag.
+ */
+const DraggableListRow = ({ row, drag }: { readonly row: ListRowData; readonly drag: NonNullable<ListRowData["drag"]> }) => {
+    const node = useRef<HTMLLIElement | null>(null)
+    const [preview] = useState<RefObject<DragPreviewRenderer | null>>(() => ({ current: (_items, place) => liftRow(node.current, place) }))
+    const { dragProps } = useDrag({
+        getItems: () => [{ "text/plain": row.title }],
+        getAllowedDropOperations: () => ["move"],
+        preview,
+        onDragStart: () => drag.onDragStart(),
+        onDragEnd: () => drag.onDragEnd(),
+    })
+    const { onClick, ...rest } = dragProps
+    const props: HTMLAttributes<HTMLElement> = {
+        ...rest,
+        // react-aria starts a screen reader's drag on a virtual click; a click that lands on a control inside the row is that control's.
+        onClick: (event: MouseEvent<HTMLElement>) => {
+            const control = event.target instanceof Element ? event.target.closest(CONTROL) : null
+            if (control !== null && control !== event.currentTarget && event.currentTarget.contains(control)) return
+            onClick?.(event)
+        },
+    }
+    return <ListRowView row={row} dragDom={{ props, ref: node }} />
+}
+
+const ListRowInner = ({ row, isLoading = false }: ListRowProps) => (
+    row.drag === undefined || isLoading ? <ListRowView row={row} isLoading={isLoading} /> : <DraggableListRow row={row} drag={row.drag} />
+)
 
 /**
  * The one drawing of a row, inside the `Section` of rows (and a Board item card): leading mark, title with its

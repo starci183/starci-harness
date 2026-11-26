@@ -1,6 +1,8 @@
 /**
  * One polled bot of the monitor bot service: the app environments that share its token, the updates it answers and the notifications it
- * posts. Only the owner chat of an environment (ALERTS_TELEGRAM_CHAT_ID) is answered; every other chat is ignored. A write (a silence) needs
+ * posts. Only the owner chat of an environment is answered; every other chat is ignored. The owner chat is the one the member seals
+ * (ALERTS_TELEGRAM_CHAT_ID, legacy), or the private chat of the owner username (`monitoring.alerts.telegram.owner`) learned when he first writes
+ * to the bot (owners.ts): the bot confirms the connection and posts the alerts that waited for it. A write (a silence) needs
  * an admin (config.ts accessOf) and a confirmation button pressed by an admin within 5 minutes; the confirmation lives in memory only, so a
  * restart drops it, and updates older than 2 minutes (a backlog after a restart) are skipped, never replayed.
  */
@@ -16,6 +18,8 @@ import type { Reply, ScopeEnvs, Sources } from "./handlers.js"
 import { stackMatcher, topCpu, topMemory } from "./queries.js"
 import { escapeHtml, formatBytes, formatDuration, formatNumber } from "./render.js"
 import type { Telegram, Update } from "./telegram.js"
+import { alertQueue, memoryStore, ownerKey, QUEUE_LIMIT } from "./owners.js"
+import type { AlertQueue, ChatStore } from "./owners.js"
 
 /** How long a confirmation waits for its button. */
 export const CONFIRM_MS = 300_000
@@ -51,6 +55,10 @@ export interface BotDeps {
     readonly sources: Sources
     readonly id: () => string
     readonly log: (line: string) => void
+    /** The learned owner chats, shared by every bot of the process (default: in memory). */
+    readonly store?: ChatStore
+    /** The notifications waiting for an owner's chat (default: a bounded queue of this bot). */
+    readonly queue?: AlertQueue
 }
 
 /** The scope of the entries of one chat: the project and the stacks of its environments. */
@@ -72,7 +80,8 @@ const highest = (accesses: readonly Access[]): Access => (accesses.includes("wri
 /** A bot serving the entries of one token: its update handler, its alert poster and its daily report. */
 export interface MonitorBot {
     readonly entries: readonly BotEntry[]
-    readonly chats: readonly number[]
+    /** The owner chats known now: the sealed ones and the learned ones. */
+    readonly chats: () => number[]
     /** Answers one update; an error is logged, never thrown (the poller goes on). */
     readonly handle: (update: Update) => Promise<void>
     /** Posts one notification of Alertmanager to the slot's chat, with its buttons; throws when Telegram refuses (Alertmanager retries). */
@@ -80,16 +89,20 @@ export interface MonitorBot {
     /** Posts the daily report to every chat of this bot. */
     readonly report: (day: string) => Promise<void>
     /** The pending confirmations and offers (the specs read them). */
-    readonly state: () => { readonly pending: number; readonly offers: number }
+    readonly state: () => { readonly pending: number; readonly offers: number; readonly queued: number }
 }
 
 /** A bot serving `entries` (one token). */
 export const createBot = (entries: readonly BotEntry[], deps: BotDeps): MonitorBot => {
     const pending = new Map<string, PendingSilence>()
     const offers = new Map<string, Offer>()
-    const chats = [...new Set(entries.map((entry) => entry.chat))]
-    const entriesOf = (chat: number): BotEntry[] => entries.filter((entry) => entry.chat === chat)
-    const access = (chat: number, from: number | undefined): Access => highest(entriesOf(chat).map((entry) => accessOf(entry, chat, from)))
+    const store = deps.store ?? memoryStore(new Map(), null)
+    const queue = deps.queue ?? alertQueue()
+    /** The owner chat of an entry: sealed, else learned for its owner username, else none yet. */
+    const chatOf = (entry: BotEntry): number | null => entry.chat ?? (entry.owner === null ? null : store.get(ownerKey(entry), entry.owner))
+    const chats = (): number[] => [...new Set(entries.map(chatOf).filter((chat): chat is number => chat !== null))]
+    const entriesOf = (chat: number): BotEntry[] => entries.filter((entry) => chatOf(entry) === chat)
+    const access = (chat: number, from: number | undefined): Access => highest(entriesOf(chat).map((entry) => accessOf({ chat: chatOf(entry), admins: entry.admins }, chat, from)))
     const now = (): number => deps.sources.now()
 
     const prune = (): void => {
@@ -134,7 +147,53 @@ export const createBot = (entries: readonly BotEntry[], deps: BotDeps): MonitorB
         await send(chat, await readReply(command, scope, deps.sources))
     }
 
+    /** Posts one notification to the entry's chat, with its buttons and the likely cause. */
+    const post = async (chat: number, payload: WebhookPayload): Promise<void> => {
+        const scope = scopeOf(entriesOf(chat))
+        prune()
+        const offer = (alert: WebhookAlert): string => {
+            const key = deps.id()
+            if (silenceable(scope, alert.labels)) offers.set(key, { alertname: alert.labels.alertname ?? "", stack: alert.labels.stack ?? "", chat, expires: now() + OFFER_MS })
+            return `q:${key}`
+        }
+        const kind = causeKind(payload)
+        let cause: string | undefined
+        if (kind !== null) {
+            const top = await deps.sources.prometheus.query(kind === "cpu" ? topCpu(scope, 1) : topMemory(scope, 1)).catch(() => [])
+            const first = top[0]
+            if (first !== undefined) cause = `${first.labels.service ?? "?"} (${kind === "cpu" ? `${formatNumber(first.value * 100)}% CPU` : formatBytes(first.value)}) trong các service của ${scope.project}`
+        }
+        const message = alertMessage(payload, scope, now(), offer, cause)
+        if (message.html === "") return
+        await send(chat, message)
+    }
+
+    /**
+     * Learns the owner chat from a private message of an owner username, matched case-insensitively, for every entry of that owner whose chat
+     * is not known yet; confirms the connection and posts what waited. Any other sender, a group, or an entry already connected learns nothing.
+     * A backlog counts: the owner may press Start before the bot runs (Telegram keeps an update 24 hours).
+     */
+    const learn = async (message: NonNullable<Update["message"]>): Promise<void> => {
+        const username = message.from?.username?.toLowerCase()
+        if (username === undefined || message.chat.type !== "private" || message.from?.id !== message.chat.id) return
+        const waiting = entries.filter((entry) => entry.chat === null && entry.owner === username && chatOf(entry) === null)
+        if (waiting.length === 0) return
+        for (const entry of waiting) store.set(ownerKey(entry), username, message.chat.id, now())
+        deps.log(`learned the owner chat of ${waiting.map(ownerKey).join(", ")} from @${username}`)
+        const names = waiting.map((entry) => `${escapeHtml(entry.project)} ${escapeHtml(entry.env)}`).join(", ")
+        await send(message.chat.id, { html: `✅ Đã kết nối cảnh báo cho <b>${names}</b>.\nTừ giờ cảnh báo của ${waiting.length > 1 ? "các môi trường này" : "môi trường này"} sẽ gửi về đây; /help để xem các lệnh.` })
+        for (const entry of waiting) {
+            const held = queue.take(ownerKey(entry))
+            for (const payload of held.payloads)
+                await post(message.chat.id, payload).catch((error: unknown) => {
+                    deps.log(`a queued alert of ${ownerKey(entry)}: ${error instanceof Error ? error.message : String(error)}`)
+                })
+            if (held.dropped > 0) await send(message.chat.id, { html: `<i>${String(held.dropped)} cảnh báo cũ hơn của ${escapeHtml(ownerKey(entry))} đã bị bỏ khi chờ kết nối (giữ tối đa ${String(QUEUE_LIMIT)}).</i>` })
+        }
+    }
+
     const onMessage = async (message: NonNullable<Update["message"]>): Promise<void> => {
+        await learn(message)
         if (access(message.chat.id, message.from?.id) === "none") return
         if (message.date * 1000 < now() - STALE_MS) return
         const parsed = parseCommand(message.text ?? "", deps.username)
@@ -215,27 +274,18 @@ export const createBot = (entries: readonly BotEntry[], deps: BotDeps): MonitorB
         notify: async (slot, payload) => {
             const entry = entries.find((one) => one.slot === slot)
             if (entry === undefined) throw new Error(`slot ${String(slot)} is not this bot's`)
-            const scope = scopeOf(entriesOf(entry.chat))
-            prune()
-            const offer = (alert: WebhookAlert): string => {
-                const key = deps.id()
-                if (silenceable(scope, alert.labels)) offers.set(key, { alertname: alert.labels.alertname ?? "", stack: alert.labels.stack ?? "", chat: entry.chat, expires: now() + OFFER_MS })
-                return `q:${key}`
+            const chat = chatOf(entry)
+            if (chat === null) {
+                // The owner has not written to the bot yet: the notification waits, accepted, so Alertmanager does not retry it.
+                queue.push(ownerKey(entry), payload)
+                deps.log(`${ownerKey(entry)}: an alert waits for @${entry.owner ?? "?"} to /start the bot (${String(queue.size(ownerKey(entry)))} waiting)`)
+                return
             }
-            const kind = causeKind(payload)
-            let cause: string | undefined
-            if (kind !== null) {
-                const top = await deps.sources.prometheus.query(kind === "cpu" ? topCpu(scope, 1) : topMemory(scope, 1)).catch(() => [])
-                const first = top[0]
-                if (first !== undefined) cause = `${first.labels.service ?? "?"} (${kind === "cpu" ? `${formatNumber(first.value * 100)}% CPU` : formatBytes(first.value)}) trong các service của ${scope.project}`
-            }
-            const message = alertMessage(payload, scope, now(), offer, cause)
-            if (message.html === "") return
-            await send(entry.chat, message)
+            await post(chat, payload)
         },
         report: async (day) => {
-            for (const chat of chats) await send(chat, await dailyReport(scopeOf(entriesOf(chat)), day, deps.sources))
+            for (const chat of chats()) await send(chat, await dailyReport(scopeOf(entriesOf(chat)), day, deps.sources))
         },
-        state: () => ({ pending: pending.size, offers: offers.size }),
+        state: () => ({ pending: pending.size, offers: offers.size, queued: entries.reduce((sum, entry) => sum + queue.size(ownerKey(entry)), 0) }),
     }
 }

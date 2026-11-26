@@ -156,7 +156,7 @@ A back end whose consumers are woken by the database's own change feed (WAL, Deb
 Why: a hand-assembled module can pass while the real app cannot start, and transaction, lock and fence claims need the
 real store.
 
-Enforced by: `tests-no-override` (eslint, and `test-infra-placement` of hfs: an `overrideProvider`, `overrideGuard` or `overrideModule` call under `src/tests/` or in any integration, e2e or contract spec is BE_TEST_TOPOLOGY), `test-infra-placement` (BE_SPEC_WORLD_MISSING), `e2e-uses-production-transport`, `e2e-asserts-persisted-state` (R47, R48), R272, R401, R284.
+Enforced by: `tests-no-override` (eslint, and `test-infra-placement` of hfs: an `overrideProvider`, `overrideGuard` or `overrideModule` call under `src/tests/` or in any integration, e2e or contract spec is BE_TEST_TOPOLOGY), `test-infra-placement` (BE_SPEC_WORLD_MISSING), `e2e-uses-production-transport`, `e2e-asserts-persisted-state` (R47, R48), R272, R401, R155.
 
 ## BE-TEST-13 Coverage is held to tiers, from one derivation
 

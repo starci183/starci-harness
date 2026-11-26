@@ -162,5 +162,5 @@ adapter:
     - {port: EventConsumer delivery, adapter: "the reactor's pgmq queue (see event-bus.yaml adapter)"}
   proof: >-
     `starci app check --wiring` proves the composing lite app's module graph with doubles (R272); declaring event-bus requires
-    its scenario-titled integration specs on the local db service (`npm run db:start`, R284), including redelivery through the reactor.
+    its scenario-titled integration specs on the local db service (`npm run db:start`, R155), including redelivery through the reactor.
   see: [knowledge/patterns/be/event-bus.yaml]

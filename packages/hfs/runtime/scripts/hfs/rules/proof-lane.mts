@@ -1,5 +1,6 @@
-// proof-lane.mts - R284: declared patterns in prove their scenarios in integration specs.
-// Full keeps its existing e2e/integration proof checks. R155 owns BE_PATTERN_SPEC_MISSING.
+// proof-lane.mts - R155: declared patterns prove their scenarios in integration specs. One app gets one kind of finding for one missing
+// proof: BE_PATTERN_SPEC_MISSING per unproven scenario, or, when no declared pattern names a scenario and no integration spec exists at all,
+// BE_LITE_PROOF_LANE_MISSING (the code of the former R284, kept for the apps that name it).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadSlotManifest, ruleParams } from '../slots.mjs';
@@ -64,7 +65,7 @@ function integrationProof(ts: Ts | null,repoRoot: string, files: string[]) {
   return { specs, proven };
 }
 
-/** Findings of R284 and R155 at the app root; side passes must not duplicate them. */
+/** Findings of R155 at the app root; side passes must not duplicate them. */
 export function proofLaneFindings({ repoRoot, files, all = files, repo, manifest }: { repoRoot: string; files: string[]; all?: string[]; repo: Repo; manifest?: Parsed }) {
   if (!repo.sides?.be) return [];
   const patterns = [...new Set<string>(repo.sides.be.patterns ?? [])].filter((pattern) => PATTERNS.has(pattern));
@@ -73,11 +74,6 @@ export function proofLaneFindings({ repoRoot, files, all = files, repo, manifest
   const ts = loadTypescript(repoRoot, HERE);
   const { specs, proven } = integrationProof(ts, repoRoot, all);
   const findings = [];
-  if (specs.length === 0) {
-    const declared = patterns.map((pattern) => `\`${pattern}\``).join(', ');
-    findings.push(found(LITE_PROOF_LANE_MISSING, 'hfs.json',
-      `An app declares ${declared} but has no tracked integration spec in be/src/tests/integration; add *.integration-spec.ts with the declared patterns' scenario titles.`, { patterns }));
-  }
   for (const pattern of patterns) {
     const required = scenarios[pattern] ?? (pattern === 'saga' ? SAGA_SCENARIOS : []);
     for (const scenario of required) {
@@ -85,6 +81,11 @@ export function proofLaneFindings({ repoRoot, files, all = files, repo, manifest
       if (!proven.has(id)) findings.push(found(PATTERN_SPEC_MISSING, 'hfs.json',
         `The pattern \`${pattern}\` is declared but no integration spec in be/src/tests/integration holds a test titled \`${id}: ...\`; prove this scenario in the integration lane.`, { pattern, scenario: id }));
     }
+  }
+  if (specs.length === 0 && findings.length === 0) {
+    const declared = patterns.map((pattern) => `\`${pattern}\``).join(', ');
+    findings.push(found(LITE_PROOF_LANE_MISSING, 'hfs.json',
+      `An app declares ${declared} but has no tracked integration spec in be/src/tests/integration; add *.integration-spec.ts with the declared patterns' scenario titles.`, { patterns }));
   }
   return findings;
 }

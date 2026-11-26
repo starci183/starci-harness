@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto"
 import { existsSync, mkdirSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { stateBase } from "../../harness/ledger.js"
-import { heldLine, registeredRoots, serverAlerts, serverRecipientOf } from "../../harness/vps/alerts.js"
+import { heldLine, registeredRoots, routableAlerts, serverAlerts, serverRecipientOf } from "../../harness/vps/alerts.js"
 import type { ServerAlerts } from "../../harness/vps/alerts.js"
 import { runPlan, runSteps } from "../../harness/vps/fleet.js"
 import { loadMonitorComponents, monitorBudget, monitorDir, monitorImages, monitorUpPlan, MONITOR_SECRETS, renderMonitor, selectComponents } from "../../harness/vps/monitor.js"
@@ -94,7 +94,8 @@ export const monitorRunFor = (opsDir: string, id: string | undefined, toggled: {
     const selected = selectComponents(components, toggles, found.bots.length > 0)
     const budget = monitorBudget(components, selected)
     const alerting = selected.includes("alertmanager") && server !== undefined
-    const alerts: ServerAlerts = alerting ? found : { bots: [], lacking: [] }
+    // A bot that has only its owner username is connected by the monitor bot; with it off, that bot is held by name.
+    const alerts: ServerAlerts = alerting ? routableAlerts(found, selected.includes("monitor-bot")) : { bots: [], lacking: [] }
     const heldText = alerting ? heldLine(alerts) : null
     const held = heldText === null ? [] : [`  note: ${heldText}`]
     const render = renderMonitor(policy, monitorDir(policy, opsDir), components, selected, monitorImages(components, selected, opsDir), { target, alertBots: alerts.bots })

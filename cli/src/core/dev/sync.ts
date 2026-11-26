@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
 import type { ToolRun } from "../../shared/exec.js"
-import { captureGit, currentBranch, git, repositoryRoot, resolveSha, trackedChanges } from "../../shared/git.js"
+import { currentBranch, git, repositoryRoot, resolveSha, trackedChanges, gitOutcome as gitOk } from "../../shared/git.js"
 import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { loadLocalSettings } from "../../harness/local-settings.js"
 import type { DevSyncSettings } from "../../harness/local-settings.js"
@@ -177,10 +177,6 @@ export const realDevSyncDeps: DevSyncDeps = {
     stage: { tree: stageTree, outputs: stagedOutputs, tracked: stagedTrackedChanges, swap: (staging, root, outputs, tracked) => swapStaged(staging, root, outputs, tracked) },
 }
 
-const gitOk = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
-    const run = await captureGit(args, cwd)
-    return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
-}
 
 /** True when the packages a sync names are exactly the overlay already installed: each with its version, the same name@version set. Pure. */
 export const sameOverlay = (named: readonly { readonly name: string; readonly version?: string | undefined }[], installed: readonly string[]): boolean => {

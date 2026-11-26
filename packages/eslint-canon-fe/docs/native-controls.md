@@ -24,28 +24,6 @@ Use the grammar's renderers; never a bare select, input, textarea or button.
 
 **Fix:** Replace it with a grammar component; if none exists, add it to the grammar instead of drawing it in place.
 
-## `starci-fe/no-native-img`
-
-Use `next/image`, never a bare `<img>` (catalogue R62, sub-check `FE_NATIVE_IMAGE`).
-
-**Invalid** (`src/components/blocks/Feed/component.tsx`)
-
-```tsx
-<img src={src} alt={t("cover")} />
-```
-
-**Valid** (`src/components/blocks/Feed/component.tsx`)
-
-```tsx
-<Image src={src} alt={t("cover")} width={40} height={40} />
-```
-
-**Finding code:** `FE_NATIVE_IMAGE`
-
-**Why:** Raw `<img>` in `<file>`: it loads the original image and reserves no space, so the page jumps when the image loads.
-
-**Fix:** Use `Image` from `next/image` with `width` and `height` (or `fill` and `sizes`) and `alt` from the catalog.
-
 ## `starci-fe/image-has-size`
 
 `next/image` carries `width` and `height`, or `fill` with `sizes` (sub-check `FE_NATIVE_IMAGE`).

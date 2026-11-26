@@ -45,7 +45,9 @@ const boxOf = (root: ParentNode, selector: string): HTMLElement => {
   return found;
 };
 
-const dragEvent = (type: string, transfer: DataTransfer) => new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer });
+/** A script-made `DataTransfer` keeps `effectAllowed` at "none" (only a real drag may set it), which react-aria's drop places read as no drop: the picture's drag says "move" as a real one does. */
+const asMove = (transfer: DataTransfer): DataTransfer => Object.defineProperty(transfer, 'effectAllowed', { configurable: true, get: () => 'move' });
+const dragEvent = (type: string, transfer: DataTransfer) => new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: asMove(transfer) });
 
 /** Dragging the card with no quote over the Won column: the column refuses (not a drop place, the danger outline and the reason), the card stays, the reason is announced. A quoted card is let in. */
 export const DragRefused: Story = {

@@ -5,7 +5,7 @@ import { configuredSlotRoot, takeLiveLock } from "../../harness/slots.js"
 import { holderLine, landPaths, releaseLockFile } from "../../harness/lane-state.js"
 import { lockScope, profileNameFor } from "../../harness/land-profile.js"
 import { Refusal } from "../../shared/errors.js"
-import { captureGit, repositoryRoot } from "../../shared/git.js"
+import { gitOutcome, repositoryRoot } from "../../shared/git.js"
 import { defineVerb } from "../../shared/verb.js"
 
 /**
@@ -17,10 +17,7 @@ import { defineVerb } from "../../shared/verb.js"
 /** The git seam of the back-merge: a spec drives it without a repository. */
 export type BackMergeGit = (cwd: string, args: readonly string[]) => Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }>
 
-const realGit: BackMergeGit = async (cwd, args) => {
-    const run = await captureGit(args, cwd)
-    return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
-}
+const realGit: BackMergeGit = gitOutcome
 
 /** How dev stands to main: holding it already, behind it only (a fast-forward), or apart (a merge commit). */
 export type BackMergeKind = "in-sync" | "fast-forward" | "merge"

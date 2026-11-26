@@ -2,7 +2,6 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { hostname, tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { z } from "zod"
-import { withHeavySlot } from "../../harness/heavy.js"
 import { takeLiveLock } from "../../harness/slots.js"
 import { inOrder } from "../../harness/sequential.js"
 import { loadLocalSettings, localSettingsPath, writeDevSyncLocal } from "../../harness/local-settings.js"
@@ -16,12 +15,12 @@ import type { WorkspacePackage } from "../../shared/workspace.js"
 import { affectedBy } from "../release/affected.js"
 import { isHarnessCheckout } from "../release/harness-checkout.js"
 import { NPMJS_FLAGS } from "./local-refs.js"
-import { ensureRegistry, LOCAL_TAG, PORT, registryFlags, registryFolder, registryUrl, registryVersions, writePublishNpmrc } from "./local-registry.js"
+import { ensureRegistry, PORT, registryFolder, registryUrl, registryVersions, writePublishNpmrc } from "./local-registry.js"
 import { packStamped } from "./pack-stamped.js"
 import type { EntryEdit } from "./pack-stamped.js"
 import { parseRequested } from "./install-local.js"
-import { buildPackage, installPackage, tail } from "./packages.js"
-import { globalOrder } from "./publish-local.js"
+import { buildPackage, installPackage } from "./packages.js"
+import { globalOrder, publishLocalTarball } from "./publish-local.js"
 import { copyPins, dataPins, pinDataEdit, pinDataRows, pinDataTexts, pinnedManifest, siblingSpecs } from "./publish-pins.js"
 
 export { PIN_FIELDS } from "./publish-pins.js"
@@ -404,10 +403,7 @@ const publishDevCopy = async (root: string, pkg: WorkspacePackage, row: DevRow, 
     const scratch = mkdtempSync(join(tmpdir(), "starci-publish-dev-"))
     try {
         const tarball = await packStamped({ pkg, root, scratch, name: `${row.version}.tgz`, edit, entries })
-        const published = await withHeavySlot("build", `npm publish ${row.package}@${row.version}`, pkg.dir, {}, (held) => captureNpm(["publish", tarball, "--tag", LOCAL_TAG, "--provenance=false", "--userconfig", npmrc, ...registryFlags(PORT)], scratch, held.options))
-        if (published.exitCode !== 0) throw new Refusal("PUBLISH_LOCAL_FAILED", `npm publish of ${row.package}@${row.version} to ${registryUrl(PORT)} failed:\n${tail(published.stdout, published.stderr)}`)
-        const view = await captureNpm(["view", `${row.package}@${row.version}`, "version", ...registryFlags(PORT)], scratch)
-        if (view.exitCode !== 0 || view.stdout.trim() !== row.version) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable from ${registryUrl(PORT)} after publishing`)
+        await publishLocalTarball({ tarball, dir: pkg.dir, name: row.package, version: row.version, port: PORT, npmrc, scratch })
     } finally {
         rmSync(scratch, { recursive: true, force: true })
     }
