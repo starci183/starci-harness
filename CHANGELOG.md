@@ -4,6 +4,8 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.203 - 2026-11-26
 
+- Changed: the CLI requires @starci/hfs@6.17.16, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (h-cache-warm): a packed `@starci/hfs` carries its source digest in parts (`starciSourceParts`: the core and `canon-pins.yaml`) beside the unchanged `starciSource`, so the check cache keys the pins apart (`SOURCE_SPLITS`, `sourceDigestParts`).
 - Fixed (h-cache-warm, `app push`): a push to dev or a lane branch that the pre-push hook refused with HFS_CHECK_CACHE_UNWARMED (its full gate ran) no longer ends the verb: it falls into the check, cache commit, push round when it pushes the checked-out commit, and says why when it pushes another (the landing's squash).
 - Changed (h-lane-hygiene): `contexts anatomy --execute` writes into the harness of `--cwd`; the harness `lane gate` regenerates the generated contexts files and commits only the changed ones with the lane; land cleanup treats stale generated files as no work and says how to finish a worktree a live process holds; `lane gate` warns early when the disk runs low (`host.diskWarnMb`, `heavy.diskWarnMb`).
