@@ -6,9 +6,3 @@ reference-renders/
 *storybook.log
 storybook-static
 coverage/
-proof/results
-proof/report
-
-# The core ext demo (ext-demo/graph): Playwright results and shots
-ext-demo/graph/e2e/results/
-ext-demo/graph/e2e/shots/

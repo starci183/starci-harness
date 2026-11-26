@@ -3,7 +3,7 @@
  * HeroUI 3.2.6 ships no info token, so Grammar defines its own blue pair in the lowest layer: every family and every app inherits
  * `--info`, `--info-foreground`, `--info-soft` and `--info-soft-foreground` without writing a line, and an app that writes its own
  * (unlayered, or later in the theme layer) wins. Info is "in progress / for your information"; accent stays the brand (selection, links,
- * the primary action). AA: the foreground on info and the soft foreground on soft reach 4.5:1 in both themes (specs/info-tone.spec.mts).
+ * the primary action). AA: the foreground on info and the soft foreground on soft reach 4.5:1 in both themes.
  */
 @layer starci-grammar-theme {
     :root,

@@ -950,10 +950,21 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
 
 ```sh
 npm run typecheck
-npm test                 # typecheck + build; the package has no spec suites
+npm test                 # typecheck + the static checks (check:*) + lint + build; no spec, no test runner
 npm run build-storybook  # static Storybook for the authored component and family stories
 npm pack --dry-run
 ```
+
+## No tests
+
+The owner, 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless".
+
+The Grammar carries no `*.spec.*`, no `*.test.*`, no snapshot, no `specs/`, `tests/`, `e2e/` or `proof/` folder and no
+test-runner config (`jest`, `vitest`, `playwright`). A Grammar change is proven by looking: its Storybook stories shot at 390
+and 1440 in light and dark, and the UI audit of the app screens that use it. `npm test` is typecheck, the static checks,
+lint and build. The rule is [contexts/ui/proof.md](../../contexts/ui/proof.md) GRAMMAR-NO-TESTS, and the harness shape's gate
+slot `never.grammar-tests` ([contexts/hfs/harness.yaml](../../contexts/hfs/harness.yaml), CI's `check shape`) refuses such a
+file with `SHAPE_FORBIDDEN` and no exception.
 
 ## Contributing
 
@@ -964,7 +975,7 @@ can hold an old build that still looks valid.
 
 **Build stamp.** `npm run build` ends with `scripts/build-stamp.mts`, which writes
 `dist/.build-stamp.json`: the package version, a digest of the source (everything under `src/`
-except stories, test helpers, specs and tests, plus `tsconfig.build.json`, `scripts/copy-css.mts`
+except stories, plus `tsconfig.build.json`, `scripts/copy-css.mts`
 and the `exports` and `files` fields of `package.json`), a digest of the built files, and the build
 time. The stamp ships in the tarball.
 

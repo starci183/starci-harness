@@ -1,4 +1,4 @@
-// Serves a built folder on loopback for the render proof; a built Storybook is static files, so this is no dev server.
+// Serves a built folder on loopback for the shots and the plays; a built Storybook is static files, so this is no dev server.
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';

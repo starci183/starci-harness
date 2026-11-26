@@ -98,7 +98,7 @@
   },
   "scripts": {
     "build": "node scripts/clean.mts && tsc -p tsconfig.build.json && tsc -p tsconfig.codemods.json && node scripts/copy-css.mts && node scripts/build-stamp.mts",
-    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json && tsc -p tsconfig.codemods-spec.json && tsc -p tsconfig.specs.json && tsc -p tsconfig.ext-demo.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json && tsc -p tsconfig.ext-demo.json",
     "prove-theme": "node scripts/prove-theme.mts",
     "audit:gap": "node scripts/audit-gap.mts",
     "check:loading": "node scripts/check-region-loading.mts",
@@ -107,20 +107,14 @@
     "check:type": "node scripts/check-type-roles.mts",
     "check:hooks": "node scripts/check-theme-hooks.mts",
     "check:libraries": "node scripts/check-libraries.mts",
-    "test:codemods": "node --test \"codemods/**/*.spec.mts\"",
-    "test:specs": "node --import ./specs/support/register.mts --test \"specs/*.spec.mts\"",
-    "test": "npm run typecheck && npm run check:loading && npm run check:client && npm run check:tones && npm run check:type && npm run check:hooks && npm run check:libraries && npm run test:codemods && npm run test:specs && npm run lint && npm run build",
+    "test": "npm run typecheck && npm run check:loading && npm run check:client && npm run check:tones && npm run check:type && npm run check:hooks && npm run check:libraries && npm run lint && npm run build",
     "pack:check": "npm run build && npm pack --dry-run",
     "prepack": "npm run typecheck && npm run build",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "eslint --flag unstable_native_nodejs_ts_config . && stylelint \"src/**/*.css\"",
     "prove-plays": "node scripts/run-plays.mts",
-    "prove-render": "playwright test",
-    "prove-render:accept": "playwright test --update-snapshots --grep-invert @approved",
-    "prove-render:approve": "playwright test --update-snapshots --grep @approved",
-    "ext:demo": "vite ext-demo/graph",
-    "ext:e2e": "playwright test -c ext-demo/graph/playwright.config.ts"
+    "ext:demo": "vite ext-demo/graph"
   },
   "engines": {
     "node": ">=22"
@@ -166,7 +160,6 @@
     "@storybook/addon-mcp": "^10.6.0",
     "@storybook/react-vite": "^10.6.0",
     "@types/d3-force": "3.0.10",
-    "@types/jsdom": "21.1.7",
     "@types/mdast": "4.0.4",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
@@ -178,7 +171,6 @@
     "elkjs": "0.12.0",
     "eslint": "10.13.0",
     "eslint-plugin-storybook": "^10.6.0",
-    "jsdom": "26.1.0",
     "mdast-util-directive": "3.2.0",
     "pdfjs-dist": "6.5.438",
     "postcss-value-parser": "4.2.0",

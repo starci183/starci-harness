@@ -34,7 +34,7 @@ inside a real project or this checkout's `.runtime/`. Do not add a test framewor
 ### CONTRIB-2 Packages keep their specs
 
 Each package under `packages/` proves itself with its own `node:test` specs (`npm test` in its folder), which CI runs. A
-rule change in a canon comes with the spec that holds it. The Grammar keeps none ([contexts/authority/packages.md](contexts/authority/packages.md)).
+rule change in a canon comes with the spec that holds it. The Grammar is exempt and keeps none, by the owner's order of 2026-11-26 ("xóa tests grammars và ghi rules chặt vì useless"): it is proven by looking, and the shape gate slot `never.grammar-tests` refuses a spec, test or runner config there ([contexts/ui/proof.md](contexts/ui/proof.md) GRAMMAR-NO-TESTS).
 
 ### CONTRIB-3 Test only what you changed
 
@@ -165,7 +165,7 @@ answer says add:
 4. **Do NIVO or Next need it now?** If not, it waits for beta.
 
 A Grammar component or prop then enters `@starci/grammar` only through
-[contexts/grammars/contributing.md](contexts/grammars/contributing.md): tier, budget, types, lint, knowledge, render proof in both
+[contexts/grammars/contributing.md](contexts/grammars/contributing.md): tier, budget, types, lint, knowledge, its stories shot in both
 families and modes at real widths, and the look reviewed by a person.
 
 When something is removed or replaced:
@@ -228,7 +228,7 @@ dependent, skipping a private one and a version already on npm, with npm provena
 their specs (`--tarballs`: the tested bits, stamped with the commit, never rebuilt; a due package no job packed, its folder unchanged since a green base,
 is built and packed in the run), four `npm publish` at a time, and read back together. A package publishes once the repo-wide gates (`gate (repo)`: secrets, loosening, shape) are green and so is the
 `package` job of every folder of its build order the plan tested, itself and the siblings it needs, and, for the Grammar and
-a package that builds it, the `grammar proof` job (the theme proof; the render proof is not part of CI and runs by hand); a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mts](.github/scripts/publish-gate.mts)).
+a package that builds it, the `grammar proof` job (the theme proof); a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mts](.github/scripts/publish-gate.mts)).
 The CLI follows in the same run, once the harness job and every gate are green. A red Sonar quality gate or app job holds every package and
 the CLI (2026-11-17): nothing publishes from a ci run that is not green as a whole. A `publish` run is never cancelled, so a publication is never cut short, and a
 re-run (of the failed jobs) publishes only what is still missing. The plan is refused, before anything reaches npm, when a package changed since the base (its

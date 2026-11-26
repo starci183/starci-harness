@@ -65,7 +65,7 @@ it), `FencedCodeBlock` and the `renderCode` slot wrapper, inline code in a `Mark
 | `deleted` / `deleted-bg` | a diff's removed row (the only red) | #B42318 / #FCEDEC | #FF9492 / #352225 |
 | `highlight-line` / `highlight-edge` | a marked line: neutral blue tint, 2px edge | #EFF3FA / #6B8FD6 | #272C38 / #5C7CC2 |
 
-Every ink reaches WCAG AA 4.5:1 on the ground and on each line tint in both themes (`specs/code-palette.spec.mts`). An app may set its own
+Every ink reaches WCAG AA 4.5:1 on the ground and on each line tint in both themes (looked at in the stories, light and dark). An app may set its own
 values; it never points them at its brand. Stories `Content/Code palette (0.55.1)` (TS, bash and diff, light and dark).
 
 ## Size

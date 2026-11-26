@@ -233,8 +233,7 @@ jobs:
           if-no-files-found: error
 
   # The Grammar's theme proof, on a change to packages/grammar: a foreign set of HeroUI tokens repaints every part.
-  # publish.yml holds the Grammar while this job is not green. The render proof is not part of CI; it runs by hand
-  # (npm run prove-render in the pinned Playwright image, contexts/grammars/contributing.md "Render proof").
+  # publish.yml holds the Grammar while this job is not green. The Grammar carries no tests (contexts/ui/proof.md GRAMMAR-NO-TESTS).
   grammar-proof:
     name: grammar proof
     needs: plan
