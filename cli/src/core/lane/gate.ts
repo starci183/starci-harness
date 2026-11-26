@@ -21,6 +21,7 @@ import { landLane } from "./land-direct.js"
 import type { LaneLanded } from "./land-direct.js"
 import { diskWarningLines } from "../../harness/disk-warning.js"
 import { commitGenerated } from "../../harness/lane-generated.js"
+import { findingLines } from "../release/gate.js"
 import { cleanupLanded } from "../../harness/land-cleanup.js"
 import type { LandCleanup } from "../../harness/land-cleanup.js"
 
@@ -111,7 +112,7 @@ const needsInstall = async (root: string, merged: LaneGate["merged"], forced: bo
 /** The report lines of one gate. Pure. */
 const gateLines = (data: LaneGate): string[] => [
     `${data.lane}: ${data.mode} ${data.verdict}${data.profile === "app" && data.mode === "check" && data.verdict === "green" ? " (the cache records it wrote are left in the tree; --push commits them)" : ""}`,
-    ...data.findings.slice(0, 20).map((finding) => `  ${finding.code} ${finding.path} ${finding.message.split("\n")[0] ?? ""}`.trimEnd()),
+    ...data.findings.slice(0, 20).flatMap((finding) => findingLines(finding)),
     ...(data.landed === null ? [] : [`landed on dev as ${data.landed.sha.slice(0, 10)}${data.landed.rechecked ? " (re-checked: dev had moved)" : ""}${data.landed.publishNote === undefined ? "" : `; ${data.landed.publishNote}`}; dev sync ${data.landed.syncs.length === 0 ? "not requested" : `marked for ${data.landed.syncs.join(", ")}`}`]),
     ...(data.cleanup === null ? [] : [data.cleanup.line]),
     ...(data.timings.length === 0 ? [] : [`timings: ${data.timings.map((each) => `${each.phase} ${String(each.seconds)}s`).join(", ")}${data.installSource === "none" ? "" : ` (node_modules: ${data.installSource})`}`]),
