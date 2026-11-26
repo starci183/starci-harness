@@ -530,3 +530,150 @@
     stroke-width: 2;
     fill: color-mix(in oklab, var(--starci-graph-tone-select, var(--starci-graph-tone)) 8%, var(--surface));
 }
+
+/*
+ * StepCard (0.64.2, the owner's node design 2026-11-27): the inside of one workflow step card. The studio purple is the graph's own pair (HeroUI has no
+ * purple); the seam above each row is the owner's 0.5px line.
+ */
+.starci-step-card {
+    --starci-step-card-seam: 0.5px;
+    --starci-graph-studio: oklch(55% 0.2 300);
+    --starci-graph-studio-soft: oklch(95% 0.04 300);
+    --starci-graph-studio-ink: oklch(45% 0.18 300);
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    min-inline-size: 0;
+}
+
+.dark .starci-step-card,
+[data-theme="dark"] .starci-step-card {
+    --starci-graph-studio: oklch(72% 0.15 300);
+    --starci-graph-studio-soft: oklch(31% 0.08 300);
+    --starci-graph-studio-ink: oklch(84% 0.1 300);
+}
+
+.starci-step-card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    min-inline-size: 0;
+}
+
+.starci-step-card-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-inline-size: 0;
+}
+
+.starci-step-card-rows {
+    display: flex;
+    flex-direction: column;
+}
+
+/* One way out: 8px by 12px, a 0.5px seam above it (the first row too), its dot, its words and its port on the right edge. */
+.starci-step-card-row {
+    --starci-step-card-row-tone: var(--muted);
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-block-start: var(--starci-step-card-seam) solid var(--separator);
+    min-inline-size: 0;
+}
+
+.starci-step-card-row[data-tone="main"],
+.starci-step-card-row[data-tone="stop"] {
+    --starci-step-card-row-tone: var(--success);
+}
+
+.starci-step-card-row[data-tone="warning"] {
+    --starci-step-card-row-tone: var(--warning);
+}
+
+.starci-step-card-row[data-tone="back"] {
+    --starci-step-card-row-tone: var(--danger);
+}
+
+.starci-step-card-row-dot {
+    flex: none;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    background: var(--starci-step-card-row-tone);
+    border-radius: var(--grammar-radius-pill);
+}
+
+/* The else, a timeout or a loop's limit: a hollow dashed dot, as its edge is dashed. */
+.starci-step-card-row[data-tone="else"] .starci-step-card-row-dot,
+.starci-step-card-row[data-tone="back"] .starci-step-card-row-dot {
+    background: transparent;
+    border: var(--grammar-hairline) dashed var(--starci-step-card-row-tone);
+}
+
+.starci-step-card-row-label {
+    display: flex;
+    flex: 1;
+    min-inline-size: 0;
+}
+
+.starci-step-card-row-state {
+    display: inline-flex;
+    flex: none;
+}
+
+/* The port stands on the card's right edge at the row's middle; the canvas's handle inside it positions itself on that edge. */
+.starci-step-card-row-port {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+}
+
+/* A replay: the row the run took lights up, the others fade. */
+.starci-step-card-row[data-state="taken"] {
+    background: color-mix(in oklab, var(--starci-step-card-row-tone) 12%, transparent);
+}
+
+.starci-step-card-row[data-state="taken"] .starci-step-card-row-label {
+    color: var(--foreground);
+    font-weight: var(--grammar-weight-medium);
+}
+
+.starci-step-card-row[data-state="dimmed"] {
+    opacity: var(--grammar-opacity-faded);
+}
+
+/* The mode at the bottom-right corner: ask amber, studio purple, manual grey; auto has none. */
+.starci-step-card-mode {
+    position: absolute;
+    inset-block-end: 0.5rem;
+    inset-inline-end: 0.5rem;
+    padding-inline: 0.5rem;
+    border-radius: var(--grammar-radius-pill);
+    white-space: nowrap;
+}
+
+.starci-step-card-mode[data-mode="ask"] {
+    color: var(--warning-soft-foreground);
+    background: var(--warning-soft);
+}
+
+.starci-step-card-mode[data-mode="studio"] {
+    color: var(--starci-graph-studio-ink);
+    background: var(--starci-graph-studio-soft);
+}
+
+.starci-step-card-mode[data-mode="manual"] {
+    color: var(--default-foreground);
+    background: var(--default);
+}
+
+/* A control step's mode badge would sit on its rows: it stands in the head's corner instead. */
+.starci-step-card[data-rows] .starci-step-card-mode {
+    inset-block: 0.75rem auto;
+}
