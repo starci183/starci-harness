@@ -286,12 +286,12 @@ export const CATALOG = {
           "json": "flag"
         },
         "gate": {
-          "summary": "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, and runs the publish checks (declarations name .js, bundles:check), no test suite; --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
+          "summary": "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, runs the publish checks (declarations name .js, bundles:check) and each of those packages' own npm test (CI's package jobs; not the CLI's suite); --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
           "flags": [
             {
               "name": "level",
               "type": "string",
-              "summary": "dev (default: the packages changed since --base and their dependents, built and typechecked, no tests) or full (everything, with lint, tests and CI's light gates)"
+              "summary": "dev (default: the packages changed since --base and their dependents, built, typechecked and their npm test run) or full (everything, with lint, tests and CI's light gates)"
             },
             {
               "name": "base",
@@ -758,7 +758,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "alerts": {
-          "summary": "`alerts discover-chat --env <env>`: after /start to the environment's own alert bot, find the private chat that wrote and seal ALERTS_TELEGRAM_CHAT_ID into its alert member (monitoring.alerts.telegram.member), to the member's own recipients; never the harness bot",
+          "summary": "`alerts setup --env <env> --owner @username`: declare the environment's own alert bot (monitoring.alerts.telegram: member and the owner's plain Telegram username), seal its token at a masked prompt when the member lacks it, and name the bot to Start: the server's monitor bot learns the owner's chat from that message; `alerts discover-chat --env <env>` (legacy) seals ALERTS_TELEGRAM_CHAT_ID instead; never the harness bot",
           "flags": [
             {
               "name": "env",
@@ -767,9 +767,24 @@ export const CATALOG = {
               "required": true
             },
             {
+              "name": "owner",
+              "type": "string",
+              "summary": "setup: the owner's Telegram username (@name); kept from the config when omitted"
+            },
+            {
+              "name": "member",
+              "type": "string",
+              "summary": "setup: the sealed member of the token (default: the declared one, else alerts)"
+            },
+            {
+              "name": "token",
+              "type": "boolean",
+              "summary": "setup: ask and seal the token again even when the member holds one"
+            },
+            {
               "name": "chat",
               "type": "string",
-              "summary": "the chat id to seal when several chats wrote to the bot"
+              "summary": "discover-chat: the chat id to seal when several chats wrote to the bot"
             }
           ],
           "positional": [
@@ -905,7 +920,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [],
@@ -2296,7 +2311,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "load": {
-          "summary": "show the host's heavy-command governor: the slots (one per heavy.gbPerSlot GB of RAM) and how many run, the disk floor when it holds, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
+          "summary": "show the host's heavy-command governor: the slot units (one per heavy.gbPerSlot GB of RAM), the units in use and the weight of each kind, the disk floor when it holds, every running one with its child's pid and RSS, the queue with each wait and why, the seat RAM floor and its holds, the harness worktrees left held after their reap with who holds each, who holds the memory (managed or not), and on Windows a Defender scan burning CPU with the owner's exclusion command",
           "flags": [],
           "positional": [],
           "json": "flag"
@@ -3588,7 +3603,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root whose slots of the lane are released (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder whose foreign slot lock files of the lane are released too (its store rows always are; default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
             },
             {
               "name": "execute",
@@ -3781,7 +3796,8 @@ export const CATALOG = {
             {
               "name": "pid",
               "type": "string",
-              "summary": "the process the slot lives as long as (a long-lived shell or agent); once it is gone the next take reclaims the slot"
+              "summary": "the process the slot lives as long as (a long-lived shell or agent); once it is gone the next take reclaims the slot",
+              "required": true
             },
             {
               "name": "wait",
@@ -3791,7 +3807,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [
@@ -3804,7 +3820,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "release": {
-          "summary": "release the slots of a kind this lane holds (each only after it is read and names the lane); --stale reclaims every slot whose holder is proven gone (pid dead or reused, or taken before this boot), logging the evidence; age never reclaims",
+          "summary": "release the slots of a kind this lane holds (each only after it is read and names the lane); --stale reclaims every slot whose holder is proven gone (pid dead or reused, taken before this boot, or a pid-less lock whose lane is proven gone), logging the evidence; age never reclaims",
           "flags": [
             {
               "name": "lane",
@@ -3824,7 +3840,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [
@@ -3837,12 +3853,17 @@ export const CATALOG = {
           "json": "flag"
         },
         "list": {
-          "summary": "list the machine-wide slots (every kind, or one) with lane, age, holder alive (yes, no, unknown), pid, state and whether it is reclaimable: free, held, old (a warning only), or reclaimable: dead (its pid is not alive), reused (its pid runs another process), rebooted (taken before this boot) or gone (an old-helper lock whose lane has no worktree)",
+          "summary": "list the machine-wide slots, all rows of the host store (machine.sqlite: the same file from every folder and CLI copy): each lane slot (npm, gate, shoot, stack) with lane, pid, child, age, command, holder alive (yes, no, unknown), state and whether it is reclaimable (free, held, old: a warning only; reclaimable: dead, reused, rebooted, gone), a foreign lock file of an older copy marked with its path, then every heavy-command slot (kind heavy: id, state, units, pid, child, age, command); a held slot says why it is not reclaimable",
           "flags": [
+            {
+              "name": "events",
+              "type": "string",
+              "summary": "also print the newest N slot events (taken, released, reclaimed, killed, with who and the evidence)"
+            },
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [
@@ -3854,8 +3875,36 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "kill": {
+          "summary": "the last resort on a slot: kill the process tree of the one process it maps to (a lane slot: its holder; heavy <id>: the heavy command, else its holder) and free the slot, logged in slot_events with what was killed; refuses a free slot, a pid now running another program (SLOT_KILL_REUSED) or a holder whose start cannot be matched (SLOT_KILL_UNPROVEN); a holder already gone is only reclaimed; dry until --execute",
+          "flags": [
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "kill and free; without it, print what would be killed"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "kind",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "slot",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
         "run": {
-          "summary": "run one command while holding a machine-wide slot of a kind (npm ci under npm, a full gate or push under gate): the slot records this process's pid and is released when the command ends, so a killed run never leaves it held",
+          "summary": "run one command while holding a machine-wide slot of a kind (npm ci under npm, a full gate or push under gate): the slot, a row of machine.sqlite, records this process's pid and start and the command's own pid as its child, and is released the moment the command ends (its exit, an error or a signal); a run killed outright leaves a row whose pid is dead, reclaimed at the next take or list",
           "flags": [
             {
               "name": "lane",
@@ -3875,7 +3924,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [
@@ -3927,7 +3976,7 @@ export const CATALOG = {
             {
               "name": "dir",
               "type": "string",
-              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+              "summary": "the lanes folder, where foreign slot lock files of older copies are honoured too (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots); the slots themselves are rows of machine.sqlite, the same from every folder"
             }
           ],
           "positional": [

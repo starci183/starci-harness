@@ -71,7 +71,7 @@ environments:
         - {kind: ingress, service: ingress, port: 2019}   # Caddy's admin metrics or Traefik's metrics entrypoint
       traces: true                   # true: every metrics service; or a list of services
       profiles: [api]
-      alerts: {telegram: {member: alerts}}   # this environment's own alert bot (PROJECT-MONITORING-5); absent: its alerts are held
+      alerts: {telegram: {member: alerts, owner: "@owner_username"}}   # this environment's own alert bot (PROJECT-MONITORING-5); absent: its alerts are held
       # network: starci-monitor      # default; the server's `monitor.network`
 ```
 
@@ -139,28 +139,38 @@ environments:
   production:
     monitoring:
       alerts:
-        telegram: {member: alerts}   # .starcistacks/production/secrets/alerts.enc.yaml
+        telegram:
+          member: alerts             # .starcistacks/production/secrets/alerts.enc.yaml: ALERTS_TELEGRAM_BOT_TOKEN
+          owner: "@owner_username"   # the owner's Telegram username, plain config
 ```
 
-- **The member** holds `ALERTS_TELEGRAM_BOT_TOKEN` and `ALERTS_TELEGRAM_CHAT_ID`, sealed like every member of the environment (its server,
-  backup and CI recipients). The owner makes the bot with BotFather and seals its token with `starci app secret set --env <env> alerts
-  ALERTS_TELEGRAM_BOT_TOKEN`; after he sends /start to the bot, `starci app alerts discover-chat --env <env>` reads the bot's updates, finds
-  the one private chat (or `--chat` among several) and seals its id into the member, to the member's own recipients. It refuses when no chat
-  wrote yet, or when no identity on this machine opens the member.
+- **The owner configures two things, and finds no chat id.** The bot token, sealed in the member like every member of the environment (its
+  server, backup and CI recipients), and his Telegram username, plain config (`@name`: 5 to 32 letters, digits and underscores, a letter
+  first). The Bot API cannot message a user by username, and a bot reaches a user only after he wrote to it, so the chat id is the harness's
+  to learn: the server's monitor bot learns it from the owner's first message (PROJECT-MONITORING-6 "The owner's chat").
+- **`starci app alerts setup --env <env> [--owner @name] [--token]`** is the one step. It writes `member` (the declared one, else `alerts`) and
+  `owner` into `monitoring.alerts.telegram`, keeping every other line of the file as written. When the member holds no
+  ALERTS_TELEGRAM_BOT_TOKEN (or with `--token`), it asks the token at a masked prompt (a redirected stdin gives it), checks it with getMe
+  and seals it with `starci app secret set`. It ends with the owner's step, `Mở bot @<bot> và bấm Start`. Which keys the member holds is read
+  from its plain sops key names, so the username path opens nothing and works when the member is sealed only to the server and CI keys
+  (the bot is then named without its username).
+- **Legacy: a sealed chat.** A member that holds `ALERTS_TELEGRAM_CHAT_ID` still names the chat itself, and wins over `owner`.
+  `starci app alerts discover-chat --env <env> [--chat <id>]` seals it from the bot's updates; it needs an identity here that opens the member.
 - **The routes.** `vps monitor up <id>` reads the apps of the server's `projects`: their checkouts registered with this harness, or
-  `--app <dir>`. An environment whose `deploy.remote.serverRecipient` is this server's key (ops/vps/recipients.yaml) and whose member holds
-  both keys (read from the sops envelope's plain key names) has a bot ready. Alertmanager sends an alert carrying an app's `stack` label to
+  `--app <dir>`. An environment whose `deploy.remote.serverRecipient` is this server's key (ops/vps/recipients.yaml), whose member holds the
+  token (read from the sops envelope's plain key names) and that names its `owner` (or seals the chat) has a bot ready. A bot known by its
+  owner alone is routed through the monitor bot, which learns the chat; with the monitor bot off on that server it is held by name
+  (`routableAlerts`). Alertmanager sends an alert carrying an app's `stack` label to
   that environment's bot; a host alert (no stack label: disk, memory, CPU, the edge) to one bot of every app, each once (`continue`);
   everything else to the null receiver `held`.
 - **No value leaves the sealed files on this machine.** The plan ships each member's ciphertext to the server, whose own key
   (`/root/.config/sops/age/keys.txt`, `starci app secret server-key`) opens it there with `sops`: the token becomes a swarm secret named by its
-  hash and read by file (`bot_token_file`), and the chat id fills `alertmanager.yml` from its template, whose config is named by the filled
-  file's hash. A server without sops or its key stops the step, naming which.
+  hash and read by file (`bot_token_file`); a sealed chat id fills `alertmanager.yml` (or the monitor bot's config) from its template, whose
+  config is named by the filled file's hash, and an environment without one gets `null` there. A server without sops or its key stops the
+  step, naming which.
 - **Held, never refused.** With no bot ready, the stack still comes up with every alert behind `held`, and the run prints one line naming
   each app (or environment) that lacks a bot and why. `starci host doctor --host <name>` reports the same as `monitor.alert-bots`, a warning.
-  A later `monitor up` with a bot rewires the receiver.
-- **Owed in the apps.** Neither nivoos-lite nor starci-next declares `monitoring.alerts` or has a bot yet: the owner's BotFather step, then
-  the member, the declaration and the discovery above, per environment.
+  A later `monitor up` with a bot rewires the receiver. A missing chat id never holds an environment that names its owner.
 
 ## PROJECT-MONITORING-6 The monitor bot: commands and alerts with buttons
 
@@ -179,8 +189,20 @@ is installed. It runs read-only as uid 1000 and stops first on an update, becaus
     telegram_config. The routes stay the same: an app's alerts go to its environment's bot, and a host alert goes to one bot of every app,
     once. The grouping is also the same: one message per group, repeated at most every `repeat_interval`. The bot posts each group with
     its buttons. If Telegram refuses the message, the bot answers 500 and Alertmanager retries.
+- **The owner's chat.** An environment that names its `owner` and seals no chat has its chat learned here (`monitor-bot/owners.ts`):
+  - When a user whose username matches the owner, case-insensitively, writes to the bot in a private chat (/start or any message), the bot
+    takes that chat for every environment of that owner on the bot whose chat is not known yet. A backlog counts: he may press Start before
+    the bot runs, since Telegram keeps an update 24 hours. Any other user, a group, or the owner's username in a group learns nothing.
+  - It answers `✅ Đã kết nối cảnh báo cho <app> <env>`, then posts the alerts that waited for him, oldest first. Until then an
+    environment's notifications wait in memory, at most 50 (`QUEUE_LIMIT`, the oldest dropped and counted in a note); the webhook answers 200,
+    so Alertmanager does not retry them, and a restart drops them while a firing alert is sent again at its `repeat_interval`.
+  - The learned chats persist in `/home/node/owner-chats.json` on the bot's volume `monitor-bot-data` (mounted on the image's /home/node,
+    owned by uid 1000, so the read-only container writes it), written whole and renamed; a restart or a redeploy keeps them.
+  - A learned chat is pinned: a later private chat under the same username is ignored, since a username can change hands. A changed `owner`
+    in the config drops the old chat until the new owner writes. A sealed `ALERTS_TELEGRAM_CHAT_ID` always wins and is never relearned.
+  - Known gap: a project that shares another project's token posts but polls nothing, so it learns no chat; it seals its chat (legacy).
 - **Who it answers.**
-  - It answers only the owner chat of an environment (`ALERTS_TELEGRAM_CHAT_ID`) and ignores every other chat.
+  - It answers only the owner chat of an environment (the sealed or the learned one) and ignores every other chat.
   - A write (`/silence`, or the silence button under an alert) needs an admin: a user id in the member's optional
     `ALERTS_TELEGRAM_ADMIN_IDS` (a comma list, sealed with `starci app secret set --env <env> alerts ALERTS_TELEGRAM_ADMIN_IDS`). With no
     list, the admin is the owner chat's own user, in a private chat.

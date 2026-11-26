@@ -79,7 +79,7 @@ components:
       - {name: Alertmanager, uid: alertmanager, type: alertmanager, access: proxy, url: "http://{{stack}}_alertmanager:9093", editable: false, jsonData: {implementation: prometheus, handleGrafanaManagedAlerts: false}}
   monitor-bot:
     default: alert-bots
-    purpose: "the two-way Telegram bot of each app (contexts/project/monitoring.md PROJECT-MONITORING-6): long-polls every app's own alert bot, answers only its owner chat (/status /cpu /ram /disk /svc /logs /alerts /silence /deploys /chart /help) from Prometheus, Loki, Alertmanager and the read-only socket proxy, and posts Alertmanager's notifications with buttons and a daily report; one Node process for every app bot of the server, its code the CLI's own compiled files shipped as configs"
+    purpose: "the two-way Telegram bot of each app (contexts/project/monitoring.md PROJECT-MONITORING-6): long-polls every app's own alert bot, learns each owner's chat from the owner username when he first writes to it, answers only that owner chat (/status /cpu /ram /disk /svc /logs /alerts /silence /deploys /chart /help) from Prometheus, Loki, Alertmanager and the read-only socket proxy, and posts Alertmanager's notifications with buttons and a daily report; one Node process for every app bot of the server, its code the CLI's own compiled files shipped as configs"
     why: "on when an app on the server has an alert bot ready (`default: alert-bots`); without one there is nothing to poll, and Alertmanager's own telegram receivers would have no buttons"
     requires: [prometheus, alertmanager, socket-proxy]
     image: {image: node, pin: monitor-bot-node}
@@ -89,6 +89,9 @@ components:
     rollback: *rollbackStopFirst
     retention: {}
     networks: [internal, socket]
+    # The owner chats the bot learns from each app's owner username (monitor-bot/owners.ts), kept across restarts. Mounted on the image's
+    # /home/node (owned by uid 1000), so a new volume is copied up with that owner and the read-only container can write it.
+    volumes: {monitor-bot-data: /home/node}
     service:
       command: [node, /app/main.js]
       environment: {MONITOR_BOT_CONFIG: /app/config.json, NODE_ENV: production, NODE_OPTIONS: --max-old-space-size=64}

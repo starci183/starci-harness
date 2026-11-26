@@ -828,8 +828,9 @@ $defs:
             description: >-
               Where the server's Alertmanager sends this environment's alerts (contexts/project/monitoring.md PROJECT-MONITORING-5): the app's own
               Telegram bot, never the harness bot. `telegram.member` is the sealed member (sealed like every member of the environment: its server,
-              backup and CI recipients) holding ALERTS_TELEGRAM_BOT_TOKEN and ALERTS_TELEGRAM_CHAT_ID (`starci app alerts discover-chat` seals the
-              chat). Absent, the alerts of this environment are held behind a null receiver.
+              backup and CI recipients) holding ALERTS_TELEGRAM_BOT_TOKEN; `telegram.owner` is the owner's Telegram username, plain config: the
+              server's monitor bot learns his chat when he first writes to the bot (`starci app alerts setup` writes both). A member that seals
+              ALERTS_TELEGRAM_CHAT_ID (legacy) names the chat itself. Absent, the alerts of this environment are held behind a null receiver.
             type: object
             additionalProperties: false
             properties:
@@ -839,6 +840,10 @@ $defs:
                 required: [member]
                 properties:
                   member: {type: string, pattern: '^[a-z][a-z0-9-]*$'}
+                  owner:
+                    description: "The owner's Telegram username, `@name` (5 to 32 letters, digits and underscores, a letter first), matched case-insensitively; every other user is ignored."
+                    type: string
+                    pattern: '^@?[A-Za-z][A-Za-z0-9_]{4,31}$'
       services:
         description: >-
           Optional, docker-swarm only: the shared services of the server this environment calls (contexts/project/shared-services.md), each deployed

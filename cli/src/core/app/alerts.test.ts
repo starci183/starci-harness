@@ -1,14 +1,14 @@
-// `starci app alerts discover-chat --env <env>`: the app's own alert bot (PROJECT-MONITORING-5), never the harness bot. The Bot API is a mock
+// `starci app alerts setup|discover-chat --env <env>`: the app's own alert bot (PROJECT-MONITORING-5), never the harness bot. The Bot API is a mock
 // fetch and the sealed store a map; no real Telegram call, no sops. Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTelegram } from "../../harness/telegram.js"
-import { appRootOf, discoverAlertChat } from "./alerts.js"
-import type { AlertChatSeams } from "./alerts.js"
+import { appRootOf, discoverAlertChat, setupAlerts, setYamlPreserving, startLine } from "./alerts.js"
+import type { AlertChatSeams, AlertSetupSeams } from "./alerts.js"
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..", "ops")
 const TOKEN = "123456:fixture-alert-bot"
@@ -61,4 +61,59 @@ void test("no chat yet, several chats, an undeclared bot or a member this machin
     await assert.rejects(discoverAlertChat(app(t, false), "production", undefined, seams([])), /monitoring\.alerts\.telegram\.member is not declared/)
     const locked = { ...seams([]), open: () => { throw new Error("no identity opens it") } }
     await assert.rejects(discoverAlertChat(root, "production", undefined, locked), /does not open on this machine \(it is sealed to its server, backup and CI keys\)/)
+})
+
+/** The setup's seams: a prompt answering `typed`, a seal recording what it seals, a store that opens or not, and getMe answering `nivo_alerts_bot`. */
+const setupSeams = (typed: string, opens: boolean): AlertSetupSeams & { readonly sealedTokens: string[]; readonly prompts: string[] } => {
+    const sealedTokens: string[] = []
+    const prompts: string[] = []
+    const fetcher = ((input: string | URL | Request) => {
+        const url = input instanceof Request ? input.url : input.toString()
+        const ok = url.includes("/bot123456:fixture-alert-bot/getMe")
+        return Promise.resolve(new Response(JSON.stringify(ok ? { ok: true, result: { id: 1, is_bot: true, username: "nivo_alerts_bot" } } : { ok: false, error_code: 401, description: "Unauthorized" }), { status: ok ? 200 : 401 }))
+    }) as typeof fetch
+    return {
+        prompt: (label) => { prompts.push(label); return Promise.resolve(typed) },
+        sealToken: (_member, token) => { sealedTokens.push(token); return Promise.resolve() },
+        open: () => { if (!opens) throw new Error("no identity opens it"); return { ALERTS_TELEGRAM_BOT_TOKEN: TOKEN } },
+        fetcher,
+        config: loadTelegram(opsDir),
+        sealedTokens,
+        prompts,
+    }
+}
+
+void test("setup writes the owner username beside the member, asks no token the member holds, and works with a member this machine cannot open", async (t) => {
+    const root = app(t)
+    const file = join(root, ".starcistacks", "application-stacks.yaml")
+    const locked = setupSeams("", false)
+    const done = await setupAlerts(root, "production", { owner: "@StarCi183", token: false }, locked)
+    assert.deepEqual(done, { member: "alerts", owner: "@StarCi183", bot: null, tokenSealed: false, configChanged: true })
+    assert.deepEqual(locked.prompts, [], "the member holds the token: nothing is asked, nothing is opened to write the username")
+    assert.match(readFileSync(file, "utf8"), /alerts: \{telegram: \{member: alerts, owner: "@StarCi183"\}\}/)
+    assert.equal(startLine(done, "fixture", "production"), "Mở bot cảnh báo của fixture production và bấm Start (từ tài khoản @StarCi183).")
+    const again = await setupAlerts(root, "production", { token: false }, setupSeams("", true))
+    assert.equal(again.configChanged, false, "the owner is kept from the config")
+    assert.equal(startLine(again, "fixture", "production"), "Mở bot @nivo_alerts_bot và bấm Start (từ tài khoản @StarCi183).")
+})
+
+void test("setup asks the token at the prompt when the member lacks it, checks it with getMe before sealing, and refuses a bad owner or a rejected token", async (t) => {
+    const root = app(t, false)
+    rmSync(join(root, ".starcistacks", "production", "secrets", "alerts.enc.yaml"))
+    const typed = setupSeams(` ${TOKEN}\n`, false)
+    const done = await setupAlerts(root, "production", { owner: "starci183", token: false }, typed)
+    assert.deepEqual([done.bot, done.tokenSealed, done.owner], ["nivo_alerts_bot", true, "@starci183"])
+    assert.deepEqual(typed.sealedTokens, [TOKEN])
+    assert.match(readFileSync(join(root, ".starcistacks", "application-stacks.yaml"), "utf8"), /monitoring:\n {6}alerts:\n {8}telegram:\n {10}member: alerts\n {10}owner: "@starci183"/)
+    const wrong = setupSeams("999:wrong", false)
+    await assert.rejects(setupAlerts(root, "production", { token: true }, wrong), /TELEGRAM_TOKEN_REJECTED|401/)
+    assert.deepEqual(wrong.sealedTokens, [], "a rejected token is never sealed")
+    await assert.rejects(setupAlerts(root, "production", { owner: "@ab", token: false }, typed), /no Telegram username/)
+    await assert.rejects(setupAlerts(app(t, false), "production", { token: false }, typed), /pass --owner/)
+    await assert.rejects(setupAlerts(root, "nowhere", { owner: "@starci183", token: false }, typed), /environments\.nowhere is not declared/)
+})
+
+void test("a YAML edit keeps every other line as written, flow maps padded or not", () => {
+    const text = "# head\nsides: {be: true}\nenvironments:\n  production:\n    ports: { web: 3200 }\n    deploy: {stack: s}  # kept\n"
+    assert.equal(setYamlPreserving(text, ["environments", "production", "monitoring", "alerts", "telegram", "owner"], "@x_owner"), text.replace("  # kept\n", "  # kept\n    monitoring:\n      alerts:\n        telegram:\n          owner: \"@x_owner\"\n"))
 })
