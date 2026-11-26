@@ -169,7 +169,7 @@ describe("AiRouterGatewayModule listen derived from the app port", () => {
             await freeGateway()
             await moduleRef.init()
             await pause(20)
-            const raced = errors.length > 0 && errors.every((error) => error instanceof Error && /EADDRINUSE/.test(error.message))
+            const raced = errors.length > 0 && errors.every((error) => error instanceof Error && error.message.includes("EADDRINUSE"))
             if (raced && attempt < 5) {
                 await moduleRef.close()
                 continue
