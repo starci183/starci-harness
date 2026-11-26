@@ -1,0 +1,1 @@
+{"data":{"parts":{"format":"harness-check@1","reads":"db91e30313b3d3ee534c6389be7d557972ccf3a403bbb2872772d5e2569e379d","source":"0b99ee9dcf7c50d82b581b5c34538a2d365d4937433a17478b3833dbcb36205a","steps":"1","tool":"node24 npm-"},"verdict":"green"},"findings":[],"hash":"80f35e97e3d638c894feed95d2fd500e7f41e830675dc2714bf8b03b90e4fc9a","path":"packages/jest-preset","step":"build"}
