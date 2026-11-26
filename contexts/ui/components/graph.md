@@ -282,7 +282,9 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
 4. **Fitted, nothing clipped.** The first view is the whole graph, centred, with padding (`openView`); under 480px a directional graph is laid out top-down. A lesson
    `MermaidDiagram` always opens whole, contain-fitted and clear of its controls row, its canvas grown first; under zoom 0.85 the reader zooms in (`diagram/open.ts`, [diagram](diagram.md) "Variants").
 5. **Dashed means something; one arrowhead.** A dashed line is a reply, an untaken or fallback branch, a back edge or an author's dotted link, never decoration. Every
-   edge ends in one open arrowhead (10 by 10) at its target, nowhere else. An untaken branch is dotted in the muted tone, never faded out of sight.
+   edge ends in one open arrowhead (10 by 10) at its target, nowhere else. An untaken branch is dotted in the muted tone, never faded out of sight. In a lesson
+   `MermaidDiagram` flowchart the dash says what an edge carries: a call is solid in the accent, data (`-.->`) dashed in the muted neutral, with a legend chip in the
+   canvas corner when both are drawn ([diagram](diagram.md) "An architecture flowchart"). Pointing at or focusing a node there dims what is not one edge from it.
 6. **Every stretch is drawn once.** One edge is one drawn line: the running state restyles that line (the success tone, its dashes moving), never a second path over or
    beside it. Where two edges would share a stretch (a corridor into one target, a run out of one source), the stronger state keeps it with the one arrowhead
    (running over waiting over taken over plain over pending and skipped) and the other ends or starts where it meets that line, at a small junction dot

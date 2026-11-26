@@ -4,6 +4,13 @@
  * the Grammar's diagram theme over Mermaid's own SVG for the kinds the canvas does not lay out.
  */
 .starci-graph-diagram {
+    /* A node's logo chip and the mark inside it, the chip's neutral tint, and the tint of a store (a database or a cache) and its lid. */
+    --starci-graph-diagram-chip-size: 26px;
+    --starci-graph-diagram-chip-mark: 18px;
+    --starci-graph-diagram-chip-fill: color-mix(in oklab, var(--foreground) 5%, var(--surface));
+    --starci-graph-diagram-store-fill: color-mix(in oklab, var(--foreground) 4%, var(--surface));
+    --starci-graph-diagram-store-lid: color-mix(in oklab, var(--foreground) 10%, var(--surface));
+
     display: flex;
     flex-direction: column;
     gap: var(--grammar-identity-gap);
@@ -83,6 +90,11 @@
     --starci-graph-diagram-fill: var(--surface);
     --starci-graph-diagram-edge: var(--border);
     --starci-graph-diagram-ink: var(--foreground);
+}
+
+/* A store is tinted apart from a service's box; a tone below still paints over it. */
+.starci-graph-diagram-node[data-shape="cylinder"] {
+    --starci-graph-diagram-fill: var(--starci-graph-diagram-store-fill);
 }
 
 .starci-graph-diagram-group {
@@ -172,20 +184,27 @@
     stroke-width: var(--grammar-hairline);
 }
 
-.starci-graph-diagram-outline .starci-graph-diagram-rim {
-    fill: none;
+/* A store's lid: the top of the cylinder, a shade deeper than its side, edged like the body. */
+.starci-graph-diagram-outline .starci-graph-diagram-lid {
+    fill: var(--starci-graph-diagram-store-lid);
+    stroke: var(--starci-graph-diagram-edge);
+    stroke-width: var(--grammar-hairline);
+}
+
+.starci-graph-diagram-node[data-tone] .starci-graph-diagram-outline .starci-graph-diagram-lid {
+    fill: color-mix(in oklab, var(--starci-graph-diagram-edge) 18%, var(--starci-graph-diagram-fill));
 }
 
 .starci-graph-diagram-node[data-shape="cylinder"] > :is(.starci-graph-diagram-words, .starci-graph-diagram-labelled) {
-    margin-block-start: var(--grammar-identity-gap);
+    margin-block-start: var(--grammar-inline-gap);
 }
 
-/* A node's icon (the app's logo for the name the source gave, `R@{ icon: "redis" }`): one line high, before the words, the gap the layout counts. */
+/* A node's row: the logo chip before the words, the port pill and the edit chip after them, one gap apart (the gap the layout counts, ICON_GAP). */
 .starci-graph-diagram-labelled {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: var(--grammar-identity-gap);
+    gap: var(--grammar-inline-gap);
     min-inline-size: 0;
 }
 
@@ -203,6 +222,57 @@
     inline-size: 100%;
     block-size: 100%;
     object-fit: contain;
+}
+
+/*
+ * The logo chip (LogoChip) and the edit chip: a small rounded tile of their own, the mark 18px inside. A logo fills with the chip's colour, which LogoChip
+ * sets to the brand's hex when it keeps 3:1 on the chip (logoInk.ts), else the node's ink.
+ */
+.starci-graph-diagram-chip {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--starci-graph-diagram-chip-size);
+    block-size: var(--starci-graph-diagram-chip-size);
+    color: var(--starci-graph-diagram-ink);
+    background: var(--starci-graph-diagram-chip-fill);
+    border-radius: var(--grammar-radius-sm);
+}
+
+.starci-graph-diagram-chip > :is(img, svg, picture) {
+    inline-size: var(--starci-graph-diagram-chip-mark);
+    block-size: var(--starci-graph-diagram-chip-mark);
+}
+
+/* "The learner edits here" (`class O edit`): a pencil in the accent tint, no file name. */
+.starci-graph-diagram-chip.starci-graph-diagram-edit {
+    color: var(--accent-soft-foreground);
+    background: var(--accent-soft);
+}
+
+/* The probe the canvas reads the chip's colour from: a chip nobody sees. */
+.starci-graph-diagram-chip.starci-graph-diagram-probe {
+    position: absolute;
+    inset: 0 auto auto 0;
+    inline-size: 1px;
+    block-size: 1px;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* A service's port (`O[orders :4001]`): a muted pill apart from the name, in the caption size. */
+.starci-graph-diagram-port {
+    flex: none;
+    padding-inline: var(--grammar-inline-gap);
+    color: var(--muted);
+    font-size: var(--grammar-type-caption-size);
+    font-weight: var(--grammar-weight-regular);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--grammar-type-caption-line);
+    white-space: nowrap;
+    background: var(--starci-graph-diagram-chip-fill);
+    border-radius: var(--grammar-radius-pill);
 }
 
 /* A state diagram's marks: the start a foreground dot, the end a dot in a ring, a fork or join a bar. */
@@ -284,6 +354,26 @@
 }
 
 /*
+ * What a flowchart's edge carries (owner 2026-11-26): a call is solid in the accent, its arrowhead too; data (`-.->`) is dashed in the muted neutral. A
+ * tone below wins over both. A state diagram's transitions keep the quiet line.
+ */
+.starci-graph .react-flow__edge.starci-graph-diagram-edge--call {
+    color: var(--accent);
+}
+
+.starci-graph .react-flow__edge.starci-graph-diagram-edge--data {
+    color: var(--muted);
+}
+
+.starci-graph :is(.starci-graph-diagram-edge--call, .starci-graph-diagram-edge--data) .react-flow__edge-path {
+    stroke: currentcolor;
+}
+
+.starci-graph .starci-graph-diagram-edge--data .react-flow__edge-path {
+    stroke-dasharray: 6 5;
+}
+
+/*
  * A toned edge (`edgeTones`, or `class <edge id> <tone>`): its line and arrowhead in the tone, a touch heavier so two flows read apart; its words are the
  * pill in the same tone (StepEdge's Badge). Each edge is its own line, so no tone is ever drawn over another's.
  */
@@ -334,6 +424,124 @@
 
 .starci-graph-diagram-legend-line[data-tone="info"] {
     --starci-graph-diagram-legend-tone: var(--info);
+}
+
+/*
+ * The calls-and-data legend chip (a flowchart with both kinds of edge): in the canvas's bottom right corner, in the controls row the fit rule keeps clear
+ * of the drawing, so it never stands over a node.
+ */
+.starci-graph-diagram-kinds {
+    position: absolute;
+    inset-block-end: var(--grammar-inline-gap);
+    inset-inline-end: var(--grammar-inline-gap);
+    z-index: 5;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--grammar-identity-gap) var(--grammar-inline-gap);
+    max-inline-size: 45%;
+    min-block-size: 40px;
+    margin: 0;
+    padding: var(--grammar-identity-gap) var(--grammar-inline-gap);
+    color: var(--muted);
+    font-size: var(--grammar-type-caption-size);
+    line-height: var(--grammar-type-caption-line);
+    list-style: none;
+    background: var(--surface);
+    border: var(--grammar-hairline) solid var(--separator);
+    border-radius: var(--grammar-radius-md);
+}
+
+.starci-graph-diagram-kind {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--grammar-identity-gap);
+    white-space: nowrap;
+}
+
+.starci-graph-diagram-kind path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.starci-graph-diagram-kind[data-kind="data"] path {
+    stroke: var(--muted);
+    stroke-dasharray: 4 4;
+    stroke-linecap: butt;
+}
+
+/*
+ * Hover focus (owner 2026-11-26): pointing at or focusing a step lights it, its neighbours and the edges between them, and dims the rest; a container
+ * keeps its frame. Pointer and keyboard alike; reduced motion drops the fade.
+ */
+.starci-graph-diagram .starci-graph-diagram-node[role="button"] {
+    cursor: pointer;
+}
+
+.starci-graph-diagram .starci-graph-diagram-node[role="button"]:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.starci-graph-diagram-canvas :is(.react-flow__node, .react-flow__edge, .starci-graph-edge-pill) {
+    transition: opacity var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+}
+
+.starci-graph-diagram-canvas :is(.react-flow__node.starci-graph-diagram-dim, .starci-graph-edge-pill[data-dimmed="true"]) {
+    opacity: var(--grammar-opacity-faded);
+}
+
+.starci-graph-diagram-canvas .react-flow__edge.starci-graph-edge--dimmed {
+    opacity: var(--grammar-opacity-dimmed);
+}
+
+.starci-graph-diagram-canvas .react-flow__node:is(.starci-graph-diagram-focus, .starci-graph-diagram-near) .starci-graph-diagram-node:not([data-shape="diamond"], [data-shape="cylinder"]) {
+    border-color: var(--accent);
+}
+
+.starci-graph-diagram-canvas .react-flow__node:is(.starci-graph-diagram-focus, .starci-graph-diagram-near) .starci-graph-diagram-outline :is(polygon, path, ellipse) {
+    stroke: var(--accent);
+}
+
+.starci-graph .react-flow__edge.starci-graph-diagram-edge--near .react-flow__edge-path {
+    stroke-width: 2.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .starci-graph-diagram-canvas :is(.react-flow__node, .react-flow__edge, .starci-graph-edge-pill) {
+        transition: none;
+    }
+}
+
+/* A step's description line (Mermaid's tooltip), opened by pressing the step: one line at the top of the canvas, announced as a status. */
+.starci-graph-diagram-describe {
+    position: absolute;
+    inset-block-start: var(--grammar-inline-gap);
+    inset-inline: var(--grammar-inline-gap);
+    z-index: 6;
+    margin: 0;
+    pointer-events: none;
+}
+
+.starci-graph-diagram-describe[data-open="true"] {
+    box-sizing: border-box;
+    inline-size: fit-content;
+    margin-inline: auto;
+    padding: var(--grammar-identity-gap) var(--grammar-inline-gap);
+    color: var(--foreground);
+    font-size: var(--grammar-type-caption-size);
+    line-height: var(--grammar-type-caption-line);
+    background: var(--surface);
+    border: var(--grammar-hairline) solid var(--border);
+    border-radius: var(--grammar-radius-md);
+}
+
+.starci-graph-diagram-describe-name {
+    font-weight: var(--grammar-weight-medium);
 }
 
 /* ---------------------------------------------------------------- a sequence */

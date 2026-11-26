@@ -2,11 +2,18 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.61.0 - 2026-11-26
+
+- Changed (h-grammar-graph-v2, graph v2): a `MermaidDiagram` node's logo stands in its own logo chip (26px, the neutral tint, the mark 18px) before the words, and a built-in tech logo is brand-coloured: it fills with simple-icons' official `hex` (new `techIconColors`, `TECH_ICON_HEX`) where that keeps a WCAG 3:1 contrast against the chip in the theme in force, read from the page (new `logoInk.ts`: `parseCssColor`, `contrastRatio`, `logoFill`, `LOGO_CONTRAST`), and falls back to the node's ink under it (Express and Next.js black on a dark chip, React and JavaScript pale on a light one). An app's own `icons` entry keeps its own colours (`brandColorOf`). Logos stay hidden from screen readers. simple-icons + hex rather than Iconify `logos:`: no new dependency, CC0, one path per logo.
+- Added: a service's port at the end of its label (`O[orders :4001]`) is drawn as a muted pill apart from the name (`splitPort`); `class O edit` (`EDIT_CLASS`) marks the node the learner edits with a pencil chip in the accent tint, no file name, named to a screen reader by the new `labels.edit`; a node's Mermaid tooltip (`click O call note() "..."`) is its description line.
+- Changed: a `[( )]` store is a rounder cylinder (12-deep caps, a tinted side and lid; at least 72 tall) so a database or a cache reads apart from a service's box.
+- Changed: a flowchart's plain link is a call, solid in the accent; a dotted link (`-.->`) is data, dashed in the muted neutral (`edgeKind`); a tone still wins. A legend chip (`labels.calls`, `labels.data`) stands in the canvas's bottom right corner, in the controls row, only when both kinds are drawn (`needsKindLegend`). A state diagram's transitions keep the quiet line.
+- Added: hover focus. Pointing at or focusing a step or store lights it, its neighbours and their edges and dims the rest (`neighbourhood`); each is a Tab stop (a button named by its words, port and edit mark), and click, Enter or Space opens its description line at the top of the canvas as a status, Escape closes it. A graph's drawing is now a named group (was an image) so its steps can be reached; drag, the dot grid, the group container, the controls and the fit rule are unchanged. `StepEdge` marks a dimmed edge's pill `data-dimmed`.
+
 ## 0.60.3 - 2026-11-26
 
 - Fixed (h-grammar-strip-fade-tabs, StarCi Next audit round 5): a strip that scrolls only sideways fades its end again. Breadcrumbs, the `DataTable` scroller, the fenced code `pre`, the markdown table frame and the top bar's navigation took their fade from `animation-timeline: scroll(self)`, the BLOCK axis, which they never scroll, so the timeline stayed inactive and `--grammar-fade-end` stayed 0px (a long last crumb was cut mid-word at 390px). They follow `scroll(self inline)`; a browser without scroll-driven animations still skips the fade.
 - Fixed (h-grammar-strip-fade-tabs, StarCi Next audit round 6): the selected tab of a scrolling strip opens clear of the strip's fading edge, not only of the page control. The reveal brought the tab to the scroller's bare edge, where the vendor `ScrollShadow` masks its last `--scroll-shadow-size` (64px) on a side where more tabs wait, so the label dissolved beside the next control ("Khi có sự cố" at 390px). It now keeps that fade's width clear on each side (a tab wider than the room is centred) and reveals again once the web fonts are in. Spec `specs/sideways-strips.browser.spec.mts`, story `Navigation & Data/Tabs overflow/Phone Header Selected Middle`.
-
 ## 0.60.2 - 2026-11-26
 
 - Fixed (h-ci-red-1126): `NoteRow` stamps `data-tier="frame"`, the tier of the frame folder it lives in beside `NoteList` (it stamped `composite`, which the tier check refuses: the stamp is the folder). No API change.

@@ -27,6 +27,12 @@ export interface DiagramNode {
     readonly repeat?: boolean
     /** The name of the icon drawn before the words (`R@{ icon: "redis" }`); the app maps the name to what to draw (`MermaidDiagram` `icons`). */
     readonly icon?: string
+    /** The port a service listens on, taken off the end of its label (`O[orders :4001]`): drawn as a muted pill apart from the name. */
+    readonly port?: string
+    /** "The learner edits here" (`class O edit`): a pencil chip in the accent tint after the words, no file name. */
+    readonly edit?: true
+    /** The node's description line, Mermaid's own tooltip (`click O call note() "Takes the order"`): shown when the reader presses the node. */
+    readonly description?: string
 }
 
 export interface DiagramEdge {
@@ -103,6 +109,17 @@ const toneOf = (id: string, classes: readonly string[], tones: Readonly<Record<s
 
 const direction = (given: string | undefined): "LR" | "TB" => (given === "LR" || given === "RL" ? "LR" : "TB")
 
+/** A service's port at the end of its label, `orders :4001` (or on a line of its own): the words without it and the port's digits. */
+export const splitPort = (label: string): { readonly label: string; readonly port?: string } => {
+    const found = /(?:^|\s):(\d{2,5})$/u.exec(label)
+    if (found === null || found[1] === undefined) return { label }
+    const rest = label.slice(0, found.index).trim()
+    return rest === "" ? { label } : { label: rest, port: found[1] }
+}
+
+/** The class that marks the node the learner edits (`class O edit`), the Mermaid-native way an app sets it. */
+export const EDIT_CLASS = "edit"
+
 /** The part of Mermaid's flowchart database the mapping reads. */
 export interface FlowchartDb {
     readonly getVertices: () => ReadonlyMap<string, { readonly id: string; readonly text?: string; readonly type?: string; readonly classes?: readonly string[]; readonly icon?: string }>
@@ -110,6 +127,8 @@ export interface FlowchartDb {
     readonly getEdges: () => readonly { readonly start: string; readonly end: string; readonly text?: string; readonly stroke?: string; readonly type?: string; readonly classes?: readonly string[] }[]
     readonly getSubGraphs: () => readonly { readonly id: string; readonly title?: string; readonly nodes: readonly string[]; readonly classes?: readonly string[] }[]
     readonly getDirection: () => string | undefined
+    /** Mermaid's tooltip of a node, set by its `click` statement (`click O call note() "Takes the order"`). */
+    readonly getTooltip?: (id: string) => string | undefined
 }
 
 const FLOW_SHAPES: Readonly<Record<string, DiagramShape>> = {
@@ -182,9 +201,23 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
         const tone = toneOf(vertex.id, vertex.classes ?? [], tones)
         const shape = FLOW_SHAPES[vertex.type ?? ""] ?? "box"
         // A bar keeps the words its source wrote ("Song song"), never the id Mermaid falls back to.
-        const label = shape === "bar" && (vertex.text === undefined || vertex.text === vertex.id) ? "" : plainLabel(vertex.text ?? vertex.id)
+        const written = shape === "bar" && (vertex.text === undefined || vertex.text === vertex.id) ? "" : plainLabel(vertex.text ?? vertex.id)
+        // A service's port stands apart from its name; a decision, a bar and a circle keep their words whole.
+        const { label, port } = shape === "box" || shape === "round" || shape === "stadium" || shape === "cylinder" ? splitPort(written) : { label: written }
         const icon = typeof vertex.icon === "string" && vertex.icon.trim() !== "" ? vertex.icon.trim() : undefined
-        nodes.push({ id: vertex.id, label, shape, ...(at === undefined ? {} : { parentId: at }), ...(tone === undefined ? {} : { tone }), ...(icon === undefined ? {} : { icon }) })
+        const edit = (vertex.classes ?? []).includes(EDIT_CLASS) && shape !== "bar"
+        const tooltip = plainLabel(db.getTooltip?.(vertex.id))
+        nodes.push({
+            id: vertex.id,
+            label,
+            shape,
+            ...(at === undefined ? {} : { parentId: at }),
+            ...(tone === undefined ? {} : { tone }),
+            ...(icon === undefined ? {} : { icon }),
+            ...(port === undefined ? {} : { port }),
+            ...(edit ? { edit: true as const } : {}),
+            ...(tooltip === "" ? {} : { description: tooltip }),
+        })
     }
     const links = db.getEdges().map((edge, index): DiagramEdge => {
         const label = plainLabel(edge.text)
@@ -194,6 +227,27 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
     const loops = loopBackEdges(nodes, links)
     const edges = links.map((edge): DiagramEdge => (loops.has(edge.id) ? { ...edge, back: true } : edge))
     return { kind: "flowchart", direction: direction(db.getDirection()), nodes, edges }
+}
+
+/**
+ * What a flowchart's edge carries: a `call` (a plain or thick link, and a loop's back edge, which returns along the flow), drawn solid in the accent; or
+ * `data` (a dotted link, `-.->`), drawn dashed and neutral. A state diagram's transitions are neither: they keep the quiet line.
+ */
+export type EdgeKind = "call" | "data"
+
+export const edgeKind = (edge: DiagramEdge): EdgeKind => (edge.dashed && edge.back !== true ? "data" : "call")
+
+/** Whether a drawing needs the calls-and-data legend: a flowchart with at least one edge of each kind. */
+export const needsKindLegend = (graph: DiagramGraph): boolean =>
+    graph.kind === "flowchart" && graph.edges.some((edge) => edgeKind(edge) === "call") && graph.edges.some((edge) => edgeKind(edge) === "data")
+
+/**
+ * The hover focus of a node: the node, the nodes one edge away and the edges between them. Everything else dims while the reader points at or focuses the
+ * node. A container is never focused and never dims (it is the frame the nodes stand in).
+ */
+export const neighbourhood = (graph: DiagramGraph, id: string): { readonly nodes: ReadonlySet<string>; readonly edges: ReadonlySet<string> } => {
+    const edges = graph.edges.filter((edge) => edge.source === id || edge.target === id)
+    return { nodes: new Set([id, ...edges.map((edge) => (edge.source === id ? edge.target : edge.source))]), edges: new Set(edges.map((edge) => edge.id)) }
 }
 
 /**
@@ -340,7 +394,7 @@ const nameOf = (model: SequenceModel, id: string): string => model.participants.
  * The text version of a drawing, for a screen reader, in the order a reader follows it: a graph's nodes (a container's members after it), then its links
  * (who to whom, with their words); a sequence's messages in order (who to whom: what), its notes where they stand.
  */
-export const describeDiagram = (diagram: DiagramGraph | SequenceModel, to = "to"): { readonly items: readonly string[]; readonly links: readonly string[] } => {
+export const describeDiagram = (diagram: DiagramGraph | SequenceModel, to = "to", edits = "you edit this"): { readonly items: readonly string[]; readonly links: readonly string[] } => {
     if (diagram.kind === "sequence") {
         const items = diagram.rows.flatMap((row) => {
             if (row.kind === "message") return [`${nameOf(diagram, row.from)} ${to} ${nameOf(diagram, row.to)}: ${row.text}`]
@@ -358,7 +412,9 @@ export const describeDiagram = (diagram: DiagramGraph | SequenceModel, to = "to"
         if (node?.shape === "end") return "end"
         return label.get(id) || id
     }
-    const items = diagram.nodes.filter((node) => node.label !== "").map((node) => (node.parentId === undefined ? node.label : `${node.label} (${name(node.parentId)})`))
+    // A node is named with its port, its edit mark and its description, so the text version says all the drawing shows.
+    const said = (node: DiagramNode): string => `${node.label}${node.port === undefined ? "" : ` :${node.port}`}${node.edit === true ? ` (${edits})` : ""}${node.description === undefined ? "" : `: ${node.description}`}`
+    const items = diagram.nodes.filter((node) => node.label !== "").map((node) => (node.parentId === undefined ? said(node) : `${said(node)} (${name(node.parentId)})`))
     const links = diagram.edges.map((edge) => `${name(edge.source)} ${to} ${name(edge.target)}${edge.label === undefined ? "" : `: ${edge.label}`}`)
     return { items, links }
 }
