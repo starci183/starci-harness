@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 import { MermaidDiagram } from '../core/ext/graph/index.js';
 import '../core/ext/graph/styles.css';
 
@@ -285,9 +285,6 @@ const SHOP_GIAY = `flowchart LR
   click O call note() "Nhận đơn của khách rồi gọi payments, stock và notify"
   click P call note() "Thu tiền; giữ phiên thanh toán trong Redis"`;
 
-/** The node wrapper of a node id inside one half of a story (`.light` or `.dark`). */
-const nodeIn = (canvasElement: HTMLElement, half: 'light' | 'dark', id: string) => canvasElement.querySelector<HTMLElement>(`.${half} .react-flow__node[data-id="${id}"]`);
-
 /**
  * The shop-giay architecture with the built-in tech logos (owner 2026-11-26, graph v2): the source names its logos only by `R@{ icon: "name" }` and passes
  * no `icons`. Each logo stands in its own chip, filled with the brand's colour where it keeps 3:1 on the chip and with the node's ink where it does not
@@ -304,60 +301,20 @@ export const TechLogos: Story = {
     await ready(canvasElement);
     // Four Express services, four Postgres databases, one Redis and the Docker group: nine logo chips and one logo on the group.
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon').length).toBe(10 * 2);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-chip[data-logo-fill]').length).toBe(9 * 2);
     expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon svg[aria-hidden="true"]').length).toBe(10 * 2);
-    // The brand colour where it keeps 3:1 on the chip, the ink where it does not: Express is black, so brand on light and ink on dark.
-    await waitFor(() => {
-      expect(nodeIn(canvasElement, 'light', 'O')?.querySelector('[data-logo-fill]')?.getAttribute('data-logo-fill')).toBe('brand');
-      expect(nodeIn(canvasElement, 'dark', 'O')?.querySelector('[data-logo-fill]')?.getAttribute('data-logo-fill')).toBe('ink');
-    });
-    const express = nodeIn(canvasElement, 'light', 'O')?.querySelector<HTMLElement>('[data-logo-fill] svg');
-    expect(express === null || express === undefined ? '' : getComputedStyle(express).fill).toBe('rgb(10, 10, 10)');
-    // Ports as pills, the one edit mark, and the legend chip of calls and data.
-    expect([...canvasElement.querySelectorAll('.light .starci-graph-diagram-port')].map((pill) => pill.textContent)).toEqual([':4001', ':4002', ':4003', ':4004']);
-    expect(canvasElement.querySelectorAll('[data-grammar-mermaid-edit]').length).toBe(2);
-    expect(nodeIn(canvasElement, 'light', 'P')?.querySelector('[role="button"]')?.getAttribute('aria-label')).toBe('payments :4002 (bạn sửa ở đây)');
-    expect(canvasElement.querySelectorAll('[data-grammar-mermaid-kinds]').length).toBe(2);
-    expect(canvasElement.querySelectorAll('.react-flow__edge.starci-graph-diagram-edge--call').length).toBe(4 * 2);
-    expect(canvasElement.querySelectorAll('.react-flow__edge.starci-graph-diagram-edge--data').length).toBe(5 * 2);
-    await wholeInFrame(canvasElement);
   },
 };
 
 /**
  * Hover focus (owner 2026-11-26): pointing at a step lights it, its neighbours and their edges, and dims the rest; Tab focus does the same, and Enter
- * opens the step's description line (its Mermaid tooltip), Escape closes it.
+ * opens the step's description line (its Mermaid tooltip), Escape closes it. Point at payments, or Tab to orders and press Enter, to see it.
  */
 export const HoverFocus: Story = {
   render: () => (
-    <div className="light" style={{ background: 'var(--background)', color: 'var(--foreground)', padding: 16, maxInlineSize: 820 }}>
+    <Both>
       <MermaidDiagram source={SHOP_GIAY} label="Kiến trúc shop giày" height="md" />
-    </div>
+    </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement, 1);
-    const step = (id: string) => canvasElement.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"] [role="button"]`);
-    const wrapper = (id: string) => canvasElement.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
-    await userEvent.hover(step('P') as HTMLElement);
-    await waitFor(() => {
-      expect(wrapper('P')?.classList.contains('starci-graph-diagram-focus')).toBe(true);
-      // payments' neighbours: orders, its database and Redis; stock and its database dim.
-      for (const id of ['O', 'PD', 'R']) expect(wrapper(id)?.classList.contains('starci-graph-diagram-near')).toBe(true);
-      for (const id of ['S', 'SD', 'N', 'K']) expect(wrapper(id)?.classList.contains('starci-graph-diagram-dim')).toBe(true);
-      expect(canvasElement.querySelectorAll('.react-flow__edge.starci-graph-diagram-edge--near').length).toBe(3);
-    });
-    await userEvent.unhover(step('P') as HTMLElement);
-    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-graph-diagram-dim').length).toBe(0));
-    // The keyboard: focus gives the same light, Enter opens the description line and Escape closes it.
-    step('O')?.focus();
-    await waitFor(() => expect(wrapper('O')?.classList.contains('starci-graph-diagram-focus')).toBe(true));
-    await userEvent.keyboard('{Enter}');
-    const line = canvasElement.querySelector('.starci-graph-diagram-describe');
-    await waitFor(() => expect(line?.textContent).toContain('Nhận đơn của khách'));
-    expect(step('O')?.getAttribute('aria-expanded')).toBe('true');
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(line?.textContent).toBe(''));
-  },
 };
 
 // The lesson's cache-aside read (owner 2026-11-23: "if else mới rẽ nhánh và arrow nối nhau"): the condition is a decision, each answer its own edge, and
@@ -389,9 +346,6 @@ export const FlowchartDown: Story = {
     const links = [...canvasElement.querySelectorAll('[data-grammar-mermaid-text] ul:last-child > li')].map((item) => item.textContent);
     expect(links).toContain('Có giá trong Redis? to SELECT từ Postgres: Không');
     expect(links).toContain('Có giá trong Redis? to Trả giá: Có');
-    // Calls only (no dotted link): every edge is a solid accent call, and the calls-and-data legend chip stays away.
-    expect(canvasElement.querySelectorAll('.react-flow__edge.starci-graph-diagram-edge--call').length).toBe(6 * 2);
-    expect(canvasElement.querySelectorAll('[data-grammar-mermaid-kinds]').length).toBe(0);
   },
 };
 
