@@ -29,7 +29,7 @@ interface Unit {
 
 /** The component a changed file belongs to, or undefined for a file that is no component (a story, a helper, a file outside the Grammar's source). */
 export const unitOf = (file: string): Unit | undefined => {
-    if (!file.startsWith(GRAMMAR_SRC) || file.startsWith(STORIES) || !COMPONENT_FILE.test(file) || /\.stories\.tsx$/.test(file)) return undefined
+    if (!file.startsWith(GRAMMAR_SRC) || file.startsWith(STORIES) || !COMPONENT_FILE.test(file) || file.endsWith(".stories.tsx")) return undefined
     const parts = file.slice(GRAMMAR_SRC.length).split("/")
     const family = FAMILIES.find((each) => each === parts[0])
     if (family === undefined) return undefined
