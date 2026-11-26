@@ -197,7 +197,7 @@ jobs:
         if: matrix.cached == 'true'
         env:
           PACKAGE: ${{ matrix.package }}
-        run: echo "$PACKAGE: every step of this job has a green record at the trusted base under this commit's key (.cache/check); nothing runs"
+        run: echo "$PACKAGE is reused, every step of this job has a green record at the trusted base under this commit's key (.cache/check), nothing runs"
       - name: Install and build ${{ matrix.package }} after the siblings it needs
         if: matrix.cached != 'true'
         env:
