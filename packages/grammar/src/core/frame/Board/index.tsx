@@ -257,7 +257,8 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
     useEffect(() => () => { if (clearRefusalTimer.current !== undefined) window.clearTimeout(clearRefusalTimer.current) }, [])
     const root = useRef<HTMLDivElement | null>(null)
     const scroller = useRef<HTMLDivElement | null>(null)
-    const lastStep = useRef(0)
+    /** When the last edge step ran (the drag event clock); the first step of a drag is never held back. */
+    const lastStep = useRef(Number.NEGATIVE_INFINITY)
     const refocus = useRef<string | null>(null)
 
     // A moved card remounts in its new column: give the focus back to it so the keyboard can keep moving it.

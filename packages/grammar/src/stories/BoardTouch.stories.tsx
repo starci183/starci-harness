@@ -50,8 +50,10 @@ const Pipeline = () => {
 
 const boxOf = (root: ParentNode, selector: string): HTMLElement | null => root.querySelector<HTMLElement>(selector);
 const settle = (ms = 50) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
+/** A script-made `DataTransfer` keeps `effectAllowed` at "none" (only a real drag may set it), which react-aria's drop places read as no drop: the picture's drag says "move" as a real one does. */
+const asMove = (transfer: DataTransfer): DataTransfer => Object.defineProperty(transfer, 'effectAllowed', { configurable: true, get: () => 'move' });
 const dragAt = (target: Element, type: string, transfer: DataTransfer, x: number, y: number) =>
-  target.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, composed: true, dataTransfer: transfer, clientX: x, clientY: y }));
+  target.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, composed: true, dataTransfer: asMove(transfer), clientX: x, clientY: y }));
 
 /**
  * A finger long-presses Ada's card and holds it at the right edge of the stages: on a phone the stages scroll one stage over and the next stage
