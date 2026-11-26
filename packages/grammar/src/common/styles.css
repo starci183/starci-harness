@@ -1735,7 +1735,7 @@
     }
 
     .starci-core-static-row + .starci-core-static-row {
-        border-top: 1px solid var(--separator);
+        border-top: var(--grammar-seam-width) solid var(--separator);
     }
 
     /*
@@ -2674,7 +2674,7 @@
         .starci-core-markdown-table-frame { overflow: visible; mask-image: none; animation: none; }
         .starci-core-markdown-table-frame :is(table, tbody, tr, td) { display: block; width: 100%; }
         .starci-core-markdown-table-frame thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-        .starci-core-markdown-table-frame tr { border-block-end: 1px solid var(--separator); }
+        .starci-core-markdown-table-frame tr { border-block-end: var(--grammar-seam-width) solid var(--separator); }
         .starci-core-markdown-table-frame tr:last-child { border-block-end: 0; }
         .starci-core-markdown-table-frame td { min-width: 0; border-bottom: 0; padding-block: var(--grammar-identity-gap); }
         .starci-core-markdown-table-frame td:first-child { padding-block-start: var(--grammar-inset-nested); font-weight: var(--grammar-type-label-item-weight); }
@@ -4614,7 +4614,7 @@
         .starci-core-schedule-table,
         .starci-core-schedule-table tbody { display: block; min-width: 0; }
         .starci-core-schedule-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-        .starci-core-schedule-table tr { display: flex; flex-direction: column; padding-block: var(--grammar-inline-gap); border-block-start: 1px solid var(--separator); }
+        .starci-core-schedule-table tr { display: flex; flex-direction: column; padding-block: var(--grammar-inline-gap); border-block-start: var(--grammar-seam-width) solid var(--separator); }
         .starci-core-schedule-row-label { display: block; width: auto; padding: 0 0 var(--grammar-identity-gap); border: 0; }
         .starci-core-schedule-cell { display: block; min-height: 0; padding: 0; border: 0; }
         .starci-core-schedule-cell[data-grammar-cell-empty="true"] { display: none; }
@@ -4713,7 +4713,7 @@
     /* DisclosureList: sibling disclosures joined into one list, divided by full-bleed lines. */
     .starci-core-disclosure-list { display: flex; min-width: 0; margin: 0; padding: 0; flex-direction: column; list-style: none; }
     .starci-core-disclosure-list-item { min-width: 0; }
-    .starci-core-disclosure-list-item + .starci-core-disclosure-list-item { border-block-start: 1px solid var(--separator); }
+    .starci-core-disclosure-list-item + .starci-core-disclosure-list-item { border-block-start: var(--grammar-seam-width) solid var(--separator); }
     .starci-core-disclosure-trigger > .starci-core-accordion-step { margin-inline-end: var(--grammar-row-gap); }
 
     /* --- Empty notice --- */
