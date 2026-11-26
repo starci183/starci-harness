@@ -1,13 +1,13 @@
-// The harness's own two-level gate: the FAST level builds and
-// typechecks what the diff changed and its dependents and runs the publish checks, no test suite; the FULL level of the train adds every package, the
-// tests, lint and CI's light gates (core/release/gate.ts).
+// The harness's own two-level gate: the FAST level builds and typechecks what the diff changed and its dependents, runs the publish checks
+// and each of those packages' own npm test (CI's package jobs), never the CLI's suite; the FULL level of the train adds every package, the
+// CLI's tests, lint and CI's light gates (core/release/gate.ts).
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import { blockingFindings } from "../../harness/lane-state.js"
-import { CI_LIGHT_GATES, harnessGateSteps, runHarnessGate, tsSpecifierDeclarations } from "./gate.js"
+import { CI_LIGHT_GATES, failingTests, failureMessage, findingLines, harnessGateSteps, runHarnessGate, tsSpecifierDeclarations } from "./gate.js"
 import type { GateStep } from "./gate.js"
 import type { Affected } from "./affected.js"
 
@@ -31,7 +31,7 @@ const plan = (over: Partial<Affected> = {}): Affected => ({
 
 const named = (steps: readonly GateStep[]): string[] => steps.map((step) => `${step.kind} ${step.dir}${step.args === undefined ? "" : ` ${step.args.join(" ")}`}`)
 
-void test("the FAST level installs and builds each build order once, then typechecks each affected package and runs its publish checks; no test suite, no lint, no CLI it does not need", () => {
+void test("the FAST level installs and builds each build order once, then typechecks each affected package, runs its publish checks and its own npm test; no lint, no CLI it does not need", () => {
     const steps = named(harnessGateSteps(plan(), "dev", scriptsOf))
     assert.deepEqual(steps, [
         "install packages/tsconfig",
@@ -39,17 +39,19 @@ void test("the FAST level installs and builds each build order once, then typech
         "build packages/grammar",
         "typecheck packages/grammar",
         "declarations packages/grammar",
+        "test packages/grammar",
         "install packages/gallery",
         "build packages/gallery",
         "declarations packages/gallery",
+        "test packages/gallery",
     ])
-    assert.ok(!steps.some((step) => step.startsWith("test ")), "a landing on dev runs no test suite: tests belong to the release (full) gate")
+    assert.ok(!steps.some((step) => step.startsWith("lint ")), "a landing on dev lints nothing: lint belongs to the release (full) gate")
 })
 
-void test("a package with bundles:check runs it at the FAST level, and nothing of its test script", () => {
+void test("a package with bundles:check runs it at the FAST level, then its npm test", () => {
     const hfs = { "packages/hfs": { build: "tsc", typecheck: "tsc --noEmit", "bundles:check": "npm run build && node scripts/sync-bundles.mjs --check", test: "npm run typecheck && node-test" } }
     const steps = named(harnessGateSteps(plan({ packages: [{ name: "@starci/hfs", dir: "packages/hfs", build: ["packages/hfs"] }] }), "dev", (dir): Readonly<Record<string, string>> => (dir === "packages/hfs" ? hfs["packages/hfs"] : {})))
-    assert.deepEqual(steps, ["install packages/hfs", "build packages/hfs", "typecheck packages/hfs", "declarations packages/hfs", "bundles packages/hfs"])
+    assert.deepEqual(steps, ["install packages/hfs", "build packages/hfs", "typecheck packages/hfs", "declarations packages/hfs", "bundles packages/hfs", "test packages/hfs"])
 })
 
 void test("an affected CLI is installed, built and typechecked at the FAST level, never tested", () => {
@@ -116,4 +118,41 @@ void test("the typechecks of the folders run together, the other steps in order,
     assert.deepEqual(gate.steps.map((step) => `${step.kind} ${step.dir}`), named(harnessGateSteps(plan({ harness: true }), "dev", scriptsOf)).map((line) => line.replace(/ $/, "")))
     assert.deepEqual(gate.findings.map((finding) => [finding.code, finding.path]), [["HARNESS_GATE_TYPECHECK", "cli"]])
     assert.equal(gate.verdict, "red")
+})
+
+void test("a red package test names its failing tests from node's TAP and spec reporters, once each, and keeps the run's last lines", () => {
+    const tap = ["TAP version 13", "# Subtest: renders the empty state", "not ok 3 - renders the empty state", "  ---", "ok 4 - Chip renders", "not ok 5 - grammar version matches # TODO"].join("\n")
+    assert.deepEqual(failingTests(tap), ["renders the empty state", "grammar version matches"])
+    const spec = ["▶ empty states", "  ✖ renders the empty state (12.5ms)", "✖ empty states (13ms)", "ℹ fail 1", "✖ failing tests:", "", "test at src/empty.spec.ts:40:1", "✖ renders the empty state (12.5ms)", "  TypeError: Cannot read properties of undefined (reading 'ready')"].join("\n")
+    assert.deepEqual(failingTests(spec), ["renders the empty state", "empty states"])
+    assert.deepEqual(failingTests("src/a.ts(3,1): error TS2322\nnpm error code 2"), [], "a run that failed in its typecheck names no test")
+
+    const step: GateStep = { dir: "packages/grammar", kind: "test" }
+    const message = failureMessage(step, `${spec}\n${Array.from({ length: 40 }, (_, line) => `line ${String(line)}`).join("\n")}`)
+    const [first, ...rest] = message.split("\n")
+    assert.equal(first, "test in packages/grammar failed: 2 failing: renders the empty state; empty states")
+    assert.deepEqual(rest, Array.from({ length: 15 }, (_, line) => `line ${String(line + 25)}`), "the last 15 lines follow the names")
+    assert.match(failureMessage(step, "error TS2322\nnpm error code 2"), /^test in packages\/grammar failed: no failing test named \(the run stopped before or outside its tests: see its last lines\)\nerror TS2322\nnpm error code 2$/)
+    const many = failureMessage(step, Array.from({ length: 11 }, (_, n) => `not ok ${String(n + 1)} - t${String(n)}`).join("\n"))
+    assert.match(many.split("\n")[0] ?? "", /11 failing: t0; t1; t2; t3; t4; t5; t6; t7; \+3 more$/)
+    assert.ok(failureMessage(step, "x".repeat(10_000)).length <= 2400)
+    assert.equal(failureMessage({ dir: "packages/grammar", kind: "build" }, "TS2322"), "build in packages/grammar failed: TS2322", "other steps keep their one-line message")
+
+    const lines = findingLines({ code: "HARNESS_GATE_TEST", path: "packages/grammar", message })
+    assert.equal(lines[0], "  HARNESS_GATE_TEST packages/grammar test in packages/grammar failed: 2 failing: renders the empty state; empty states")
+    assert.equal(lines.length, 16)
+    assert.equal(lines.at(-1), "      line 39")
+    assert.deepEqual(findingLines({ code: "HARNESS_GATE_BUILD", path: "packages/grammar", message: "build failed\nmore" }), ["  HARNESS_GATE_BUILD packages/grammar build failed"])
+})
+
+void test("a red package test at the FAST level is a blocking finding `lane gate` reads with its failing names, and the rest of the gate still runs", async () => {
+    const ran: string[] = []
+    const gate = await runHarnessGate("/r", plan(), "dev", scriptsOf, (_root, step) => {
+        ran.push(`${step.kind} ${step.dir}`)
+        return Promise.resolve(step.kind === "test" && step.dir === "packages/grammar" ? { ok: false, output: "not ok 1 - renders the empty state\nnpm error code 1" } : { ok: true, output: "" })
+    })
+    assert.equal(gate.verdict, "red")
+    assert.ok(ran.includes("test packages/gallery"), "a red test skips nothing after it")
+    const read = blockingFindings(JSON.stringify({ ok: false, data: gate }))
+    assert.deepEqual(read?.map((finding) => [finding.code, finding.path, finding.message.split("\n")[0]]), [["HARNESS_GATE_TEST", "packages/grammar", "test in packages/grammar failed: 1 failing: renders the empty state"]])
 })

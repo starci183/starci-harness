@@ -104,7 +104,7 @@ const roomMembers: ReadonlyArray<G.AvatarGroupItem> = [
     { id: "sam", name: "Sam Lee" },
 ]
 
-/** A group room's head: `mark` takes a round `AvatarGroup layout="grid"` (the size of one Avatar, so the head keeps its height); 2, 3, 4 and 5+ members. */
+/** A group room's head: `mark` takes a Zalo-style `AvatarGroup layout="grid"` cluster (the size of one Avatar, so the head keeps its height); 2, 3, 4 and 5+ members. */
 export const GroupRoomHead: Story = {
     render: () => (
         <Matrix>

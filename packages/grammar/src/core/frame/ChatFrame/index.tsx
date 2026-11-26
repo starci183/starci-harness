@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, type ReactNode, type Ref } from "react"
+import { Children, useCallback, useRef, type ReactNode, type Ref } from "react"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
@@ -16,6 +16,11 @@ export type ChatFrameProps = {
     readonly header: ReactNode
     /** The thread: `MessageBubble`s and day `Divider`s, oldest first. */
     readonly children?: ReactNode
+    /**
+     * What the thread shows while it holds no message (an `EmptyState` or `EmptyNotice`). With no message and this given, it stands in the middle of the thread,
+     * on both axes (law DNA-COMMON-CHAT-EMPTY-CENTRED); a thread with messages never draws it. The first read is `isLoading`, never this.
+     */
+    readonly empty?: ReactNode
     /** The composer, or the decision actions. Omitted, the frame draws no footer and no line above it. */
     readonly footer?: ReactNode
     /** The element that scrolls (the thread), for jump-to-message. */
@@ -61,10 +66,11 @@ const useFollowNewest = (scrollRef: Ref<HTMLDivElement> | undefined) => {
  * 1px full-width line, then the footer zone (omitted with its line when `footer` is omitted). Nothing else in the frame draws a divider. The frame fills the
  * height its host gives it.
  */
-export const ChatFrame = ({ label, header, children: messages, footer, scrollRef, isLoading: ownLoading, error }: ChatFrameProps) => {
+export const ChatFrame = ({ label, header, children: messages, empty, footer, scrollRef, isLoading: ownLoading, error }: ChatFrameProps) => {
     const isLoading = useIsLoading(ownLoading)
     const threadRef = useFollowNewest(scrollRef)
-    const content = !isLoading && error !== undefined ? <ErrorView error={error} /> : <LoadingScope isLoading={isLoading}>{messages}</LoadingScope>
+    const isEmpty = !isLoading && error === undefined && empty !== undefined && Children.toArray(messages).length === 0
+    const content = !isLoading && error !== undefined ? <ErrorView error={error} /> : isEmpty ? empty : <LoadingScope isLoading={isLoading}>{messages}</LoadingScope>
     return (
         <SurfaceNesting host="chat">
             <div
@@ -86,7 +92,7 @@ export const ChatFrame = ({ label, header, children: messages, footer, scrollRef
                     tone="background"
                     ref={threadRef}
                 >
-                    <div className="starci-core-chat-frame-thread-content">{content}</div>
+                    <div className="starci-core-chat-frame-thread-content" data-grammar-chat-empty={isEmpty ? "true" : undefined}>{content}</div>
                 </VerticalScrollRegionPart>
                 {footer === undefined ? null : <div className="starci-core-chat-frame-footer" data-grammar-chat-zone="footer">{footer}</div>}
             </div>

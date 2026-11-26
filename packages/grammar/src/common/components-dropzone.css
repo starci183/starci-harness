@@ -96,7 +96,7 @@
     }
 
     .starci-core-dropzone-row + .starci-core-dropzone-row {
-        border-block-start: var(--grammar-hairline) solid var(--separator);
+        border-block-start: var(--grammar-seam-width) solid var(--separator);
     }
 
     .starci-core-dropzone-row > .starci-core-icon {

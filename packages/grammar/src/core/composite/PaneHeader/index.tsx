@@ -18,7 +18,7 @@ export type PaneHeaderProps = NoChildren & {
     readonly headingLevel?: 1 | 2
     /** The one muted supporting line under the title (a channel and a time, a count). */
     readonly description?: string
-    /** The identity mark left of the title: an `Avatar`, an `IconTile`, or for a group room an `AvatarGroup layout="grid"` (one round mark the size of an Avatar). */
+    /** The identity mark left of the title: an `Avatar`, an `IconTile`, or for a group room an `AvatarGroup layout="grid"` (the Zalo-style cluster, the size of an Avatar). */
     readonly mark?: ReactNode
     /** Settled facts beside the title: one `Badge` or `StatusDot`. */
     readonly status?: ReactNode

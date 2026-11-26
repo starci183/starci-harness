@@ -1,77 +1,71 @@
 @layer starci-grammar-common {
-    /* The vendor Avatar shell supplies the exact single-avatar dimensions, including the control size. */
-    .starci-core-avatar-group[data-grammar-avatar-layout="grid"] {
-        --starci-avatar-letters-size: calc(var(--avatar-size) * var(--grammar-avatar-tile-initials-ratio));
-        --starci-avatar-mark-size: calc(var(--avatar-size) * var(--grammar-avatar-tile-mark-ratio));
-        overflow: hidden;
-        border-radius: var(--grammar-radius-round);
-    }
-
-    .starci-core-avatar-group-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        grid-template-rows: repeat(2, minmax(0, 1fr));
-        gap: 1px;
-        inline-size: 100%;
-        block-size: 100%;
-        background: var(--surface);
-    }
-
-    /* Each member and the total-count cell retain a surface ring over uploaded or generated images. */
-    .starci-core-avatar-group-grid > .starci-core-avatar-group-member,
-    .starci-core-avatar-group-grid > .starci-core-avatar-group-count {
-        outline: 1px solid var(--surface);
-        outline-offset: -1px;
-    }
-
-    /* A tile with tone="danger" (a broken account) is ringed in the danger token inside its own tile, over the surface ring. */
-    .starci-core-avatar-group-grid > .starci-core-avatar-group-member[data-grammar-avatar-tone="danger"] {
-        outline: var(--grammar-ring-width) solid var(--danger);
-        outline-offset: calc(-1 * var(--grammar-ring-width));
-    }
-
-    .starci-core-avatar-group[data-grammar-avatar-cells="1"] > .starci-core-avatar-group-grid {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr);
-    }
-
-    .starci-core-avatar-group[data-grammar-avatar-cells="2"] > .starci-core-avatar-group-grid {
-        grid-template-rows: minmax(0, 1fr);
-    }
-
     /*
-     * Two members split the circle into two narrow tall halves. A square image covered into a half crops its letters at the centre line, so each half
-     * letterboxes the image: the letters stay centred in their own half and the same image fills the rest, keeping its solid background.
+     * THE CLUSTER (0.60.0, owner 2026-11-26, "nhóm k cần hình tròn"): a group identity is NOT one big circle cut into tiles. It is a square the size of one Avatar
+     * (40 or 24) that holds small ROUND member avatars set close in a 2 by 2, the way Zalo draws a group: two on the diagonal, three as two over one, four or more as
+     * three and a count cell. Nothing clips the square, so no outer circle exists; every member is its own circle, a surface seam keeps neighbours apart where
+     * they touch. A lone member (or a group photo) is the whole square.
      */
-    .starci-core-avatar-group[data-grammar-avatar-cells="2"] .starci-core-avatar-initials {
-        object-fit: contain;
-        background-image: var(--starci-avatar-initials-src);
-        background-size: cover;
-        background-position: center;
+    .starci-core-avatar-cluster {
+        --starci-cluster-size: var(--grammar-avatar-md-size);
+        --starci-cluster-member: calc(var(--starci-cluster-size) * 0.52);
+        --starci-avatar-letters-size: calc(var(--starci-cluster-member) * var(--grammar-avatar-initials-ratio));
+        --starci-avatar-mark-size: calc(var(--starci-cluster-member) * var(--grammar-avatar-mark-ratio));
+        position: relative;
+        display: inline-block;
+        flex: none;
+        inline-size: var(--starci-cluster-size);
+        block-size: var(--starci-cluster-size);
     }
 
-    /* Three members: one full-width half above two quarters. */
-    .starci-core-avatar-group[data-grammar-avatar-cells="3"] .starci-core-avatar-group-member:first-child {
-        grid-column: 1 / -1;
+    .starci-core-avatar-cluster[data-grammar-avatar-size="sm"] {
+        --starci-cluster-size: var(--grammar-avatar-sm-size);
     }
 
-    .starci-core-avatar-group-grid > .starci-core-avatar-group-member {
-        inline-size: 100% !important;
-        block-size: 100% !important;
+    /* The cell holds the whole group's headcount, larger than letters would be: half of the member circle. */
+    .starci-core-avatar-cluster .starci-core-avatar-group-count {
+        --starci-avatar-letters-size: calc(var(--starci-cluster-member) * 0.5);
+    }
+
+    .starci-core-avatar-cluster > :is(.starci-core-avatar-group-member, .starci-core-avatar-group-count) {
+        position: absolute;
+        box-sizing: border-box;
+        inline-size: var(--starci-cluster-member) !important;
+        block-size: var(--starci-cluster-member) !important;
         min-inline-size: 0;
         min-block-size: 0;
-        border-radius: 0 !important;
+        aspect-ratio: 1 / 1;
+        border-radius: var(--grammar-radius-round) !important;
+        overflow: hidden;
         font-size: inherit;
+        box-shadow: 0 0 0 var(--grammar-hairline) var(--background);
+    }
+
+    .starci-core-avatar-cluster > [data-grammar-cluster-slot="whole"] {
+        inset: 0;
+        inline-size: 100% !important;
+        block-size: 100% !important;
+        --starci-avatar-letters-size: calc(var(--starci-cluster-size) * var(--grammar-avatar-initials-ratio));
+        --starci-avatar-mark-size: calc(var(--starci-cluster-size) * var(--grammar-avatar-mark-ratio));
+    }
+
+    .starci-core-avatar-cluster > [data-grammar-cluster-slot="top-start"] { inset-block-start: 0; inset-inline-start: 0; }
+    .starci-core-avatar-cluster > [data-grammar-cluster-slot="top-end"] { inset-block-start: 0; inset-inline-end: 0; }
+    .starci-core-avatar-cluster > [data-grammar-cluster-slot="bottom-start"] { inset-block-end: 0; inset-inline-start: 0; }
+    .starci-core-avatar-cluster > [data-grammar-cluster-slot="bottom-end"] { inset-block-end: 0; inset-inline-end: 0; }
+    .starci-core-avatar-cluster > [data-grammar-cluster-slot="bottom-centre"] {
+        inset-block-end: 0;
+        inset-inline-start: calc((var(--starci-cluster-size) - var(--starci-cluster-member)) / 2);
+    }
+
+    /* A member with tone="danger" (a broken account) keeps its danger ring, round, over the seam. */
+    .starci-core-avatar-cluster > .starci-core-avatar-group-member[data-grammar-avatar-tone="danger"] {
+        outline: var(--grammar-ring-width) solid var(--danger);
+        outline-offset: 0;
+        z-index: 1;
     }
 
     .starci-core-avatar-group-member > * {
-        border-radius: 0 !important;
-    }
-
-    /* One member fills the avatar and keeps the single-avatar letters; with more, every tile reads at the tile share. */
-    .starci-core-avatar-group[data-grammar-avatar-cells="1"] {
-        --starci-avatar-letters-size: calc(var(--avatar-size) * var(--grammar-avatar-initials-ratio));
-        --starci-avatar-mark-size: calc(var(--avatar-size) * var(--grammar-avatar-mark-ratio));
+        border-radius: inherit;
     }
 
     .starci-core-avatar-group-member [data-grammar-avatar-fallback] {

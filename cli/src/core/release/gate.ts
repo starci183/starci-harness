@@ -16,10 +16,12 @@ import { isHarnessCheckout } from "./harness-checkout.js"
 /**
  * The harness's own two-level gate, the harness counterpart of `app check --level dev|full`. The FAST level (`dev`) is what landing on the harness's `dev` runs once per lane, before the
  * landed packages go to the local registry: the install, build and typecheck of the packages the diff since `--base` changed and of every package
- * that needs one of them (`release affected`, CI's plan), the CLI when it is affected, the desktop app when it is, and the cheap checks a publish
- * needs (built declarations name `.js` only; a package's bundled copies match the build they copy, `bundles:check`). It runs NO test suite: tests
- * belong to the release line. The FULL level runs once at the train's dev -> main merge, before npm: every package and the CLI, with their lint
- * and their tests, and CI's light gates (anatomy, loosening, secrets, shape, pins, heavy sites, anchors, search index).
+ * that needs one of them (`release affected`, CI's plan), the CLI when it is affected, the desktop app when it is, the cheap checks a publish
+ * needs (built declarations name `.js` only; a package's bundled copies match the build they copy, `bundles:check`), and each of those packages'
+ * own `npm test`: the same packages and the same command as CI's `package (...)` jobs on the push to dev, so a package spec the lane breaks is red
+ * here, before the landing, and never first in dev's CI. The CLI's own suite, lint and the light gates are not run at this level. The FULL level runs
+ * once at the train's dev -> main merge, before npm: every package and the CLI, with their lint and their tests, and CI's light gates (anatomy,
+ * loosening, secrets, shape, pins, heavy sites, anchors, search index).
  */
 export type HarnessLevel = "dev" | "full"
 
@@ -56,7 +58,8 @@ const APP_DIR = "app"
 
 /**
  * The steps of one gate over a plan, in order and each once: every folder of a package's build order is installed and built before the package's own
- * typecheck and publish checks (its built declarations when it builds, its `bundles:check` when it has one), then, at full only, its lint and tests;
+ * typecheck and publish checks (its built declarations when it builds, its `bundles:check` when it has one), then, at full only, its lint, and at
+ * both levels its `npm test` when it declares one (CI's `package (...)` job of the same plan runs exactly that);
  * the CLI is installed, built and typechecked when the plan names it (linted and tested at full only); the desktop app is installed and built after
  * the packages it needs; the full level then runs CI's light gates with the tree's built CLI. `scriptsOf` reads a folder's npm scripts: a step whose
  * script a folder lacks is left out. Pure.
@@ -79,9 +82,8 @@ export const harnessGateSteps = (
         if (scripts.typecheck !== undefined) steps.push({ dir, kind: "typecheck" })
         if (dir !== CLI_DIR && scripts.build !== undefined) steps.push({ dir, kind: "declarations" })
         if (scripts["bundles:check"] !== undefined) steps.push({ dir, kind: "bundles" })
-        if (level !== "full") return
-        if (scripts.lint !== undefined) steps.push({ dir, kind: "lint" })
-        if (scripts.test !== undefined || dir === CLI_DIR) steps.push({ dir, kind: "test" })
+        if (level === "full" && scripts.lint !== undefined) steps.push({ dir, kind: "lint" })
+        if (dir === CLI_DIR ? level === "full" : scripts.test !== undefined) steps.push({ dir, kind: "test" })
     }
     for (const pkg of plan.packages) {
         for (const dir of pkg.build) prepare(dir)
@@ -112,7 +114,8 @@ export type StepRunner = (root: string, step: GateStep) => Promise<StepRun>
 const npmStep = async (root: string, dir: string, kind: "tsc" | "eslint" | "test" | "build", script: string): Promise<StepRun> => {
     const folder = join(root, dir)
     const run = await withHeavySlot(kind, `release gate: npm run ${script} ${dir}`, folder, {}, (held) => captureNpm(["run", script], folder, held.options))
-    return { ok: run.exitCode === 0, output: tail(run.stdout, run.stderr) }
+    // A test run hands back its whole output: the names of its failed tests sit anywhere in it, and failureMessage keeps the names and the last lines.
+    return { ok: run.exitCode === 0, output: kind === "test" ? [run.stdout, run.stderr].join("\n") : tail(run.stdout, run.stderr) }
 }
 
 /** A built declaration that imports a `.ts` specifier, which a consumer's tsc cannot read (ci.yml "Declarations name .js", packages/README.md). */
@@ -175,6 +178,59 @@ export interface HarnessGate {
 
 const codeOf = (step: GateStep): string => `HARNESS_GATE_${step.kind.toUpperCase()}`
 
+/** A failed test in `node --test` output: a TAP `not ok N - <name>` line, or a spec reporter `✖ <name> (<ms>)` line. */
+const TAP_FAIL = /^\s*not ok \d+ - (.+?)\s*(?:#.*)?$/
+const SPEC_FAIL = /^\s*✖ (.+?)(?: \([\d.]+m?s\))?\s*$/
+/** Spec reporter headings that are not tests. */
+const NOT_A_TEST = /^(?:failing tests:?|fail(?:ed)? \d+)$/i
+/** How many failing test names a finding lists, and how long a finding may grow (a test's: the names, then the last lines of its run). */
+const NAMED_FAILURES = 8
+/** How many of a red test's last lines its finding keeps and a report prints under it. */
+const TAIL_LINES = 15
+const TEST_FINDING_CHARS = 2400
+const FINDING_CHARS = 600
+
+/**
+ * The names of the failed tests in the output of a package's `npm test`, in order and each once: node's TAP and spec reporters both mark a
+ * failed test (and the suite holding it) on a line of its own. Empty when the run failed before any test ran (a typecheck, a lint). Pure.
+ */
+export const failingTests = (output: string): string[] => {
+    const names: string[] = []
+    for (const line of output.split(/\r?\n/)) {
+        const name = (TAP_FAIL.exec(line) ?? SPEC_FAIL.exec(line))?.[1]?.trim()
+        if (name === undefined || name === "" || NOT_A_TEST.test(name) || names.includes(name)) continue
+        names.push(name)
+    }
+    return names
+}
+
+/** The message of a red step; a red test's first line names its failing tests and the lines after it are the run's last lines. Pure. */
+export const failureMessage = (step: GateStep, output: string): string => {
+    const head = `${step.kind}${step.args === undefined ? "" : ` ${step.args.join(" ")}`} in ${step.dir} failed`
+    if (step.kind !== "test") return `${head}: ${output}`.slice(0, FINDING_CHARS)
+    const names = failingTests(output)
+    const named =
+        names.length === 0
+            ? "no failing test named (the run stopped before or outside its tests: see its last lines)"
+            : `${String(names.length)} failing: ${names.slice(0, NAMED_FAILURES).join("; ")}${names.length > NAMED_FAILURES ? `; +${String(names.length - NAMED_FAILURES)} more` : ""}`
+    const lines = output.split(/\r?\n/).filter((line) => line.trim() !== "")
+    // The last lines are kept whole when the output is long: the cut falls on the oldest lines, never on the end of the run.
+    let tail = lines.slice(-TAIL_LINES).join("\n")
+    while (tail.length + named.length + head.length > TEST_FINDING_CHARS && tail.includes("\n")) tail = tail.slice(tail.indexOf("\n") + 1)
+    return `${head}: ${named}\n${tail}`.slice(0, TEST_FINDING_CHARS)
+}
+
+/**
+ * The report lines of one finding: its code, folder and first line; a red test (HARNESS_GATE_TEST) also prints, indented, the last lines of its
+ * run, so the refusal shows what broke without opening a log. `lane gate` prints its findings with this too. Pure.
+ */
+export const findingLines = (finding: { readonly code: string; readonly path: string; readonly message: string }): string[] => {
+    const [first = "", ...rest] = finding.message.split("\n")
+    const head = `  ${finding.code} ${finding.path} ${first}`.trimEnd()
+    if (finding.code !== codeOf({ dir: "", kind: "test" })) return [head]
+    return [head, ...rest.filter((line) => line.trim() !== "").slice(-TAIL_LINES).map((line) => `      ${line.trimEnd()}`)]
+}
+
 /**
  * Runs the steps in order. A red install or build of a folder skips every later step in that folder and in each package whose build order needs it,
  * since they would only repeat its failure; every other step still runs, so one gate names every red folder at once.
@@ -190,7 +246,7 @@ export const runHarnessGate = async (root: string, plan: Affected, level: Harnes
     const pending: Promise<void>[] = []
     const record = (index: number, step: GateStep, result: StepRun): void => {
         outcomes[index] = { ...step, ok: result.ok }
-        if (!result.ok) failures[index] = { level: "error", code: codeOf(step), path: step.dir, message: `${step.kind}${step.args === undefined ? "" : ` ${step.args.join(" ")}`} in ${step.dir} failed: ${result.output}`.slice(0, 600) }
+        if (!result.ok) failures[index] = { level: "error", code: codeOf(step), path: step.dir, message: failureMessage(step, result.output) }
     }
     const execute = async (index: number, step: GateStep): Promise<void> => {
         say(`${step.kind} ${step.dir}${step.args === undefined ? "" : ` (${step.args.join(" ")})`}`)
@@ -230,16 +286,16 @@ const defaultBase = async (root: string): Promise<string | undefined> => {
 
 /**
  * `starci release gate`: the harness's own gate (contexts/project/branches.md PROJECT-BRANCH-3). `--level dev` (the default) is the FAST level
- * `lane gate` runs when the harness lands on dev (no test suite); `--level full` is the gate of the train's dev -> main merge, tests included.
+ * `lane gate` runs when the harness lands on dev (the affected packages' own `npm test`, as CI's package jobs; not the CLI's suite); `--level full` is the gate of the train's dev -> main merge, tests included.
  */
 export const releaseGateVerb = defineVerb({
     path: ["release", "gate"],
-    summary: "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, and runs the publish checks (declarations name .js, bundles:check), no test suite; --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
+    summary: "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, runs the publish checks (declarations name .js, bundles:check) and each of those packages' own npm test (CI's package jobs; not the CLI's suite); --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/release-gate@1",
     flags: {
-        level: { kind: "string", summary: "dev (default: the packages changed since --base and their dependents, built and typechecked, no tests) or full (everything, with lint, tests and CI's light gates)" },
+        level: { kind: "string", summary: "dev (default: the packages changed since --base and their dependents, built, typechecked and their npm test run) or full (everything, with lint, tests and CI's light gates)" },
         base: { kind: "string", summary: "the commit the FAST level measures from (default: where HEAD forks from origin/dev, else origin/main); the full level ignores it" },
     },
     run: async (context, flags) => {
@@ -257,7 +313,7 @@ export const releaseGateVerb = defineVerb({
         const lines = [
             ...gate.summary,
             `${level} gate ${gate.verdict}: ${String(ran)} step(s) ran, ${String(gate.steps.length - ran)} skipped behind a red build`,
-            ...gate.findings.map((finding) => `  ${finding.code} ${finding.path}: ${finding.message.split("\n")[0] ?? ""}`),
+            ...gate.findings.flatMap((finding) => findingLines(finding)),
         ]
         return { data: gate, message: lines.join("\n"), exitCode: gate.verdict === "green" ? 0 : 1 }
     },

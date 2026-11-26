@@ -105,7 +105,7 @@ shapes:
         role: The list's `empty` (a unit with no lessons yet)
     notes: |
       A locked lesson is a row with `state="unavailable"` and its reason in the description, never hidden.
-      The list keeps Common's hairline seams; the sticker is for objects, not rows.
+      Every list's row seams are one 2px ink line (the family binds Common's --grammar-seam-width to the outline width); the sticker is for objects, not rows.
 
   - id: practice-step
     title: One question per screen — choose, check, see the outcome

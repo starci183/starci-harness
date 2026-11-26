@@ -48,6 +48,7 @@ its own rule (a room list and the page header band stay white).
 - **Thread**: `MessageBubble`s and day `Divider`s, oldest first. It is the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`): it opens at the newest
   message and follows new ones while the reader is at the foot; `scrollRef` is the element that scrolls, for jump-to-message. `label` names it.
 - **Footer**: the composer, or the decision actions of a draft (approve and send, edit, ask the agent to edit, do not send).
+- **Empty**: `empty` (an `EmptyNotice`) is what a thread with no message shows. It stands in the MIDDLE of the message area on both axes (`DNA-COMMON-CHAT-EMPTY-CENTRED`), never at the foot with the messages' gravity; a thread with messages never draws it, and a first read is `isLoading`, never `empty`.
 
 | Host | Write |
 | --- | --- |
@@ -55,7 +56,17 @@ its own rule (a room list and the page header band stay white).
 | a drawer | `Drawer bodyInset="none"` holding the `ChatFrame`, no drawer `footer`: the sheet's title row and the frame header read as ONE header zone (no line, no gap between them) and only the thread scrolls |
 | a page section | the `ChatFrame` in a box whose height the page gives it |
 
-Story `Navigation & Data/Chat frame`: `InPane`, `InDrawer`, `Inline`, `WithoutFooter`, `LoadingAndError`.
+Story `Navigation & Data/Chat frame`: `InPane`, `InDrawer`, `Inline`, `WithoutFooter`, `LoadingAndError`; `Navigation & Data/Chat frame cards`: `EmptyThreadCentred`.
+
+## The frame card and Markdown in a message
+
+A structured message (a new lead, a contact overdue, a booking made, a job cancelled, a system message: owner 2026-11-26, "thông báo cũng làm card đẹp chứ không chat suông") is ONE `MessageFrame`, whatever its kind. The app maps a frame it knows to `card` (its own copy and keys); Grammar draws the one compact card and knows no kind and no business.
+
+- **The card**: the title; a status dot (`status`: a tone and its words) ONLY for a real state of the subject (overdue, cancelled, paused, failed), never to decorate; the field and value rows (`fields`, the compact description list); at most three `actions` (`DNA-COMMON-FRAME-CARD-MAX-ACTIONS`), the FIRST the card's one primary (`DNA-COMMON-FRAME-CARD-ONE-PRIMARY`), the others secondary; the muted `meta` line. The card is a `MessageCard` in its compact density (`MessageCard density="compact"` and `status`).
+- **The fallback**: a kind the app does not know (an older app, a newer sender), or a card with no title, is its `text` line in a bubble, so a message is never lost and never blank. `kind` only names the frame in the markup (`data-grammar-frame-kind`, `data-grammar-frame="card" | "text"`).
+- **Markdown in a bubble**: `MessageBubble format="markdown"` (and the text of a `MessageFrame`, markdown by default) draws a string body through `MessageMarkdown`: bold, italic, strikethrough, inline code, links, line breaks, paragraphs and lists (bulleted, numbered), and nothing else. The text is parsed to a syntax tree and mapped to Grammar's parts, so no HTML string is built; raw HTML, a heading, an image, a table, a fence or a quote keeps its words as plain text, and a link off http(s), mailto, tel or a relative path is shown as its words. An outgoing bubble keeps its foreground on the accent fill.
+
+Story `Navigation & Data/Chat frame cards`: `FrameCards`, `UnknownKindAndMarkdown`, `EmptyThreadCentred`.
 
 ## Choose
 
