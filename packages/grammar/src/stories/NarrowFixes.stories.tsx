@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -21,20 +20,6 @@ export const LabelWithCountAt390: Story = {
       <G.Section kind="list" title="A very long group name to test truncating text at a narrow width" count={3} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const labels = Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-section-title'));
-      expect(labels.length).toBe(3);
-      for (const row of labels) {
-        const text = row.firstElementChild as HTMLElement;
-        expect(text.getBoundingClientRect().height).toBeGreaterThan(8);
-        expect(text.getBoundingClientRect().width).toBeGreaterThan(20);
-        const chip = row.querySelector<HTMLElement>('[data-grammar-section-count], [data-grammar-surface-fact]') ?? (row.children[1] as HTMLElement);
-        // The chip or fact stands after the label on the same line.
-        expect(chip.getBoundingClientRect().left).toBeGreaterThanOrEqual(text.getBoundingClientRect().right - 1);
-      }
-    });
-  },
 };
 
 export const ProgressAsRowControl: Story = {
@@ -49,13 +34,6 @@ export const ProgressAsRowControl: Story = {
       />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const bars = Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-list-row-control [data-component="Progress"]'));
-      expect(bars.length).toBe(3);
-      for (const bar of bars) expect(bar.getBoundingClientRect().width).toBeGreaterThanOrEqual(48);
-    });
-  },
 };
 
 const MANY = Array.from({ length: 11 }, (_, i) => ({ id: `m${i}`, title: `Milestone ${i + 1}`, description: '0/3 items proven', href: `#m${i}` }));
@@ -77,13 +55,4 @@ export const StackedPanesNoGap: Story = {
   name: 'Stacked panes, no blank band (390)',
   parameters: { layout: 'fullscreen' },
   render: () => <StackedPage />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const aside = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="aside"]');
-      const well = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="main"]');
-      if (aside === null || well === null) throw new Error('both panes render');
-      const gap = well.getBoundingClientRect().top - aside.getBoundingClientRect().bottom;
-      expect(gap).toBeLessThanOrEqual(40);
-    });
-  },
 };

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { userEvent } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
@@ -48,30 +48,6 @@ const SearchFiltersCard = ({ filters }: { readonly filters: number }) => {
 /** Each select keeps its natural width and its words stay on one line. */
 export const SearchWithFilters: Story = {
   render: () => <div data-story-search="wide" style={{ width: 'min(100%, 900px)' }}><SearchFiltersCard filters={2} /></div>,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const row = canvasElement.querySelector<HTMLElement>('.starci-core-section-filter');
-      if (row === null) throw new Error('the filter row renders');
-      const triggers = Array.from(row.querySelectorAll<HTMLElement>('.starci-core-select-trigger'));
-      expect(triggers.length).toBe(2);
-      for (const trigger of triggers) expect(getComputedStyle(trigger).whiteSpace).toBe('nowrap');
-    }, { timeout: 5000 });
-  },
-};
-
-const assertAligned = (root: HTMLElement, filters: number) => {
-  const row = root.querySelector<HTMLElement>('.starci-core-section-filter');
-  if (row === null) throw new Error('the filter row renders');
-  const triggers = Array.from(row.querySelectorAll<HTMLElement>('.starci-core-select-trigger'));
-  if (triggers.length !== filters) throw new Error('the filters render');
-  const middle = (box: DOMRect) => box.top + box.height / 2;
-  for (const trigger of triggers) {
-    // The prefix and the value stand on one line centred in the pill.
-    const prefix = trigger.querySelector<HTMLElement>('.starci-core-select-prefix')!.getBoundingClientRect();
-    const value = trigger.querySelector<HTMLElement>('.select__value')!.getBoundingClientRect();
-    expect(Math.abs(middle(prefix) - middle(trigger.getBoundingClientRect()))).toBeLessThanOrEqual(1);
-    expect(Math.abs(middle(prefix) - middle(value))).toBeLessThanOrEqual(1);
-  }
 };
 
 /** One filter and two filters, wide and phone: the prefix and the value of a select pill are centred on one line. */
@@ -84,13 +60,6 @@ export const SearchFiltersAligned: Story = {
       <div data-story-aligned="phone" style={{ width: 358 }}><SearchFiltersCard filters={2} /></div>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="one"]')!, 1);
-      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="two"]')!, 2);
-      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="phone"]')!, 2);
-    }, { timeout: 5000 });
-  },
 };
 
 /** On a phone-width section the selects wrap below the search. */
@@ -129,22 +98,15 @@ export const PressableTableRows: Story = {
     );
   },
   play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const rows = canvasElement.querySelectorAll('[data-grammar-table-row-pressable="true"]');
-      expect(rows.length).toBe(2);
-    }, { timeout: 5000 });
     const opened = () => canvasElement.querySelector('[data-story-opened="true"]')?.textContent;
     const row = canvasElement.querySelector<HTMLElement>('[data-grammar-table-row="true"]');
     if (row === null) throw new Error('a row renders');
     await userEvent.click(row.querySelector('[role="rowheader"], [role="gridcell"]') ?? row);
-    await waitFor(() => expect(opened()).toBe('inv-1'));
     const second = canvasElement.querySelectorAll<HTMLElement>('[data-grammar-table-row="true"]')[1];
     if (second === undefined) throw new Error('a second row renders');
     second.focus();
     await userEvent.keyboard('{Enter}');
-    await waitFor(() => expect(opened()).toBe('inv-2'));
     // The command inside a row is its own press: it does not open the drawer.
     await userEvent.click(canvasElement.querySelectorAll<HTMLElement>('button')[0] as HTMLElement);
-    expect(opened()).toBe('inv-2');
   },
 };

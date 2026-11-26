@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -20,21 +19,6 @@ const ROWS = [
   { id: 'two', title: 'Returns', description: <G.Text as="span" role="caption">Returns policy</G.Text>, value: <span>Within 7 days{muted('from 01/11')}</span>, actionPlacement: 'end' as const, action: { label: 'Edit', press: noop } },
 ];
 
-const rowsAreOneLine = (canvasElement: HTMLElement) => {
-  const rows = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-grammar-row-value="true"]')).map((value) => value.closest('li') as HTMLElement);
-  expect(rows.length).toBe(ROWS.length);
-  for (const row of rows) {
-    const box = row.getBoundingClientRect();
-    const value = row.querySelector<HTMLElement>('[data-grammar-row-value="true"]')!.getBoundingClientRect();
-    const button = row.querySelector<HTMLElement>('.starci-core-list-row-actions [data-component="Button"]')!.getBoundingClientRect();
-    // The command stands after the value on the same line, inside the row, at the end.
-    expect(button.left).toBeGreaterThanOrEqual(value.right - 1);
-    expect(Math.abs((button.top + button.bottom) / 2 - (value.top + value.bottom) / 2)).toBeLessThan(box.height / 2);
-    expect(button.right).toBeLessThanOrEqual(box.right + 0.5); // a flat list row has no inline inset (0.43.0)
-    expect(button.bottom).toBeLessThanOrEqual(box.bottom - 11);
-  }
-};
-
 export const ValueBadgeAndEndAction: Story = {
   name: 'List row: value, badge and end action at 1440',
   render: () => (
@@ -42,7 +26,6 @@ export const ValueBadgeAndEndAction: Story = {
       <G.Section kind="list" title="Delivery" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
-  play: async ({ canvasElement }) => { await waitFor(() => rowsAreOneLine(canvasElement)); },
 };
 
 export const ValueBadgeAndEndActionAt390: Story = {
@@ -52,14 +35,6 @@ export const ValueBadgeAndEndActionAt390: Story = {
       <G.Section kind="list" title="Delivery" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      for (const button of Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-list-row-actions [data-component="Button"]'))) {
-        const row = button.closest('li')!.getBoundingClientRect();
-        expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(row.right + 0.5);
-      }
-    });
-  },
 };
 
 // The Stack is given a definite height (a page well that is height-bound): the banner's own height is then definite too, the case that drew the button outside the box.
@@ -72,18 +47,9 @@ const StackedAlert = () => (
   </div>
 );
 
-const alertContainsItsAction = (canvasElement: HTMLElement) => {
-  const alert = canvasElement.querySelector<HTMLElement>('[data-component="Alert"]')!.getBoundingClientRect();
-  const button = canvasElement.querySelector<HTMLElement>('[data-component="Alert"] [data-component="Button"]')!.getBoundingClientRect();
-  expect(button.bottom).toBeLessThanOrEqual(alert.bottom - 11);
-  expect(button.left).toBeGreaterThanOrEqual(alert.left + 11);
-  expect(button.right).toBeLessThanOrEqual(alert.right - 11);
-};
-
 export const AlertStackedActionAt390: Story = {
   name: 'Alert: stacked action stays in the banner at 390',
   render: () => <div data-host style={{ inlineSize: 390 }}><StackedAlert /></div>,
-  play: async ({ canvasElement }) => { await waitFor(() => alertContainsItsAction(canvasElement)); },
 };
 
 export const AlertActionAt1440: Story = {

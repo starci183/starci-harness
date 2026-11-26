@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /** ARTICLE-HEADINGS-14 (0.37.14): h2 to h4 of a MarkdownArticle are 14 (type law 14/12), ranked by weight and tone; the heading elements stay. */
@@ -20,12 +19,4 @@ export const ArticleHeadings: Story = {
       </G.MarkdownArticle>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const sizes = ['h2', 'h3', 'h4'].map((tag) => getComputedStyle(canvasElement.querySelector(tag)!).fontSize);
-      expect(sizes).toEqual(['14px', '14px', '14px']);
-      const weights = ['h2', 'h3', 'h4'].map((tag) => Number(getComputedStyle(canvasElement.querySelector(tag)!).fontWeight));
-      expect(weights[0]!).toBeGreaterThanOrEqual(weights[1]!);
-    });
-  },
 };

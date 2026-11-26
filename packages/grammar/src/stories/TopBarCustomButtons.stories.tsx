@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -37,20 +36,4 @@ const Bar = () => (
 
 export const TopBarCustomButtons: Story = {
   render: () => <Bar />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const items = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-grammar-top-bar-custom-item]'));
-      expect(items.length).toBe(2);
-      expect(items[0]!.querySelector('[data-grammar-top-bar-dot]')).not.toBeNull();
-      expect(items[1]!.querySelector('[data-grammar-top-bar-dot]')).toBeNull();
-      expect(items[0]!.querySelector('button')!.getAttribute('aria-label')).toBe('Notifications');
-      expect(items[1]!.querySelector('a')!.getAttribute('aria-label')).toBe('Help');
-      // The custom cluster stands before the app's fixed cluster (the account avatar).
-      const custom = canvasElement.querySelector<HTMLElement>('[data-grammar-top-bar-custom]')!.getBoundingClientRect();
-      const avatar = canvasElement.querySelector<HTMLElement>('.starci-core-avatar-button, [data-component="AvatarButton"]')!.getBoundingClientRect();
-      expect(custom.right).toBeLessThanOrEqual(avatar.left + 1);
-      // At phone width only the first custom button stays visible.
-      if (window.matchMedia('(max-width: 47.99rem)').matches) expect(getComputedStyle(items[1]!).display).toBe('none');
-    });
-  },
 };

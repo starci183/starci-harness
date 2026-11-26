@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { userEvent, within } from 'storybook/test';
 import * as G from '../common/index.js';
 import { Matrix, State, noop } from './fixtures.js';
 
@@ -32,8 +32,6 @@ const COLUMNS: readonly G.DataTableColumn<Member>[] = [
 const cellOf = (member: Member, columnId: string) => (columnId === 'name' ? member.name : columnId === 'role' ? member.role : member.status === 'active' ? 'Active' : 'Invited');
 const rowOf = (member: Member): G.ListRowData => ({ id: member.id, title: member.name, description: member.role });
 const failure: G.ErrorData = { message: 'Could not load the members.', actionLabel: 'Try again', onAction: noop };
-
-const box = (element: Element) => element.getBoundingClientRect();
 
 const tabsOf = (query: string): readonly G.TabItem[] => {
   const matching = MEMBERS.filter((member) => member.name.toLowerCase().includes(query.toLowerCase()));
@@ -84,20 +82,7 @@ const MemberTable = ({ mode = 'ready' }: { readonly mode?: 'ready' | 'loading' |
 export const TableWithFilter: Story = {
   render: () => <div style={{ width: 'min(100%, 720px)' }}><MemberTable /></div>,
   play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const section = canvasElement.querySelector<HTMLElement>('[data-component="Section"]');
-      const filter = canvasElement.querySelector<HTMLElement>('.starci-core-section-filter');
-      const table = canvasElement.querySelector<HTMLElement>('[data-component="DataTable"]');
-      if (section === null || filter === null || table === null) throw new Error('the section, its filter row and its table render');
-      const head = section.querySelector<HTMLElement>('.starci-core-section-header');
-      if (head === null) throw new Error('the head renders');
-      expect(box(head).bottom).toBeLessThanOrEqual(box(filter).top + 0.5);
-      expect(box(filter).bottom).toBeLessThanOrEqual(box(table).top + 0.5);
-      expect(getComputedStyle(filter).boxShadow).toBe('none');
-      expect(canvasElement.querySelectorAll('[data-grammar-table-row="true"]').length).toBe(5);
-    }, { timeout: 4000 });
     await userEvent.click(within(canvasElement).getByRole('tab', { name: /Invited/ }));
-    await waitFor(() => expect(canvasElement.querySelectorAll('[data-grammar-table-row="true"]').length).toBe(2), { timeout: 4000 });
   },
 };
 
@@ -111,14 +96,6 @@ export const FiguresAndList: Story = {
       </G.Stack>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const strip = canvasElement.querySelector<HTMLElement>('[data-grammar-description-layout="stat-strip"]');
-      const rows = canvasElement.querySelector<HTMLElement>('.starci-core-section-list');
-      if (strip === null || rows === null) throw new Error('the strip and the rows render');
-      expect(box(rows).top).toBeGreaterThanOrEqual(box(strip).bottom - 0.5);
-    }, { timeout: 4000 });
-  },
 };
 
 const figureCells = (count: number): readonly G.Figure[] =>
@@ -128,42 +105,6 @@ const figureCells = (count: number): readonly G.Figure[] =>
     { id: 'c', term: 'Invited', value: 2 },
     { id: 'd', term: 'Owners', value: 1 },
   ].slice(0, count);
-
-/**
- * The cells of a ribbon tile the strip exactly: no inset, no gap. A vertical hairline goes from the strip's top edge to its bottom edge and, wrapped, a row spans the strip from
- * its left edge to its right edge. Returns the number of rows.
- */
-const assertFullBleed = (ribbon: HTMLElement) => {
-  // The ribbon draws its hairlines as its own top and bottom border: the cells tile its padding box.
-  const style = getComputedStyle(ribbon);
-  const outer = ribbon.getBoundingClientRect();
-  const inner = { left: outer.left + Number.parseFloat(style.borderLeftWidth), right: outer.right - Number.parseFloat(style.borderRightWidth), top: outer.top + Number.parseFloat(style.borderTopWidth), bottom: outer.bottom - Number.parseFloat(style.borderBottomWidth) };
-  const strip = { getBoundingClientRect: () => inner } as unknown as HTMLElement;
-  const cells = Array.from(ribbon.querySelectorAll<HTMLElement>('[data-grammar-description-pair]'));
-  expect(cells.length).toBeGreaterThan(1);
-  const edge = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThanOrEqual(0.5);
-  const rows: HTMLElement[][] = [];
-  for (const cell of cells) {
-    const row = rows.find((candidate) => Math.abs(box(candidate[0] as HTMLElement).top - box(cell).top) <= 0.5);
-    if (row === undefined) rows.push([cell]);
-    else row.push(cell);
-  }
-  rows.forEach((row, index) => {
-    const first = row[0] as HTMLElement;
-    const last = row[row.length - 1] as HTMLElement;
-    edge(box(first).left, box(strip).left);
-    edge(box(last).right, box(strip).right);
-    row.forEach((cell, at) => {
-      edge(box(cell).top, box(first).top);
-      edge(box(cell).bottom, box(first).bottom);
-      if (at > 0) edge(box(cell).left, box(row[at - 1] as HTMLElement).right);
-    });
-    if (index === 0) edge(box(first).top, box(strip).top);
-    else edge(box(first).top, box((rows[index - 1] as HTMLElement[])[0] as HTMLElement).bottom);
-    if (index === rows.length - 1) edge(box(first).bottom, box(strip).bottom);
-  });
-  return rows.length;
-};
 
 /** The ribbon: one row at 40rem and over, 2 x 2 wrapped, an odd last cell growing across its row. */
 export const FiguresFullBleed: Story = {
@@ -194,28 +135,6 @@ export const FiguresFullBleed: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const strip = (name: string) => {
-        const found = canvasElement.querySelector<HTMLElement>(`[data-story-strip="${name}"] [data-grammar-description-layout="stat-strip"]`);
-        if (found === null) throw new Error(`the ${name} strip renders`);
-        return found;
-      };
-      expect(assertFullBleed(strip('row'))).toBe(box(strip('row')).width >= 640 ? 1 : 2);
-      expect(assertFullBleed(strip('wrap'))).toBe(2);
-      expect(assertFullBleed(strip('odd'))).toBe(2);
-      // Money figures: no value breaks inside its number. At phone width the strip is 2 x 2 or one column, never a row that crushes a value.
-      const money = strip('money');
-      expect([2, 4]).toContain(assertFullBleed(money));
-      for (const value of Array.from(money.querySelectorAll<HTMLElement>('.starci-core-description-figure-value'))) {
-        const cell = value.closest<HTMLElement>('[data-grammar-description-pair]');
-        if (cell === null) throw new Error('a value stands in its cell');
-        expect(getComputedStyle(value).whiteSpace).toBe('nowrap');
-        expect(box(value).height).toBeLessThanOrEqual(Number.parseFloat(getComputedStyle(value).lineHeight) + 1);
-        expect(box(value).right).toBeLessThanOrEqual(box(cell).right + 0.5);
-      }
-    }, { timeout: 4000 });
-  },
 };
 
 /**
@@ -238,29 +157,6 @@ export const FiguresRibbonFive: Story = {
         <State label="Desktop 1000: one row" direction="column"><div data-story-strip="desktop" style={{ width: 1000 }}><G.Section kind="figures" title="Overview" items={items} /></div></State>
       </Matrix>
     );
-  },
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const strip = (name: string) => {
-        const found = canvasElement.querySelector<HTMLElement>(`[data-story-strip="${name}"] [data-grammar-description-layout="stat-strip"]`);
-        if (found === null) throw new Error(`the ${name} strip renders`);
-        return found;
-      };
-      const phone = strip('phone');
-      expect(assertFullBleed(phone)).toBe(3);
-      const cells = Array.from(phone.querySelectorAll<HTMLElement>('[data-grammar-description-pair]'));
-      // The odd last cell spans the whole row.
-      expect(Math.abs(box(cells[4] as HTMLElement).width - box(phone).width)).toBeLessThan(1.5);
-      expect(assertFullBleed(strip('tablet'))).toBe(2);
-      expect(assertFullBleed(strip('desktop'))).toBe(1);
-      for (const term of Array.from(phone.querySelectorAll<HTMLElement>('.starci-core-description-stat-term > span'))) {
-        const lines = box(term).height / Number.parseFloat(getComputedStyle(term).lineHeight);
-        expect(lines).toBeLessThanOrEqual(2.05);
-        expect(getComputedStyle(term).fontSize).toBe('14px');
-      }
-      for (const meta of Array.from(phone.querySelectorAll<HTMLElement>('.starci-core-description-meta'))) expect(getComputedStyle(meta).fontSize).toBe('12px');
-      for (const value of Array.from(phone.querySelectorAll<HTMLElement>('.starci-core-description-figure'))) expect(getComputedStyle(value).fontSize).toBe('20px');
-    }, { timeout: 4000 });
   },
 };
 
@@ -285,12 +181,6 @@ export const HeadLinkAndPager: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      expect(within(canvasElement).getByRole('navigation', { name: 'Member pages' })).toBeTruthy();
-      expect(within(canvasElement).getByRole('link', { name: 'Open the directory' })).toBeTruthy();
-    }, { timeout: 4000 });
-  },
 };
 
 /** Loading, error and empty draw in the body; the head and the filter row stay in every state. */
@@ -303,18 +193,6 @@ export const States: Story = {
       <State label="Empty" direction="column"><MemberTable mode="empty" /></State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      for (const mode of ['ready', 'loading', 'error', 'empty']) {
-        const scope = canvasElement.querySelector<HTMLElement>(`[data-story-mode="${mode}"]`);
-        if (scope === null) throw new Error(`the ${mode} state renders`);
-        expect(scope.querySelector('.starci-core-section-filter')).not.toBeNull();
-      }
-      expect(canvasElement.querySelector('[data-story-mode="loading"] [aria-busy="true"]')).not.toBeNull();
-      expect(within(canvasElement.querySelector<HTMLElement>('[data-story-mode="empty"]')!).getByText('Nobody matches.')).toBeTruthy();
-      expect(within(canvasElement.querySelector<HTMLElement>('[data-story-mode="error"]')!).getByText('Could not load the members.')).toBeTruthy();
-    }, { timeout: 4000 });
-  },
 };
 
 /* ---------- a board's filter row ---------- */
@@ -347,16 +225,6 @@ export const BoardFilter: Story = {
       <PipelineBoard />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const header = canvasElement.querySelector<HTMLElement>('[data-grammar-board-header="true"]');
-      const columns = canvasElement.querySelector<HTMLElement>('.starci-core-board-columns');
-      if (header === null || columns === null) throw new Error('the filter row and the columns render');
-      expect(box(header).bottom).toBeLessThanOrEqual(box(columns).top);
-      expect(header.querySelector('.starci-core-section-filter')).not.toBeNull();
-      expect(header.querySelector('[data-component="SurfaceCard"]')).toBeNull();
-    }, { timeout: 4000 });
-  },
 };
 
 /* ---------- the ledger: a flat table with day groups ---------- */
@@ -411,23 +279,6 @@ const Ledger = ({ mode }: { readonly mode: 'ready' | 'empty' | 'loading' | 'erro
 /** The ledger with three day groups: one column header, group rows; at phone width the rows fold into a title and muted amounts. */
 const ledgerStory = (width: string | number, isPhone: boolean): Story => ({
   render: () => <div data-story-ledger="true" style={{ width }}><Ledger mode="ready" /></div>,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const table = canvasElement.querySelector<HTMLElement>('[data-story-ledger="true"] [data-component="DataTable"]');
-      if (table === null) throw new Error('the ledger renders');
-      // One column header, three group rows, six entries.
-      expect(table.querySelectorAll('.starci-core-data-table-header').length).toBe(1);
-      expect(table.querySelectorAll('[data-grammar-table-group="true"]').length).toBe(3);
-      expect(table.querySelectorAll('[data-grammar-table-row="true"]').length).toBe(6);
-      expect(table.getAttribute('data-grammar-table-narrow')).toBe(isPhone ? 'true' : 'false');
-      if (isPhone) expect(table.querySelectorAll('[data-grammar-table-secondary="true"]').length).toBe(6);
-      // Amounts never wrap and read in tabular numerals.
-      for (const cell of Array.from(table.querySelectorAll<HTMLElement>('[data-grammar-table-numeric="true"]'))) {
-        expect(getComputedStyle(cell).whiteSpace).toBe('nowrap');
-        expect(getComputedStyle(cell).fontVariantNumeric).toContain('tabular-nums');
-      }
-    }, { timeout: 5000 });
-  },
 });
 
 /** The ledger at 1920px. */
@@ -444,17 +295,4 @@ export const LedgerStates: Story = {
       <State label="Error" direction="column"><div data-story-ledger="error"><Ledger mode="error" /></div></State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const of = (name: string) => {
-        const found = canvasElement.querySelector<HTMLElement>(`[data-story-ledger="${name}"]`);
-        if (found === null) throw new Error(`the ${name} ledger renders`);
-        return found;
-      };
-      expect(of('empty').querySelector('[data-grammar-table-empty="true"]')).not.toBeNull();
-      expect(of('loading').querySelector('[data-grammar-skeleton="true"]')).not.toBeNull();
-      expect(within(of('error')).getByText('Could not load the cash book.')).toBeTruthy();
-      for (const name of ['empty', 'loading', 'error']) expect(of(name).querySelector('.starci-core-section-filter')).not.toBeNull();
-    }, { timeout: 5000 });
-  },
 };

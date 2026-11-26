@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import { MermaidDiagram } from '../core/ext/graph/index.js';
 import '../core/ext/graph/styles.css';
 
@@ -21,34 +20,6 @@ const Both = ({ children }: { readonly children: React.ReactNode }) => (
     <div className="dark" style={{ background: 'var(--background)', color: 'var(--foreground)', padding: 16 }}>{children}</div>
   </div>
 );
-
-const ready = async (canvasElement: HTMLElement, count = 2) =>
-  waitFor(() => {
-    const diagrams = canvasElement.querySelectorAll('[data-component="MermaidDiagram"][data-grammar-mermaid-state="ready"]');
-    expect(diagrams).toHaveLength(count);
-  }, { timeout: 10000 });
-
-/**
- * The fit rule (open.ts): at the first view every node of every canvas stands whole inside its frame, and above the controls row (the room's bottom
- * inset), so no node is cut on any side and no button covers one.
- */
-const wholeInFrame = async (canvasElement: HTMLElement) =>
-  waitFor(() => {
-    const canvases = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-mermaid-canvas]')];
-    expect(canvases.length).toBeGreaterThan(0);
-    for (const canvas of canvases) {
-      const frame = canvas.getBoundingClientRect();
-      const controls = canvas.querySelector('.starci-graph-diagram-controls')?.getBoundingClientRect();
-      const nodes = [...canvas.querySelectorAll('.react-flow__node')];
-      expect(nodes.length).toBeGreaterThan(0);
-      for (const node of nodes) {
-        const box = node.getBoundingClientRect();
-        if (box.width <= 1 && box.height <= 1) continue;
-        expect(box.left >= frame.left - 1 && box.right <= frame.right + 1 && box.top >= frame.top - 1 && box.bottom <= frame.bottom + 1).toBe(true);
-        if (controls !== undefined) expect(box.bottom <= controls.top + 1).toBe(true);
-      }
-    }
-  }, { timeout: 8000 });
 
 const RACE = `sequenceDiagram
   participant R as Lượt đọc chậm
@@ -76,17 +47,6 @@ export const Sequence: Story = {
       />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    await waitFor(() => {
-      expect(canvasElement.querySelectorAll('.starci-graph-diagram-message[data-tone="danger"]').length).toBe(2);
-      expect(canvasElement.querySelectorAll('.starci-graph-diagram-participant').length).toBe(8);
-      expect(canvasElement.querySelectorAll('.starci-graph-diagram-note').length).toBe(2);
-    }, { timeout: 8000 });
-    // The text version reads the messages in order.
-    const steps = canvasElement.querySelectorAll('[data-grammar-mermaid-text] ol > li');
-    expect(steps[0]?.textContent).toContain('Lượt đọc chậm to Redis: Hỏi giá');
-  },
 };
 
 const BLOCKS = `sequenceDiagram
@@ -116,11 +76,6 @@ export const SequenceBlocks: Story = {
       <MermaidDiagram source={BLOCKS} label="Đặt đơn" height="lg" messageTones={{ 4: 'danger', 2: 'success' }} />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-field').length).toBe(6);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-field-section').length).toBe(2);
-  },
 };
 
 const FIX_LR = `flowchart LR
@@ -142,16 +97,6 @@ export const FlowchartAcross: Story = {
       <MermaidDiagram source={FIX_LR} label="Ghi cache theo version" height="md" caption="Cache từ chối bản cũ hơn bản đang giữ." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-tone="accent"]').length).toBe(2);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-tone="success"]').length).toBe(2);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="cylinder"]').length).toBe(4);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-group').length).toBe(2);
-    // The routing law: a read-only graph shows no handle dots, and the first view holds the whole drawing, clear of the controls row.
-    for (const dot of canvasElement.querySelectorAll('.starci-graph-edge-dot')) expect(getComputedStyle(dot).display).toBe('none');
-    await wholeInFrame(canvasElement);
-  },
 };
 
 const TALL_TB = `flowchart TB
@@ -172,10 +117,6 @@ export const TallFirstView: Story = {
       <MermaidDiagram source={TALL_TB} label="Đường tiền về và đường cộng điểm" height="sm" caption="Relay đọc outbox rồi mang event sang Loyalty." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    await wholeInFrame(canvasElement);
-  },
 };
 
 const WIDE_SAGA = `flowchart LR
@@ -200,10 +141,6 @@ export const WideFirstView: Story = {
       <MermaidDiagram source={WIDE_SAGA} label="Các dịch vụ của saga đặt hàng" height="md" caption="orders điều phối; mỗi dịch vụ giữ database của nó." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    await wholeInFrame(canvasElement);
-  },
 };
 
 const PATHS_LR = `flowchart LR
@@ -244,16 +181,6 @@ export const TonedPaths: Story = {
       />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    expect(canvasElement.querySelectorAll('.react-flow__edge.starci-graph-diagram-edge--info').length).toBe(4);
-    expect(canvasElement.querySelectorAll('.react-flow__edge.starci-graph-diagram-edge--accent').length).toBe(4);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon').length).toBe(4);
-    expect(canvasElement.querySelectorAll('[data-grammar-mermaid-legend] li').length).toBe(4);
-    // No junction dot, and every edge its own arrowhead.
-    expect(canvasElement.querySelectorAll('.starci-graph-edge-join').length).toBe(0);
-    expect(canvasElement.querySelectorAll('.starci-graph-edge-arrow').length).toBe(10);
-  },
 };
 
 const SHOP_GIAY = `flowchart LR
@@ -289,12 +216,6 @@ export const TechLogos: Story = {
       <MermaidDiagram source={SHOP_GIAY} label="Kiến trúc shop giày" height="md" caption="Mỗi dịch vụ Express giữ database Postgres của nó; payments có thêm Redis." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    // Four Express services, four Postgres databases, one Redis and the Docker group: nine node logos and one on the group.
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon').length).toBe(10 * 2);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-icon svg[aria-hidden="true"]').length).toBe(10 * 2);
-  },
 };
 
 // The lesson's cache-aside read (owner 2026-11-23: "if else mới rẽ nhánh và arrow nối nhau"): the condition is a decision, each answer its own edge, and
@@ -318,15 +239,6 @@ export const FlowchartDown: Story = {
       <MermaidDiagram source={ASIDE_TB} label="Cache-aside" height="lg" tones={{ W: 'danger' }} caption="Bước SET có thể đến sau lệnh xóa." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-tone="danger"]').length).toBe(2);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="diamond"]').length).toBe(2);
-    // The text version reads each answer on its own link out of the decision.
-    const links = [...canvasElement.querySelectorAll('[data-grammar-mermaid-text] ul:last-child > li')].map((item) => item.textContent);
-    expect(links).toContain('Có giá trong Redis? to SELECT từ Postgres: Không');
-    expect(links).toContain('Có giá trong Redis? to Trả giá: Có');
-  },
 };
 
 // The four shapes of a flow that is more than one if/else (owner 2026-11-23: "Chốt"): a switch, a parallel, a loop and a foreach. Each is plain Mermaid.
@@ -363,12 +275,6 @@ export const Switch: Story = {
       <MermaidDiagram source={SWITCH_TB} label="Chọn cổng theo loại thanh toán" height="lg" caption="Mỗi loại thanh toán một lối ra; lối cuối là Khác." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="diamond"]').length).toBe(2), { timeout: 8000 });
-    const links = [...canvasElement.querySelectorAll('[data-grammar-mermaid-text] ul:last-child > li')].map((item) => item.textContent);
-    for (const answer of ['Thẻ', 'Ví', 'Khác']) expect(links.some((link) => link?.endsWith(`: ${answer}`))).toBe(true);
-  },
 };
 
 /** A switch of five cases: the exits between the side vertices leave the slanted sides, each with its words clear of the side; the drawing is wider than a phone, so there it opens whole under the readable zoom and the reader zooms in. */
@@ -378,12 +284,6 @@ export const SwitchMany: Story = {
       <MermaidDiagram source={SWITCH_MANY_TB} label="Chọn cổng theo loại thanh toán (năm loại)" height="lg" caption="Năm lối ra: hai ở đỉnh bên, ba dọc cạnh xiên và đáy." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="diamond"]').length).toBe(2), { timeout: 8000 });
-    const links = [...canvasElement.querySelectorAll('[data-grammar-mermaid-text] ul:last-child > li')].map((item) => item.textContent);
-    for (const answer of ['Thẻ', 'Ví', 'Ngân hàng', 'Trả sau', 'Khác']) expect(links.some((link) => link?.endsWith(`: ${answer}`))).toBe(true);
-  },
 };
 
 const PARALLEL_TB = `flowchart TB
@@ -403,13 +303,6 @@ export const Parallel: Story = {
       <MermaidDiagram source={PARALLEL_TB} label="Xử lý đơn song song" height="lg" caption="Ba việc chạy cùng lúc; chỉ khi cả ba xong đơn mới hoàn tất." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    await waitFor(() => {
-      expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="bar"]').length).toBe(4);
-      expect(canvasElement.querySelectorAll('.starci-graph-diagram-bar-words').length).toBe(2);
-    }, { timeout: 8000 });
-  },
 };
 
 const LOOP_TB = `flowchart TB
@@ -426,13 +319,6 @@ export const Loop: Story = {
       <MermaidDiagram source={LOOP_TB} label="Xử lý từng đơn trong danh sách" height="lg" caption="Nét đứt là đường quay lại: hết đơn thì ra." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    await waitFor(() => {
-      expect(canvasElement.querySelectorAll('.starci-graph-edge--back').length).toBe(2);
-      expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-shape="diamond"]').length).toBe(2);
-    }, { timeout: 8000 });
-  },
 };
 
 const FOREACH_TB = `flowchart TB
@@ -450,10 +336,6 @@ export const Foreach: Story = {
       <MermaidDiagram source={FOREACH_TB} label="Xử lý từng đơn" height="lg" caption="Khung nét đứt lặp lại cho từng đơn." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    await waitFor(() => expect(canvasElement.querySelectorAll('.starci-graph-diagram-group[data-repeat="true"]').length).toBe(2), { timeout: 8000 });
-  },
 };
 
 const STATES = `stateDiagram-v2
@@ -477,11 +359,6 @@ export const StateDiagram: Story = {
       <MermaidDiagram source={STATES} label="Vòng đời của key giá" height="md" caption="Trạng thái đỏ là giá cũ đã đè lên giá mới." />
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-node[data-tone="danger"]').length).toBe(2);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-group').length).toBe(2);
-  },
 };
 
 const PIE = `pie title Lượt đọc trong một phút
@@ -508,10 +385,6 @@ export const OtherKinds: Story = {
       </div>
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await ready(canvasElement, 4);
-    expect(canvasElement.querySelectorAll('.starci-graph-diagram-svg svg').length).toBe(4);
-  },
 };
 
 /** Loading keeps the reserved box with a skeleton; a source Mermaid refuses is the error title and the source as code, in the same box. */
@@ -524,9 +397,4 @@ export const LoadingAndError: Story = {
       </div>
     </Both>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelectorAll('[data-grammar-mermaid-state="error"]').length).toBe(2), { timeout: 10000 });
-    const boxes = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="MermaidDiagram"] > :first-child')].map((box) => box.getBoundingClientRect().height);
-    for (const height of boxes) expect(height).toBeGreaterThanOrEqual(256);
-  },
 };

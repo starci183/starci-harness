@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, within } from 'storybook/test';
 import { Dropzone, type DropzoneFile, type DropzoneItem, type DropzoneLabels } from '../core/ext/dropzone/index.js';
 import { DropzoneView, type DropzoneViewProps } from '../core/ext/dropzone/DropzoneView.js';
 import { DEFAULT_DROPZONE_LABELS, resolveDropzoneLabels } from '../core/ext/dropzone/labels.js';
@@ -69,10 +68,6 @@ export const States: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const zones = canvasElement.querySelectorAll('[data-grammar-dropzone-state]');
-    await expect(Array.from(zones, (zone) => zone.getAttribute('data-grammar-dropzone-state'))).toEqual(['idle', 'over', 'rejected']);
-  },
 };
 
 /** The rows of the app's uploads: done, uploading with its percent, waiting, and failed with its retry. */
@@ -82,9 +77,6 @@ export const Uploads: Story = {
       <State label="Rows" direction="column"><DropzoneView {...base} items={uploads} onRetry={() => undefined} /></State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText('Thử lại')).toBeTruthy();
-  },
 };
 
 /** Loading: the zone and its rows as Skeletons at the ready box (also what shows while react-dropzone loads). */

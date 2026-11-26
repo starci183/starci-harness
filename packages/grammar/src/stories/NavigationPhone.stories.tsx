@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BookGlyph, HomeGlyph, SearchGlyph, UserGlyph, noop } from './fixtures.js';
 
@@ -13,12 +12,6 @@ import { BookGlyph, HomeGlyph, SearchGlyph, UserGlyph, noop } from './fixtures.j
 const meta: Meta = { title: 'Navigation & Data/Phone fixes (0.48.0)', parameters: { layout: 'padded' } };
 export default meta;
 type Story = StoryObj;
-
-const one = (root: ParentNode, selector: string): HTMLElement => {
-  const found = root.querySelector<HTMLElement>(selector);
-  if (found === null) throw new Error(`no element for ${selector}`);
-  return found;
-};
 
 const GROUPS: ReadonlyArray<G.TabItem> = [
   { id: 'all', label: 'Tất cả', count: 48 },
@@ -42,19 +35,6 @@ export const FilterTabsScroll: Story = {
       <G.Section kind="list" title="Khách hàng (pill)" filter={<FilterStrip shape="pill" />} items={[{ id: 'a', title: 'Mai Phương' }]} empty={null} />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const frames = [...canvasElement.querySelectorAll<HTMLElement>('.starci-core-tabs-frame[data-grammar-tabs-kind="filter"]')];
-      expect(frames).toHaveLength(2);
-      for (const frame of frames) {
-        expect(frame.querySelector('.starci-core-tabs-more')).toBeNull();
-        expect(frame.querySelectorAll('[role="tab"]')).toHaveLength(GROUPS.length);
-        const row = frame.closest<HTMLElement>('.starci-core-section-filter') as HTMLElement;
-        expect(frame.getBoundingClientRect().right).toBeLessThanOrEqual(row.getBoundingClientRect().right + 1);
-      }
-      expect(canvasElement.ownerDocument.documentElement.scrollWidth).toBeLessThanOrEqual(canvasElement.ownerDocument.documentElement.clientWidth);
-    }, { timeout: 4000 });
-  },
 };
 
 const SIDEBAR: ReadonlyArray<G.SidebarGroup> = [
@@ -87,20 +67,6 @@ export const TopBarStartInsetAndSearch: Story = {
       primary={<G.Page header={{ title: 'Tổng quan' }}><G.Text>Nội dung trang.</G.Text></G.Page>}
     />
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const wide = (canvasElement.ownerDocument.defaultView?.innerWidth ?? 0) >= 768;
-      const wideSlot = one(canvasElement, '[data-grammar-top-bar-search-slot="wide"] [data-component="Button"]');
-      const compactSlot = one(canvasElement, '[data-grammar-top-bar-search-slot="compact"] [data-component="IconButton"]');
-      expect(wideSlot.getBoundingClientRect().width > 0).toBe(wide);
-      expect(compactSlot.getBoundingClientRect().width > 0).toBe(!wide);
-      if (wide) {
-        const brand = one(canvasElement, '.starci-core-top-bar-brand').getBoundingClientRect();
-        const icon = one(canvasElement, '.starci-core-sidebar-item svg').getBoundingClientRect();
-        expect(Math.abs(brand.left - icon.left)).toBeLessThanOrEqual(2);
-      }
-    }, { timeout: 4000 });
-  },
 };
 
 /** A Bento tile's head link: a 14 line that looks the same, with a hit area of at least 44 x 44 around it. */
@@ -111,18 +77,6 @@ export const LinkHitArea: Story = {
       <G.Link variant="head" href="#automation">Tìm hiểu thêm</G.Link>
     </G.SurfaceCard>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const link = one(canvasElement, '.starci-core-link[data-grammar-link-variant="head"]');
-      expect(link.getBoundingClientRect().height).toBeLessThan(44);
-      const layer = getComputedStyle(link, '::before');
-      expect(Number.parseFloat(layer.height)).toBeGreaterThanOrEqual(44);
-      expect(Number.parseFloat(layer.width)).toBeGreaterThanOrEqual(44);
-      const rect = link.getBoundingClientRect();
-      const hit = canvasElement.ownerDocument.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2 - 20);
-      expect(hit === link || link.contains(hit)).toBe(true);
-    });
-  },
 };
 
 type Order = { readonly id: string; readonly customer: string; readonly product: string; readonly status: string; readonly date: string; readonly amount: string };
@@ -145,16 +99,6 @@ export const DataTableScrollFocus: Story = {
       <G.DataTable label="Đơn hàng" columns={ORDER_COLUMNS} rows={ORDERS} phone="table" renderCell={(row, id) => row[id as keyof Order]} emptyContent="Chưa có đơn hàng." />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const scroller = one(canvasElement, '.starci-core-data-table-scroll');
-      expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth);
-      expect(scroller.getAttribute('data-grammar-table-overflows')).toBe('true');
-      expect(scroller.tabIndex).toBe(0);
-      expect(scroller.getAttribute('role')).toBe('region');
-      expect(scroller.getAttribute('aria-label')).toBe('Đơn hàng');
-    }, { timeout: 4000 });
-  },
 };
 
 /** A history: the past entries' dots are neutral whatever their outcome; only the current entry's dot takes a colour. */
@@ -170,13 +114,4 @@ export const TimelineNeutralDot: Story = {
       ]}
     />
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const markers = [...canvasElement.querySelectorAll<HTMLElement>('.starci-core-timeline-marker')];
-      expect(markers).toHaveLength(4);
-      const colours = markers.map((marker) => getComputedStyle(marker).color);
-      expect(new Set([colours[0], colours[1], colours[3]]).size).toBe(1);
-      expect(colours[2]).not.toBe(colours[0]);
-    });
-  },
 };

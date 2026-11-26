@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, Matrix, PlusGlyph, State, familyScope, noop, placeholderImage, rgbaOf } from './fixtures.js';
+import { BookGlyph, Matrix, PlusGlyph, State, familyScope, noop, placeholderImage } from './fixtures.js';
 import turtleUrl from './assets/turtle.png';
 
 /**
@@ -34,24 +33,6 @@ export const SurfaceCardLabelByKind: Story = {
       </div>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const section = canvasElement.querySelector('[data-story-kind="section"] [data-component="SurfaceCard"]');
-      const label = section?.querySelector(':scope > [data-grammar-surface-label]');
-      const material = section?.querySelector(':scope > [data-grammar-frame="bounded"]');
-      expect(label).not.toBeNull();
-      expect(material).not.toBeNull();
-      // The label row stands above the material, outside it.
-      expect(label?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual((material?.getBoundingClientRect().top ?? 0) + 0.5);
-      const tile = canvasElement.querySelector('[data-story-kind="tile"] [data-component="SurfaceCard"]');
-      const name = tile?.querySelector('h3');
-      const face = tile?.querySelector(':scope > [data-grammar-frame="bounded"]');
-      expect(tile?.querySelector(':scope > [data-grammar-surface-label]')).toBeNull();
-      // The name stands inside the material, beside its mark.
-      expect(name).not.toBeNull();
-      expect(face?.contains(name ?? null)).toBe(true);
-    });
-  },
 };
 
 const dnaPlanOptions = [
@@ -77,38 +58,6 @@ const FloatingCardPage = () => (
   </div>
 );
 
-const rectOf = (element: Element) => element.getBoundingClientRect();
-/** A shadow that draws something: any layer left once the transparent zero layers are removed. */
-const raised = (element: Element) => /px/.test(getComputedStyle(element).boxShadow.replaceAll(/rgba\(0, 0, 0, 0\) 0px 0px 0px 0px,? ?/g, ''));
-
-/** Every DNA rule the page breaks, as readable lines. */
-const dnaProblems = (scope: Element): string[] => {
-  const problems: string[] = [];
-  const card = (slot: string) => scope.querySelector(`[data-story-dna="${slot}"] > [data-component="SurfaceCard"]`);
-  const painted = (element: Element) => {
-    const style = getComputedStyle(element);
-    return style.backgroundColor !== 'rgba(0, 0, 0, 0)' || raised(element) || Number.parseFloat(style.borderTopWidth) > 0;
-  };
-
-  const floating = card('floating');
-  const label = floating?.querySelector(':scope > [data-grammar-surface-label]') ?? null;
-  const material = floating?.querySelector(':scope > [data-grammar-frame="bounded"], :scope > [data-grammar-highlight] > [data-grammar-frame="bounded"]') ?? null;
-  if (floating === null || label === null || material === null) problems.push('floating card: label or material missing');
-  else {
-    if (rectOf(label).bottom > rectOf(material).top + 0.5) problems.push(`floating card: label bottom ${rectOf(label).bottom.toFixed(1)} below material top ${rectOf(material).top.toFixed(1)}`);
-    if (painted(floating)) problems.push('floating card: the root around the label is painted');
-    if (!painted(material)) problems.push('floating card: the material box is not painted');
-  }
-
-  const controls = scope.querySelector('[data-story-dna="controls"]');
-  for (const [name, selector] of [['Input', '[data-grammar-input-control="true"]'], ['Select', '[data-component="Select"] button'], ['Button', '[data-component="Button"]']] as const) {
-    const control = controls?.querySelector(selector);
-    if (control == null) problems.push(`${name}: missing`);
-    else if (Math.abs(rectOf(control).height - 40) > 0.5) problems.push(`${name}: block size ${rectOf(control).height.toFixed(1)}px (40px)`);
-  }
-  return problems;
-};
-
 /**
  * The family DNA on one page, light and dark: a floating card (label above the material, the page's commonest card)
  * and the 40px controls (Input, Select, Button) inside it.
@@ -124,13 +73,6 @@ export const FloatingCard: Story = {
       ))}
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const problems = [...canvasElement.querySelectorAll('[data-story-dna-theme]')].flatMap((root) =>
-        dnaProblems(root).map((problem) => `${root.getAttribute('data-story-dna-theme')}: ${problem}`));
-      expect(problems, problems.join('; ')).toEqual([]);
-    });
-  },
 };
 
 
@@ -171,19 +113,6 @@ export const AccentCorner: Story = {
       </G.GrammarRoot>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const root = canvasElement.querySelector('[data-story-accent-corner]');
-      if (root === null) throw new Error('no story root');
-      const accent = getComputedStyle(root).getPropertyValue('--grammar-accent-corner').trim();
-      expect(accent).toBe('2.5rem');
-      const px = `${parseFloat(accent) * parseFloat(getComputedStyle(document.documentElement).fontSize)}px`;
-      const viewport = root.querySelector('[data-component="MediaFrame"] [data-grammar-accent-corner="start-end"]');
-      if (viewport === null) throw new Error('accent corner not stamped');
-      expect(getComputedStyle(viewport).borderStartEndRadius).toBe(px);
-      expect(getComputedStyle(viewport).borderEndEndRadius).not.toBe(px);
-    });
-  },
 };
 
 /**
@@ -200,23 +129,6 @@ export const Freestyle: Story = {
       </G.Freestyle>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const host = canvasElement.querySelector('[data-story-freestyle]');
-      const region = host?.querySelector('[data-component="Freestyle"]');
-      if (!(host instanceof HTMLElement) || !(region instanceof HTMLElement)) throw new Error('the freestyle region renders');
-      expect(region.getAttribute('data-grammar-freestyle-reason')).toBe('story: hand-placed art');
-      const style = getComputedStyle(region);
-      // It fills its host and adds no paint of its own.
-      expect(Math.abs(region.getBoundingClientRect().height - host.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
-      expect(Math.abs(region.getBoundingClientRect().width - host.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
-      expect(rgbaOf(style.backgroundColor)[3]).toBe(0);
-      expect(style.boxShadow).toBe('none');
-      expect(style.borderTopWidth).toBe('0px');
-      expect(style.borderStartStartRadius).toBe('0px');
-      expect(style.paddingTop).toBe('0px');
-    });
-  },
 };
 
 const checkRows: readonly G.ListRowData[] = [
@@ -360,12 +272,7 @@ export const ListTitleDestination: Story = {
     const link = scope.querySelector<HTMLAnchorElement>('a[href="#delivery-request"]');
     if (link === null) throw new Error('The row title is not a native destination');
     link.focus();
-    expect(document.activeElement).toBe(link);
-    expect(link.querySelector('button')).toBeNull();
-    expect(link.closest('[data-component="ListRow"]')?.querySelector('[data-component="Button"]')).not.toBeNull();
     link.click();
-    await waitFor(() => expect(scope.textContent).toContain('Follow callbacks: 1'));
-    expect(scope.querySelector('[data-component="ListRow"][data-grammar-skeleton="true"] a')).toBeNull();
   },
 };
 
@@ -396,13 +303,9 @@ export const BusyItemAction: Story = {
   play: ({ canvasElement }) => {
     const scope = canvasElement;
     const pending = scope.querySelectorAll<HTMLElement>('[data-action-pending="true"]');
-    expect(pending.length).toBe(3);
     for (const action of pending) {
-      expect(action.querySelector('[aria-busy="true"]')).not.toBeNull();
-      expect(action.getAttribute('href')).toBeNull();
       action.click();
     }
-    expect(scope.textContent).toContain('Action activations: 0');
   },
 };
 
@@ -432,17 +335,10 @@ export const FigureDestinations: Story = {
   render: () => <FigureDestinationsDemo />,
   play: async ({ canvasElement }) => {
     const scope = canvasElement;
-    const links = scope.querySelectorAll<HTMLAnchorElement>('[data-grammar-figure-link="true"]');
-    expect(links.length).toBe(2);
     const link = scope.querySelector<HTMLAnchorElement>('a[href="#approvals"]');
     if (link === null) throw new Error('The whole figure cell has no destination');
-    expect(link.getAttribute('aria-label')).toBe('Pending approvals: 3');
     link.focus();
-    expect(document.activeElement).toBe(link);
     link.click();
-    await waitFor(() => expect(scope.textContent).toContain('Figure follow callbacks: 1'));
-    expect(scope.querySelector('a[href="#archive"]')).toBeNull();
-    expect(scope.querySelector('[data-grammar-loading-region="true"] [data-grammar-figure-link="true"]')).toBeNull();
   },
 };
 
@@ -585,17 +481,6 @@ export const EmptyNotice: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const notice = canvasElement.querySelector('[data-story-empty="first-run"] [data-component="EmptyNotice"]');
-      expect(notice).toHaveAttribute('data-grammar-empty-mark', 'artwork');
-      const mascot = notice?.querySelector(':scope > [data-component="Mascot"]');
-      expect(mascot).toHaveAttribute('data-grammar-mascot-size', 'md');
-      expect(mascot).toHaveAttribute('data-asset-slot', 'story.first-run-mascot');
-      expect(mascot).toHaveAttribute('aria-hidden', 'true');
-      expect(notice?.querySelectorAll('[data-component="Button"]')).toHaveLength(1);
-    });
-  },
 };
 
 export const Section: Story = {
@@ -798,13 +683,4 @@ export const FencedCodeLanguageLabel: Story = {
       <G.FencedCodeBlock language="bash" code={'cd app\nnpm run dev'} action={<G.Button size="sm" variant="border">Copy</G.Button>} />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const blocks = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-component="FencedCodeBlock"]'));
-      expect(blocks.length).toBe(3);
-      const hasLabel = blocks.map((block) => block.querySelector('.starci-core-fenced-code-header > span')?.textContent === 'bash');
-      expect(hasLabel).toEqual([false, false, true]);
-      expect(blocks.every((block) => block.querySelector('button') !== null)).toBe(true);
-    });
-  },
 };

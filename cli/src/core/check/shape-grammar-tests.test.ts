@@ -55,7 +55,7 @@ void test("the Grammar's source, stories, static checks and the other packages' 
         "packages/grammar/src/core/branch/Tabs/index.tsx",
         "packages/grammar/src/core/branch/Tabs/Tabs.stories.tsx",
         "packages/grammar/scripts/check-tone-tokens.mts",
-        "packages/grammar/scripts/theme-proof/app-theme.css",
+        "packages/grammar/scripts/shoot.mts",
         "packages/grammar/tsconfig.build.json",
         "packages/hfs/src/new-code.spec.mts",
         "cli/src/core/check/ci.test.ts",

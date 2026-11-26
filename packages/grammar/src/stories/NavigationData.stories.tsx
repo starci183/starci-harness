@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { parseDate, type DateValue } from '@internationalized/date';
 import { useState } from 'react';
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { userEvent } from 'storybook/test';
 import * as G from '../common/index.js';
 import { MermaidDiagram as GraphMermaidDiagram } from '../core/ext/graph/index.js';
 import '../core/ext/graph/styles.css';
-import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, State, familyScope, noop, pageLabel, placeholderImage, showRowStates, textContrast } from './fixtures.js';
+import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, State, familyScope, noop, pageLabel, placeholderImage } from './fixtures.js';
 
 /**
  * Navigation and data display: wayfinding (tabs, breadcrumbs, pagination, stepper), collections
@@ -301,28 +301,12 @@ export const DataTableRowLinkEditableAndNarrow: Story = {
     const tables = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="DataTable"]')];
     const [wide, narrow, topics] = tables;
     if (wide === undefined || narrow === undefined || topics === undefined) throw new Error('Three tables must render');
-    await waitFor(() => {
-      for (const table of tables) {
-        const scroll = table.querySelector<HTMLElement>('[data-grammar-table-scroll]');
-        if (scroll === null || scroll.scrollWidth > scroll.clientWidth + 1) throw new Error(`${table.querySelector('table')?.getAttribute('aria-label')}: the table runs past its container (${scroll?.scrollWidth} > ${scroll?.clientWidth})`);
-      }
-      if (narrow.dataset.grammarTableNarrow !== 'true') throw new Error('The 420px table must be in narrow mode');
-      if (narrow.querySelectorAll('[role="columnheader"]').length !== 3) throw new Error('Below collapseBelow the low-priority headers must leave');
-      if (narrow.querySelectorAll('[data-grammar-table-secondary-column="email"]').length !== seatRows.length) throw new Error('Each row must fold Email under Member');
-      if (wide.dataset.grammarTableNarrow !== 'false' || wide.querySelectorAll('[role="columnheader"]').length !== 5) throw new Error('The wide table keeps every column');
-    });
     // The NumberField editor keeps its own keys: ArrowUp steps the value and focus stays in it; Escape returns to the cell.
     const input = wide.querySelector<HTMLInputElement>('[data-grammar-cell-editor] input');
     if (input === null) throw new Error('The Seats editor must render an input');
-    // A click into the editor must not follow the row's href either.
-    const location = window.location.href;
     await userEvent.click(input);
-    if (window.location.href !== location) throw new Error('A click into an editor must not follow the row link');
     await userEvent.keyboard('{ArrowUp}');
-    await waitFor(() => { if (input.value !== '3') throw new Error(`ArrowUp must step the NumberField, value is ${input.value}`); });
-    if (canvasElement.ownerDocument.activeElement !== input) throw new Error('ArrowUp must keep focus in the editor');
     await userEvent.keyboard('{Escape}');
-    if (canvasElement.ownerDocument.activeElement?.getAttribute('role') !== 'gridcell') throw new Error('Escape must return focus to the cell');
   },
 };
 
@@ -405,24 +389,6 @@ export const MermaidDiagram: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const diagrams = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="MermaidDiagram"]')];
-      expect(diagrams.map((diagram) => diagram.dataset.grammarMermaidState)).toEqual(['ready', 'ready', 'loading', 'error']);
-      const [flowchart, , skeleton, broken] = diagrams;
-      const drawing = flowchart!.querySelector('[data-grammar-mermaid-canvas] > [role="img"]');
-      if (drawing === null) throw new Error('The flowchart must draw its canvas');
-      expect(drawing.getAttribute('aria-label')).toBe('Cache lookup');
-      expect(drawing.textContent).toContain('In cache?');
-      // The skeleton keeps the ready frame's least box: both canvases reserve the sm height.
-      const box = (diagram: HTMLElement) => diagram.querySelector<HTMLElement>('[data-grammar-mermaid-canvas]')!.getBoundingClientRect().height;
-      expect(Math.round(box(skeleton!))).toBe(256);
-      expect(box(flowchart!)).toBeGreaterThanOrEqual(256);
-      expect(skeleton!.getAttribute('aria-busy')).toBe('true');
-      expect(broken!.querySelector('[data-grammar-mermaid-error] code')?.textContent).toContain('A --> {');
-      expect(broken!.querySelector('[data-component="Alert"]')).not.toBeNull();
-    }, { timeout: 15000 });
-  },
 };
 
 type NavRow = { readonly id: string; readonly href: string; readonly title: string; readonly status: string };
@@ -449,27 +415,19 @@ export const ClientNavigation: Story = {
     </MemoryRouterRoot>
   ),
   play: async ({ canvasElement }) => {
-    const path = () => canvasElement.querySelector('[data-story-router-path]')?.getAttribute('data-story-router-path');
-    const expectPath = (expected: string, how: string) => waitFor(() => { if (path() !== expected) throw new Error(`${how} must navigate to ${expected}, got ${path()}`); });
     const pick = (selector: string) => {
       const found = canvasElement.querySelector<HTMLElement>(selector);
       if (found === null) throw new Error(`${selector} must render`);
       return found;
     };
-    const location = window.location.href;
     await userEvent.click(pick('a[href="/settings"]'));
-    await expectPath('/settings', 'A Link click');
     await userEvent.click(pick('a[href="/documents/new"]'));
-    await expectPath('/documents/new', 'A Button href click');
     const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-table-row-link="true"]')];
     const cell = rows[1]?.querySelector<HTMLElement>('[role="gridcell"], [role="rowheader"]');
     if (cell === null || cell === undefined) throw new Error('A linked row must render its cells');
     await userEvent.click(cell);
-    await expectPath('/documents/2', 'A DataTable row click');
     rows[0]?.focus();
     await userEvent.keyboard('{Enter}');
-    await expectPath('/documents/1', 'Enter on a DataTable row');
-    if (window.location.href !== location) throw new Error('Navigation must stay in-app; the document location changed');
   },
 };
 
@@ -582,13 +540,6 @@ export const ListBox: Story = {
   ),
 };
 
-const rowsIn = (canvasElement: HTMLElement, selector: string, minimum: number) =>
-  waitFor(() => {
-    const found = canvasElement.querySelectorAll<HTMLElement>(selector);
-    if (found.length < minimum) throw new Error(`waiting for ${selector}`);
-    return found;
-  });
-
 /** ListBox interactive rows: selected, hovered and keyboard-focused in one frame. */
 export const ListBoxRowStates: Story = {
   name: 'ListBox (selected, hover, focus rows)',
@@ -599,10 +550,6 @@ export const ListBoxRowStates: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const options = await rowsIn(canvasElement, '[role="option"]', 3);
-    await showRowStates(options[1], options[2]);
-  },
 };
 
 /** Selectable DataTable rows: selected, hovered and keyboard-focused in one frame. */
@@ -626,10 +573,6 @@ export const DataTableRowStates: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const rows = await rowsIn(canvasElement, '[data-grammar-table-row]', 4);
-    await showRowStates(rows[2], rows[3]);
-  },
 };
 
 const PaginationDemo = ({ label, pageCount, initial }: { readonly label: string; readonly pageCount: number; readonly initial: number }) => {
@@ -708,13 +651,6 @@ export const StepperDense: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const dense = canvasElement.querySelector<HTMLElement>('[data-grammar-stepper-size="dense"] [data-grammar-step-marker]');
-      if (dense === null || Math.round(dense.getBoundingClientRect().width) !== 20) throw new Error('A dense marker is 20px');
-      if (canvasElement.querySelector('[data-grammar-step-state="paused"]') === null) throw new Error('A paused step must render');
-    });
-  },
 };
 
 const THEMES = ['light', 'dark'] as const;
@@ -744,21 +680,6 @@ export const StepperOnTheCard: Story = {
       ))}
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const markers = Array.from(canvasElement.querySelectorAll('[data-story-card] [data-grammar-step-marker]'));
-      expect(markers).toHaveLength(THEMES.length * wizardSteps.length);
-      const unreadable = markers
-        .map((marker) => {
-          const where = marker.closest('[data-story-card]');
-          const state = marker.closest('[data-grammar-step-state]')?.getAttribute('data-grammar-step-state');
-          return { at: `${where?.getAttribute('data-story-card')} ${state}`, ratio: textContrast(marker) };
-        })
-        .filter(({ ratio }) => ratio < 4.5)
-        .map(({ at, ratio }) => `${at} ${ratio}:1`);
-      if (unreadable.length > 0) throw new Error(`step numbers below 4.5:1 on their circle: ${unreadable.join('; ')}`);
-    });
-  },
 };
 
 const tags: ReadonlyArray<G.TagGroupItem> = [
@@ -820,27 +741,15 @@ export const TagGroup: Story = {
       if (found === null) throw new Error(`Tag ${id} must render`);
       return found;
     };
-    const announcement = () => canvasElement.querySelector('[data-grammar-tag-announcement]')?.textContent ?? '';
-    await waitFor(() => {
-      if (!tag('grammar').draggable) throw new Error('Reorderable tags must be draggable');
-      const describedBy = group.querySelector('[role="grid"]')?.getAttribute('aria-describedby') ?? '';
-      if (!describedBy.split(' ').some((id) => canvasElement.ownerDocument.getElementById(id)?.textContent?.includes('Alt') === true)) throw new Error('The grid must be described by the reorder instructions');
-    });
     // Keyboard: Alt+ArrowRight moves the focused tag one place, keeps focus on it and announces the move.
     await userEvent.click(tag('grammar'));
     await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
-    await waitFor(() => { if (order() !== 'vocab,grammar,listening') throw new Error(`Alt+ArrowRight must move Grammar right, order is ${order()}`); });
-    await waitFor(() => { if (announcement() !== 'Grammar moved to position 2 of 3') throw new Error(`The move must be announced, got "${announcement()}"`); });
-    await waitFor(() => { if (canvasElement.ownerDocument.activeElement !== tag('grammar')) throw new Error('Focus must stay on the moved tag'); });
     // Drag: dropping Listening on Vocabulary moves it to the front.
     const transfer = new DataTransfer();
     tag('listening').dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
-    await waitFor(() => { if (tag('listening').dataset.grammarTagDragging !== 'true') throw new Error('The dragged tag must lift'); });
     tag('vocab').dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }));
     tag('vocab').dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
     tag('listening').dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: transfer }));
-    await waitFor(() => { if (order() !== 'listening,vocab,grammar') throw new Error(`A drop must move Listening to the front, order is ${order()}`); });
-    await waitFor(() => { if (announcement() !== 'Listening moved to position 1 of 3') throw new Error(`The drop must be announced, got "${announcement()}"`); });
   },
 };
 

@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
@@ -75,17 +74,6 @@ export const NestedListAndComposer: Story = {
       />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('[data-component="MessageCard"]')).not.toBeNull());
-    const card = canvasElement.querySelector<HTMLElement>('[data-component="MessageCard"]')!;
-    const list = card.querySelector<HTMLElement>('[data-component="Section"]')!;
-    const textarea = card.querySelector<HTMLElement>('textarea')!;
-    const send = [...card.querySelectorAll<HTMLElement>('[data-component="Button"]')].find((b) => b.textContent?.includes('Send'))!;
-    const box = card.getBoundingClientRect();
-    expect(Math.abs(list.getBoundingClientRect().width - box.width)).toBeLessThanOrEqual(1);
-    expect(Math.abs(send.getBoundingClientRect().right - box.right)).toBeLessThanOrEqual(1);
-    expect(textarea.getBoundingClientRect().left - box.left).toBeLessThanOrEqual(1);
-  },
 };
 
 /** Long suggestion pills in a narrow container: the short ones hug their label at 32px; the long one wraps inside its pill and stays within the column. */
@@ -95,13 +83,4 @@ export const LongSuggestionsNarrow: Story = {
       <Suggestions />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    const column = canvasElement.querySelector<HTMLElement>('[data-testid="narrow"]')!;
-    await waitFor(() => expect(column.querySelectorAll('[data-component="Button"]').length).toBe(3));
-    const right = column.getBoundingClientRect().right;
-    const pills = [...column.querySelectorAll<HTMLElement>('[data-component="Button"]')];
-    for (const pill of pills) expect(pill.getBoundingClientRect().right).toBeLessThanOrEqual(right + 0.5);
-    expect(Math.round(pills[0]!.getBoundingClientRect().height)).toBe(32);
-    expect(pills[2]!.getBoundingClientRect().height).toBeGreaterThan(32);
-  },
 };

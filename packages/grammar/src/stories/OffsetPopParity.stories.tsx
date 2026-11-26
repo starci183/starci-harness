@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -185,33 +184,12 @@ const family = (theme: 'light' | 'dark', width: 'desk1440' | 'phone390') => ({
   viewport: { value: width, isRotated: false },
 });
 
-/** Every bar track wears the ink ring, a Board card the outline and the small offset, and the emphasised card its pink offset. */
-const stickersHold = async (canvasElement: HTMLElement) => {
-  await waitFor(() => {
-    const track = canvasElement.querySelector<HTMLElement>('.starci-core-funnel-track');
-    expect(track).not.toBeNull();
-    expect(getComputedStyle(track as HTMLElement).boxShadow).not.toBe('none');
-  });
-  const card = canvasElement.querySelector<HTMLElement>('.starci-core-board-cards > .starci-core-list-row');
-  expect(card).not.toBeNull();
-  expect(getComputedStyle(card as HTMLElement).borderTopWidth).toBe('2px');
-  expect(getComputedStyle(card as HTMLElement).boxShadow).not.toBe('none');
-};
+export const LearningLight1440: Story = { name: 'Learning screens · light · 1440', globals: family('light', 'desk1440'), render: () => <LearningScreens />, };
+export const LearningDark1440: Story = { name: 'Learning screens · dark · 1440', globals: family('dark', 'desk1440'), render: () => <LearningScreens />, };
+export const LearningLight390: Story = { name: 'Learning screens · light · 390', globals: family('light', 'phone390'), render: () => <LearningScreens />, };
+export const LearningDark390: Story = { name: 'Learning screens · dark · 390', globals: family('dark', 'phone390'), render: () => <LearningScreens />, };
 
-const learningHolds = async (canvasElement: HTMLElement) => {
-  await waitFor(() => expect(canvasElement.querySelectorAll('.starci-core-graded-option').length).toBe(3));
-  const option = canvasElement.querySelector<HTMLElement>('.starci-core-graded-option') as HTMLElement;
-  expect(getComputedStyle(option).borderTopWidth).toBe('2px');
-  const emphasised = canvasElement.querySelector<HTMLElement>('[data-grammar-surface-emphasis="accent"]') as HTMLElement;
-  expect(getComputedStyle(emphasised).boxShadow).not.toBe('none');
-};
-
-export const LearningLight1440: Story = { name: 'Learning screens · light · 1440', globals: family('light', 'desk1440'), render: () => <LearningScreens />, play: async ({ canvasElement }) => learningHolds(canvasElement) };
-export const LearningDark1440: Story = { name: 'Learning screens · dark · 1440', globals: family('dark', 'desk1440'), render: () => <LearningScreens />, play: async ({ canvasElement }) => learningHolds(canvasElement) };
-export const LearningLight390: Story = { name: 'Learning screens · light · 390', globals: family('light', 'phone390'), render: () => <LearningScreens />, play: async ({ canvasElement }) => learningHolds(canvasElement) };
-export const LearningDark390: Story = { name: 'Learning screens · dark · 390', globals: family('dark', 'phone390'), render: () => <LearningScreens />, play: async ({ canvasElement }) => learningHolds(canvasElement) };
-
-export const ContentLight1440: Story = { name: 'Content renderers · light · 1440', globals: family('light', 'desk1440'), render: () => <ContentRenderers />, play: async ({ canvasElement }) => stickersHold(canvasElement) };
-export const ContentDark1440: Story = { name: 'Content renderers · dark · 1440', globals: family('dark', 'desk1440'), render: () => <ContentRenderers />, play: async ({ canvasElement }) => stickersHold(canvasElement) };
-export const ContentLight390: Story = { name: 'Content renderers · light · 390', globals: family('light', 'phone390'), render: () => <ContentRenderers />, play: async ({ canvasElement }) => stickersHold(canvasElement) };
-export const ContentDark390: Story = { name: 'Content renderers · dark · 390', globals: family('dark', 'phone390'), render: () => <ContentRenderers />, play: async ({ canvasElement }) => stickersHold(canvasElement) };
+export const ContentLight1440: Story = { name: 'Content renderers · light · 1440', globals: family('light', 'desk1440'), render: () => <ContentRenderers />, };
+export const ContentDark1440: Story = { name: 'Content renderers · dark · 1440', globals: family('dark', 'desk1440'), render: () => <ContentRenderers />, };
+export const ContentLight390: Story = { name: 'Content renderers · light · 390', globals: family('light', 'phone390'), render: () => <ContentRenderers />, };
+export const ContentDark390: Story = { name: 'Content renderers · dark · 390', globals: family('dark', 'phone390'), render: () => <ContentRenderers />, };

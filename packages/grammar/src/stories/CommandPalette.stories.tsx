@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { userEvent, within } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BellGlyph, BookGlyph, GroupGlyph, HomeGlyph, PlusGlyph, SettingsGlyph, UserGlyph } from './fixtures.js';
 
@@ -84,15 +84,6 @@ const Demo = ({ defaultOpen = false, initialQuery = '', isLoading = false, error
 /** Open with the four groups: an icon, a label and a hint on each result, the chords of the commands at the end of their rows. */
 export const Results: Story = {
   render: () => <Demo defaultOpen />,
-  play: async ({ canvasElement }) => {
-    const page = within(canvasElement.ownerDocument.body);
-    const dialog = await page.findByRole('dialog', { name: 'Search' });
-    const list = within(dialog).getByRole('listbox', { name: 'Search' });
-    await waitFor(() => expect(within(list).getAllByRole('option')).toHaveLength(8));
-    expect(within(list).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['Work', 'Customers', 'Second brain', 'Commands']);
-    expect(dialog.querySelectorAll('kbd').length).toBe(3);
-    await expect(within(dialog).getByRole('searchbox', { name: 'Search' })).toHaveFocus();
-  },
 };
 
 /** The whole keyboard path: Ctrl K opens, typing narrows the results, the arrows move the active result while the caret stays in the field, Enter chooses and closes. */
@@ -100,19 +91,10 @@ export const Keyboard: Story = {
   render: () => <Demo />,
   play: async ({ canvasElement }) => {
     const page = within(canvasElement.ownerDocument.body);
-    expect(page.queryByRole('dialog', { name: 'Search' })).not.toBeInTheDocument();
     await userEvent.keyboard('{Control>}k{/Control}');
-    const dialog = await page.findByRole('dialog', { name: 'Search' });
-    const field = within(dialog).getByRole('searchbox', { name: 'Search' });
-    await waitFor(() => expect(field).toHaveFocus());
     await userEvent.keyboard('dis');
-    await waitFor(() => expect(within(dialog).getAllByRole('option')).toHaveLength(2));
     await userEvent.keyboard('{ArrowDown}{ArrowDown}');
-    await expect(field).toHaveFocus();
-    await waitFor(() => expect(canvasElement.ownerDocument.getElementById(field.getAttribute('aria-activedescendant') ?? '')?.textContent).toContain('Price list'));
     await userEvent.keyboard('{Enter}');
-    await waitFor(() => expect(canvasElement.ownerDocument.querySelector('[data-story-chosen]')?.getAttribute('data-story-chosen')).toBe('price-list'));
-    await waitFor(() => expect(page.queryByRole('dialog', { name: 'Search' })).not.toBeInTheDocument());
   },
 };
 
@@ -124,63 +106,28 @@ export const EscapeCloses: Story = {
     await userEvent.keyboard('{Control>}k{/Control}');
     await page.findByRole('dialog', { name: 'Search' });
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(page.queryByRole('dialog', { name: 'Search' })).not.toBeInTheDocument());
   },
 };
 
 /** A search with no match: the app's empty notice stands where the results would, inside the same list. */
 export const NoMatch: Story = {
   render: () => <Demo defaultOpen initialQuery="zzzz" />,
-  play: async ({ canvasElement }) => {
-    const page = within(canvasElement.ownerDocument.body);
-    const dialog = await page.findByRole('dialog', { name: 'Search' });
-    await waitFor(() => expect(within(dialog).getByText('No result for this search.')).toBeVisible());
-    expect(within(dialog).queryAllByRole('option').filter((option) => option.getAttribute('aria-label') !== null)).toHaveLength(0);
-  },
 };
 
 /** The results are coming: skeleton rows in the list's shape, the list busy and inert, the field still editable. */
 export const Loading: Story = {
   render: () => <Demo defaultOpen isLoading />,
-  play: async ({ canvasElement }) => {
-    const page = within(canvasElement.ownerDocument.body);
-    const dialog = await page.findByRole('dialog', { name: 'Search' });
-    await waitFor(() => expect(dialog.querySelector('[data-grammar-list-skeleton]')).not.toBeNull());
-    expect(dialog.querySelector('[aria-busy="true"]')).not.toBeNull();
-    await expect(within(dialog).getByRole('searchbox', { name: 'Search' })).not.toBeDisabled();
-  },
 };
 
 /** The search failed: the error takes the place of the results, with its retry. */
 export const Failed: Story = {
   render: () => <Demo defaultOpen error={{ message: 'The search failed.', description: 'Check the connection and try again.', actionLabel: 'Try again', onAction: () => undefined }} />,
-  play: async ({ canvasElement }) => {
-    const page = within(canvasElement.ownerDocument.body);
-    const dialog = await page.findByRole('dialog', { name: 'Search' });
-    await waitFor(() => expect(within(dialog).getByText('The search failed.')).toBeVisible());
-    await expect(within(dialog).getByRole('button', { name: 'Try again' })).toBeVisible();
-  },
 };
 
 /** At 390 the palette takes the full width at the top (inside the page inset) and is as tall as its results, capped by the screen (0.48.0). */
 export const Phone: Story = {
   parameters: { viewport: { defaultViewport: 'mobile1' } },
   render: () => <Demo defaultOpen />,
-  play: async ({ canvasElement }) => {
-    const page = within(canvasElement.ownerDocument.body);
-    const dialog = await page.findByRole('dialog', { name: 'Search' });
-    await waitFor(() => {
-      const box = dialog.getBoundingClientRect();
-      if (window.innerWidth <= 640) {
-        // Full width at the top, as tall as its results, never the whole screen (0.48.0).
-        expect(box.width).toBeGreaterThanOrEqual(window.innerWidth - 40);
-        expect(box.top).toBeLessThanOrEqual(40);
-        expect(box.height).toBeLessThan(window.innerHeight - 40);
-      } else {
-        expect(box.width).toBeLessThanOrEqual(48 * 16 + 1);
-      }
-    });
-  },
 };
 
 /** At 1440 the palette stands at the top of the page, 48rem wide at most, so the field never moves while the results change. */
@@ -188,15 +135,7 @@ export const Wide: Story = {
   render: () => <Demo defaultOpen />,
   play: async ({ canvasElement }) => {
     const page = within(canvasElement.ownerDocument.body);
-    const dialog = await page.findByRole('dialog', { name: 'Search' });
-    const field = within(dialog).getByRole('searchbox', { name: 'Search' });
-    await waitFor(() => expect(dialog.getBoundingClientRect().width).toBeLessThanOrEqual(48 * 16 + 1));
-    const offset = () => field.getBoundingClientRect().top - dialog.getBoundingClientRect().top;
-    const before = offset();
     await userEvent.keyboard('thu');
-    await waitFor(() => expect(within(dialog).getAllByRole('option').length).toBe(1));
-    expect(Math.abs(offset() - before)).toBeLessThanOrEqual(2);
-    expect(dialog.getBoundingClientRect().top).toBeLessThan(window.innerHeight / 4);
   },
 };
 

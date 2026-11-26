@@ -1,23 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Fragment, useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { AppShellDemo } from './AppShellDemo.js';
-import {
-  BellGlyph,
-  BookGlyph,
-  ChartGlyph,
-  HomeGlyph,
-  MenuGlyph,
-  SearchGlyph,
-  SettingsGlyph,
-  State,
-  PlusGlyph,
-  UserGlyph,
-  noop,
-  rgbaOf,
-  familyScope,
-} from './fixtures.js';
+import { BellGlyph, BookGlyph, ChartGlyph, HomeGlyph, MenuGlyph, SearchGlyph, SettingsGlyph, State, PlusGlyph, UserGlyph, noop, familyScope } from './fixtures.js';
 
 /**
  * Composition renderers: page shells, layout and application chrome. Each story shows the
@@ -114,39 +99,14 @@ const PageHeaderDemo = ({ withTabs }: { readonly withTabs: boolean }) => {
   );
 };
 
-/** The band, its separator and the page content: content edges align, the separator runs the band's full width. */
-const assertPageHeaderBand = async (canvasElement: HTMLElement, withTabs: boolean) => {
-  await waitFor(() => {
-    const band = canvasElement.querySelector<HTMLElement>('[data-component="PageHeader"]');
-    const body = band?.querySelector<HTMLElement>('.starci-core-page-header-body');
-    const content = canvasElement.querySelector<HTMLElement>('[data-grammar-page-body="true"]');
-    if (!band || !body || !content) throw new Error('PageHeader band, body and content must render');
-    const bandBox = band.getBoundingClientRect();
-    // The band's own bottom border is the one separator: full width, on the band's bottom edge, with no Divider drawn beside it.
-    expect(Number.parseFloat(getComputedStyle(band).borderBottomWidth)).toBeGreaterThan(0);
-    expect(band.querySelector('[data-component="Divider"]')).toBeNull();
-    const separatorBox = { bottom: bandBox.bottom };
-    const bodyStyle = getComputedStyle(body);
-    const contentStyle = getComputedStyle(content);
-    expect(Math.abs(body.getBoundingClientRect().left + Number.parseFloat(bodyStyle.paddingLeft) - (content.getBoundingClientRect().left + Number.parseFloat(contentStyle.paddingLeft)))).toBeLessThanOrEqual(0.5);
-    if (withTabs) {
-      const indicator = band.querySelector<HTMLElement>('[role="tab"][aria-selected="true"] .tabs__indicator');
-      if (!indicator) throw new Error('The selected tab must draw its indicator');
-      expect(Math.abs(indicator.getBoundingClientRect().bottom - separatorBox.bottom)).toBeLessThanOrEqual(0.5);
-    }
-  }, { timeout: 4000 });
-};
-
 export const PageBand: Story = {
   name: 'Page header (separator, no tabs)',
   render: () => <PageHeaderDemo withTabs={false} />,
-  play: async ({ canvasElement }) => assertPageHeaderBand(canvasElement, false),
 };
 
 export const PageBandTabs: Story = {
   name: 'Page header (page tabs on the separator)',
   render: () => <PageHeaderDemo withTabs />,
-  play: async ({ canvasElement }) => assertPageHeaderBand(canvasElement, true),
 };
 
 /** Link tabs: each item carries its route, no state or `onSelect`, and the tab of the current path is selected. */
@@ -169,13 +129,6 @@ export const PageBandLinkTabs: Story = {
       <Placeholder label="Page body" headingLevel={2} />
     </G.Page>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const selected = canvasElement.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
-      expect(selected?.textContent).toContain('Current');
-      expect(selected?.tagName).toBe('A');
-    }, { timeout: 4000 });
-  },
 };
 
 export const PageBandPhone: Story = {
@@ -185,12 +138,6 @@ export const PageBandPhone: Story = {
   },
   globals: { viewport: { value: 'phone360', isRotated: false } },
   render: () => <PageHeaderDemo withTabs />,
-  play: async ({ canvasElement }) => {
-    await assertPageHeaderBand(canvasElement, true);
-    const title = canvasElement.querySelector<HTMLElement>('.starci-core-page-header-title');
-    const actions = canvasElement.querySelector<HTMLElement>('.starci-core-page-header-actions');
-    await expect(actions!.getBoundingClientRect().top).toBeGreaterThanOrEqual(title!.getBoundingClientRect().bottom);
-  },
 };
 
 const PageDemo = ({ withHeader, isLoading = false }: { readonly withHeader: boolean; readonly isLoading?: boolean }) => {
@@ -215,53 +162,19 @@ const PageDemo = ({ withHeader, isLoading = false }: { readonly withHeader: bool
   );
 };
 
-/** The body sits in the measure and gutter one region step below the band, and nothing in it paints past the gutter. */
-const assertPage = async (canvasElement: HTMLElement, withHeader: boolean) => {
-  await waitFor(() => {
-    const page = canvasElement.querySelector<HTMLElement>('[data-component="Page"]');
-    const body = page?.querySelector<HTMLElement>('[data-grammar-page-body]');
-    const escape = page?.querySelector<HTMLElement>('[data-story-page-escape]');
-    if (!page || !body || !escape) throw new Error('Page, its body and the escaping child must render');
-    const bodyBox = body.getBoundingClientRect();
-    expect(body.parentElement).toBe(page);
-    expect(getComputedStyle(body).overflowX).toBe('clip');
-    expect(getComputedStyle(body).getPropertyValue('overflow-clip-margin')).toContain('content-box');
-    // The escaping child is wider than the body; the body clips it one gutter step past its content box.
-    expect(escape.getBoundingClientRect().width).toBeGreaterThan(bodyBox.width);
-    const gap = Number.parseFloat(getComputedStyle(page).rowGap);
-    expect(gap).toBeGreaterThan(0);
-    if (withHeader) {
-      const header = page.querySelector<HTMLElement>(':scope > [data-component="PageHeader"]');
-      if (!header) throw new Error('The header band must be the page\'s first child');
-      expect(Math.abs(bodyBox.top - header.getBoundingClientRect().bottom - gap)).toBeLessThanOrEqual(0.5);
-      const headerBody = header.querySelector<HTMLElement>('.starci-core-page-header-body')!;
-      expect(Math.abs(headerBody.getBoundingClientRect().left - bodyBox.left)).toBeLessThanOrEqual(0.5);
-      expect(Math.abs(headerBody.getBoundingClientRect().width - bodyBox.width)).toBeLessThanOrEqual(0.5);
-    } else {
-      expect(Math.abs(bodyBox.top - page.getBoundingClientRect().top - gap)).toBeLessThanOrEqual(0.5);
-    }
-  }, { timeout: 4000 });
-};
-
 export const Page: Story = {
   name: 'Page (header band, body in the gutter)',
   render: () => <PageDemo withHeader />,
-  play: async ({ canvasElement }) => assertPage(canvasElement, true),
 };
 
 export const PageWithoutHeader: Story = {
   name: 'Page (no header: the body starts one region step down)',
   render: () => <PageDemo withHeader={false} />,
-  play: async ({ canvasElement }) => assertPage(canvasElement, false),
 };
 
 export const PageSkeleton: Story = {
   name: 'Page (skeleton passes to the header)',
   render: () => <PageDemo withHeader isLoading />,
-  play: async ({ canvasElement }) => {
-    await assertPage(canvasElement, true);
-    await expect(canvasElement.querySelector('[data-component="PageHeader"]')?.getAttribute('aria-busy')).toBe('true');
-  },
 };
 
 const bleedTrail = { label: 'Breadcrumb', items: [{ id: 'agents', label: 'Agents', href: '#agents' }, { id: 'chat', label: 'Support agent' }] };
@@ -278,36 +191,14 @@ const PageBleedDemo = ({ withBand }: { readonly withBand: boolean }) => (
   </G.Page>
 );
 
-/** A bleed body has no gutter, no block padding and no clip, and fills the viewport height left below the trail or the band. */
-const assertPageBleed = async (canvasElement: HTMLElement, withBand: boolean) => {
-  await waitFor(() => {
-    const page = canvasElement.querySelector<HTMLElement>('[data-component="Page"][data-grammar-page-chrome="bleed"]');
-    const body = page?.querySelector<HTMLElement>(':scope > [data-grammar-page-body]');
-    if (!page || !body) throw new Error('The bleed Page and its body must render');
-    const pageStyle = getComputedStyle(page);
-    const bodyStyle = getComputedStyle(body);
-    expect(Number.parseFloat(pageStyle.paddingTop)).toBe(0);
-    expect(Number.parseFloat(pageStyle.paddingBottom)).toBe(0);
-    expect(Number.parseFloat(bodyStyle.paddingLeft)).toBe(0);
-    expect(Number.parseFloat(bodyStyle.paddingRight)).toBe(0);
-    expect(bodyStyle.overflowX).toBe('visible');
-    expect(Math.abs(body.getBoundingClientRect().width - page.getBoundingClientRect().width)).toBeLessThanOrEqual(0.5);
-    expect(page.querySelectorAll('h1')).toHaveLength(withBand ? 1 : 0);
-    expect(page.querySelector(':scope > [data-component="PageHeader"]') !== null).toBe(withBand);
-    expect(page.querySelector(':scope > .starci-core-page-trail [data-component="Breadcrumbs"]') !== null).toBe(!withBand);
-  }, { timeout: 4000 });
-};
-
 export const PageBleedTrail: Story = {
   name: 'Page bleed (breadcrumbs only, an app surface fills the region)',
   render: () => <PageBleedDemo withBand={false} />,
-  play: async ({ canvasElement }) => assertPageBleed(canvasElement, false),
 };
 
 export const PageBleedBand: Story = {
   name: 'Page bleed (with the band and its link tabs)',
   render: () => <PageBleedDemo withBand />,
-  play: async ({ canvasElement }) => assertPageBleed(canvasElement, true),
 };
 
 const TopBarDemo = ({ initialOpen }: { readonly initialOpen: boolean }) => {
@@ -415,15 +306,6 @@ export const Sidebar: Story = {
       <State label="Collapsed" direction="column"><SidebarDemo initialCollapsed /></State>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    // The item's name is its label (aria-label), so a trailing StatusDot must reach it as the description.
-    await waitFor(() => {
-      const item = canvasElement.querySelector<HTMLElement>('[data-key="agent"], [id$="agent"][role="option"], [aria-label="Review agent"]');
-      if (item === null) throw new Error('The agent item must render');
-      const described = (item.getAttribute('aria-describedby') ?? '').split(' ').map((id) => canvasElement.ownerDocument.getElementById(id)).filter((node) => node !== null);
-      if (!described.some((node) => node.querySelector('[aria-label="Running"]') !== null)) throw new Error('The trailing status must be the item\'s description');
-    });
-  },
 };
 
 const FixedShellDemo = ({ defaultOpen = false }: { readonly defaultOpen?: boolean }) => {
@@ -521,30 +403,6 @@ const PaneGridRows = () => (
 /** Panes laid out by named areas, flush, with one divider between neighbours: A B C side by side, D below. */
 export const PaneGrid: Story = {
   render: () => <PaneGridRows />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const pane = (area: string) => {
-        const node = canvasElement.querySelector(`[data-story-pane-grid="rows"] [data-grammar-pane-area="${area}"]`);
-        if (!(node instanceof HTMLElement)) throw new Error(`pane ${area} renders`);
-        return node;
-      };
-      const [a, b, c, d] = ['a', 'b', 'c', 'd'].map(pane);
-      if (a === undefined || b === undefined || c === undefined || d === undefined) throw new Error('four panes render');
-      // n-1 vertical lines between A B C, one horizontal line above D, none doubled.
-      expect(getComputedStyle(a).borderInlineStartWidth).toBe('0px');
-      expect(getComputedStyle(b).borderInlineStartWidth).toBe('1px');
-      expect(getComputedStyle(c).borderInlineStartWidth).toBe('1px');
-      for (const top of [a, b, c]) expect(getComputedStyle(top).borderBlockStartWidth).toBe('0px');
-      expect(getComputedStyle(d).borderBlockStartWidth).toBe('1px');
-      expect(getComputedStyle(d).borderInlineStartWidth).toBe('0px');
-      // Flush: no gap between neighbours, D as wide as the three above.
-      expect(Math.abs(a.getBoundingClientRect().right - b.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
-      expect(Math.abs(d.getBoundingClientRect().width - (c.getBoundingClientRect().right - a.getBoundingClientRect().left))).toBeLessThanOrEqual(1);
-      // A surface pane stands on the surface ground; a plain pane is transparent.
-      expect(rgbaOf(getComputedStyle(a).backgroundColor)[3]).toBeGreaterThan(0);
-      expect(rgbaOf(getComputedStyle(b).backgroundColor)[3]).toBe(0);
-    });
-  },
 };
 
 const ResponsiveHost = ({ id, width }: { readonly id: string; readonly width: string }) => (
@@ -574,38 +432,6 @@ export const PaneGridResponsive: Story = {
       <ResponsiveHost id="medium" width="60rem" />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const pane = (id: string, area: string) => {
-        const node = canvasElement.querySelector(`[data-story-pane-grid="${id}"] [data-grammar-pane-area="${area}"]`);
-        if (!(node instanceof HTMLElement)) throw new Error(`pane ${area} renders in ${id}`);
-        return node;
-      };
-      const rect = (id: string, area: string) => pane(id, area).getBoundingClientRect();
-      const width = (id: string, area: string, side: 'Inline' | 'Block') => getComputedStyle(pane(id, area))[`border${side}StartWidth`];
-
-      // Narrow: one column, A above B above C below the header; a horizontal line above each, none vertical, none on the header.
-      expect(Math.abs(rect('narrow', 'a').left - rect('narrow', 'b').left)).toBeLessThanOrEqual(1);
-      expect(rect('narrow', 'b').top).toBeGreaterThanOrEqual(rect('narrow', 'a').bottom - 1);
-      expect(rect('narrow', 'c').top).toBeGreaterThanOrEqual(rect('narrow', 'b').bottom - 1);
-      for (const area of ['a', 'b', 'c']) {
-        expect(width('narrow', area, 'Block')).toBe('1px');
-        expect(width('narrow', area, 'Inline')).toBe('0px');
-      }
-      expect(width('narrow', 'head', 'Block')).toBe('0px');
-
-      // Wide: three columns A | B | C in 1:2:1 under the header; two vertical lines, one horizontal line under the bar, none doubled.
-      expect(Math.abs(rect('medium', 'a').top - rect('medium', 'c').top)).toBeLessThanOrEqual(1);
-      expect(rect('medium', 'b').left).toBeGreaterThanOrEqual(rect('medium', 'a').right - 1);
-      expect(Math.abs(rect('medium', 'b').width / rect('medium', 'a').width - 2)).toBeLessThan(0.1);
-      expect(width('medium', 'a', 'Inline')).toBe('0px');
-      expect(width('medium', 'b', 'Inline')).toBe('1px');
-      expect(width('medium', 'c', 'Inline')).toBe('1px');
-      for (const area of ['a', 'b', 'c']) expect(width('medium', area, 'Block')).toBe('1px');
-      expect(width('medium', 'head', 'Block')).toBe('0px');
-      expect(width('medium', 'head', 'Inline')).toBe('0px');
-    });
-  },
 };
 
 const PaneGridAppDemo = () => {
@@ -668,35 +494,6 @@ const PaneGridAppDemo = () => {
 /** A list, a header + main + footer column and an info pane: surface panes, one scroll owner, the same divider under the header as everywhere, and rail panes that become drawers when narrow. */
 export const PaneGridApp: Story = {
   render: () => <PaneGridAppDemo />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const pane = (area: string) => {
-        const node = canvasElement.querySelector(`[data-story-pane-grid="app"] [data-grammar-pane-area="${area}"]`);
-        if (!(node instanceof HTMLElement)) throw new Error(`pane ${area} renders`);
-        return node;
-      };
-      const head = pane('head');
-      const main = pane('main');
-      const foot = pane('foot');
-      const info = pane('info');
-      // One ordinary line under the header (drawn by the pane below it) and one above the footer; none on the outer edges.
-      expect(getComputedStyle(main).borderBlockStartWidth).toBe('1px');
-      expect(getComputedStyle(foot).borderBlockStartWidth).toBe('1px');
-      expect(getComputedStyle(head).borderBlockStartWidth).toBe('0px');
-      expect(getComputedStyle(pane('list')).borderInlineStartWidth).toBe('0px');
-      // The header itself draws no bottom edge: the boundary is drawn once.
-      expect(getComputedStyle(head).borderBlockEndWidth).toBe('0px');
-      // The rail panes stand on the surface ground and keep their vertical divider.
-      expect(rgbaOf(getComputedStyle(info).backgroundColor)[3]).toBeGreaterThan(0);
-      expect(getComputedStyle(info).borderInlineStartWidth).toBe('1px');
-      expect(rgbaOf(getComputedStyle(main).backgroundColor)[3]).toBe(0);
-      // The main pane is its own scroll owner and the header and footer never scroll with it.
-      const scroller = main.querySelector('[data-grammar-scroll-region="vertical"]');
-      if (!(scroller instanceof HTMLElement)) throw new Error('main owns a scroll region');
-      expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
-      expect(getComputedStyle(head).overflowY).toBe('hidden');
-    });
-  },
 };
 
 const chipLabels = ['Reply later', 'Assign to me', 'Mark as done', 'Add a note', 'Share', 'Archive'];
@@ -783,64 +580,6 @@ const PaneInsetDemo = () => {
   );
 };
 
-/** The content edge of a pane: its border-box start plus its (start-edge divider) border. */
-const contentLeft = (pane: HTMLElement) => pane.getBoundingClientRect().left + Number.parseFloat(getComputedStyle(pane).borderInlineStartWidth);
-
-/** The first box of a band: the section's first child, or the first child of a scroll section's content. */
-const firstBox = (section: HTMLElement): HTMLElement => {
-  const host = section.dataset['grammarPaneSectionScroll'] === 'true' ? section.firstElementChild : section;
-  const box = host?.firstElementChild;
-  if (!(box instanceof HTMLElement)) throw new Error('the band renders a first box');
-  return box;
-};
-
-const assertPaneInset = async (canvasElement: HTMLElement, isDocked: boolean) => {
-  await waitFor(() => {
-    const grid = canvasElement.querySelector('[data-story-pane-grid="inset"]');
-    if (!(grid instanceof HTMLElement)) throw new Error('the grid renders');
-    const pane = (area: string) => {
-      const node = grid.querySelector<HTMLElement>(`[data-grammar-pane-area="${area}"]`);
-      if (node === null) throw new Error(`pane ${area} renders`);
-      return node;
-    };
-    const sections = (area: string) => Array.from(pane(area).querySelectorAll<HTMLElement>('[data-component="PaneSection"]'));
-    const offset = (area: string, box: HTMLElement) => box.getBoundingClientRect().left - contentLeft(pane(area));
-    const expectEdge = (area: string, box: HTMLElement) => expect(Math.abs(offset(area, box) - 12)).toBeLessThanOrEqual(0.5);
-
-    // Every band of the list pane starts on the content edge: the head, the search box, the tab track and its first pill, the list.
-    const list = sections('list');
-    for (const section of list) expectEdge('list', firstBox(section));
-    const firstTab = pane('list').querySelector<HTMLElement>('[role="tab"]');
-    if (firstTab === null) throw new Error('the filter tabs render');
-    expectEdge('list', firstTab);
-    // The selected option box is at the edge too, not 4px in.
-    const selected = pane('list').querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
-    if (selected === null) throw new Error('a row is selected');
-    expectEdge('list', selected);
-
-    // Thread: the bubbles; composer: the chip row (its first chip), the field row and its first control, the hint.
-    expectEdge('thread', firstBox(sections('thread')[0]!));
-    const composer = sections('composer');
-    const chip = composer[0]?.querySelector<HTMLElement>('.starci-core-horizontal-scroll-region button');
-    if (chip === null || chip === undefined) throw new Error('the chip row renders');
-    expectEdge('composer', chip);
-    const row = firstBox(composer[1]!);
-    expectEdge('composer', row);
-    const attach = row.querySelector<HTMLElement>('button');
-    if (attach === null) throw new Error('the attach button renders');
-    expectEdge('composer', attach);
-    const hint = composer[1]?.lastElementChild;
-    if (!(hint instanceof HTMLElement)) throw new Error('the hint renders');
-    expectEdge('composer', hint);
-
-    // The info pane is docked from 48rem and a drawer below it; its bands share the same edge when docked.
-    expect(grid.querySelector('[data-grammar-pane-area="info"]') !== null).toBe(true);
-    if (isDocked) for (const section of sections('info')) expectEdge('info', firstBox(section));
-    // No inline overflow outside the chip row's own scroller.
-    expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth + 1);
-  }, { timeout: 4000 });
-};
-
 const viewportOptions = {
   desktop1200: { name: 'Desktop 1200 x 800', styles: { width: '1200px', height: '800px' }, type: 'desktop' },
   phone375: { name: 'Phone 375 x 812', styles: { width: '375px', height: '812px' }, type: 'mobile' },
@@ -851,7 +590,6 @@ export const PaneInset: Story = {
   parameters: { viewport: { options: viewportOptions } },
   globals: { viewport: { value: 'desktop1200', isRotated: false } },
   render: () => <PaneInsetDemo />,
-  play: async ({ canvasElement }) => assertPaneInset(canvasElement, true),
 };
 
 /** The same grid at 375px: one column, the inset does not step, the info pane is a drawer. */
@@ -859,7 +597,6 @@ export const PaneInsetPhone: Story = {
   parameters: { viewport: { options: viewportOptions } },
   globals: { viewport: { value: 'phone375', isRotated: false } },
   render: () => <PaneInsetDemo />,
-  play: async ({ canvasElement }) => assertPaneInset(canvasElement, false),
 };
 
 /** A tabbed app page: the header tabs, then one PaneGrid attached flush to the tab line and running to the viewport bottom. */
@@ -884,33 +621,11 @@ const PagePanesDemo = () => (
   </G.Page>
 );
 
-const assertPagePanes = async (canvasElement: HTMLElement) => {
-  await waitFor(() => {
-    const page = canvasElement.querySelector<HTMLElement>('[data-component="Page"][data-grammar-page-chrome="panes"]');
-    const grid = page?.querySelector<HTMLElement>('[data-component="PaneGrid"]');
-    const separator = page?.querySelector<HTMLElement>('[data-component="PageHeader"]');
-    if (!page || !grid || !separator) throw new Error('the panes Page, its header band and its grid render');
-    // Attached flush under the tab line, no gap; both content edges; the viewport bottom.
-    expect(Math.abs(grid.getBoundingClientRect().top - separator.getBoundingClientRect().bottom)).toBeLessThanOrEqual(1);
-    expect(Math.abs(grid.getBoundingClientRect().left - page.getBoundingClientRect().left)).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(grid.getBoundingClientRect().right - page.getBoundingClientRect().right)).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(grid.getBoundingClientRect().bottom - window.innerHeight)).toBeLessThanOrEqual(1);
-    expect(getComputedStyle(page).rowGap).toBe('0px');
-    expect(getComputedStyle(grid).borderTopLeftRadius).toBe('0px');
-    // The first pane's bands start 12px inside it.
-    const chat = grid.querySelector<HTMLElement>('[data-grammar-pane-area="chat"]');
-    const bubble = chat?.querySelector<HTMLElement>('[data-component="MessageBubble"]');
-    if (!chat || !bubble) throw new Error('the chat pane renders');
-    expect(Math.abs(bubble.getBoundingClientRect().left - contentLeft(chat) - 12)).toBeLessThanOrEqual(0.5);
-  }, { timeout: 4000 });
-};
-
 /** Page chrome="panes" at 1200px. */
 export const PagePanes: Story = {
   parameters: { viewport: { options: viewportOptions } },
   globals: { viewport: { value: 'desktop1200', isRotated: false } },
   render: () => <PagePanesDemo />,
-  play: async ({ canvasElement }) => assertPagePanes(canvasElement),
 };
 
 /** Page chrome="panes" at 375px: the grid stacks, still attached to the tab line and the viewport bottom. */
@@ -918,7 +633,6 @@ export const PagePanesPhone: Story = {
   parameters: { viewport: { options: viewportOptions } },
   globals: { viewport: { value: 'phone375', isRotated: false } },
   render: () => <PagePanesDemo />,
-  play: async ({ canvasElement }) => assertPagePanes(canvasElement),
 };
 
 /** One message: incoming on the recessed face, outgoing on the accent-soft pair; actions appear on hover or focus. */

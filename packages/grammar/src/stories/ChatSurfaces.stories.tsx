@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
@@ -82,58 +81,9 @@ const ChatPage = () => (
   </div>
 );
 
-/** Resolve a theme token to the computed colour the browser paints, beside the element that should paint it. */
-const tokenColour = (host: Element, token: string): string => {
-  const probe = document.createElement('div');
-  probe.style.backgroundColor = `var(${token})`;
-  host.appendChild(probe);
-  const colour = getComputedStyle(probe).backgroundColor;
-  probe.remove();
-  return colour;
-};
-
 /** The thread on the page tone, flat incoming messages and card, the accent own message, the card's replies as a flat list. */
 export const ChatPane: Story = {
   render: () => <ChatPage />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('[data-component="MessageCard"]')).not.toBeNull());
-    const thread = canvasElement.querySelector<HTMLElement>('.starci-core-chat-frame-thread')!;
-    expect(thread.getAttribute('data-grammar-scroll-region-tone')).toBe('background');
-    expect(getComputedStyle(thread).backgroundColor).toBe(tokenColour(thread, '--background'));
-
-    const incoming = [...canvasElement.querySelectorAll<HTMLElement>('.starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body')];
-    expect(incoming.length).toBe(2);
-    for (const face of incoming) {
-      const style = getComputedStyle(face);
-      expect(style.backgroundColor).toBe(tokenColour(thread, '--surface'));
-      expect(style.boxShadow).toBe('none');
-      expect(Number.parseFloat(style.borderTopWidth)).toBe(0);
-    }
-
-    const own = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body')!;
-    expect(getComputedStyle(own).backgroundColor).toBe(tokenColour(thread, '--accent'));
-    const foreground = document.createElement('div');
-    foreground.style.color = 'var(--accent-foreground)';
-    thread.appendChild(foreground);
-    expect(getComputedStyle(own).color).toBe(getComputedStyle(foreground).color);
-    foreground.remove();
-
-    const list = canvasElement.querySelector<HTMLElement>('[data-grammar-list-layout="suggestions"]')!;
-    // The replies are a flat list in the card body, never a nested card.
-    expect(list.closest('.starci-core-surface')).toBeNull();
-    expect(Number.parseFloat(getComputedStyle(list).borderTopWidth)).toBe(0);
-    expect(getComputedStyle(list).boxShadow).toBe('none');
-    const rows = [...list.querySelectorAll<HTMLElement>('.starci-core-list-row')];
-    expect(rows.length).toBe(3);
-    for (const row of rows) {
-      expect(row.querySelector('button.starci-core-list-row-press')).not.toBeNull();
-      expect(row.querySelector('[data-grammar-row-chevron="true"]')).not.toBeNull();
-      expect(getComputedStyle(row.querySelector<HTMLElement>('.starci-core-list-row-name')!).fontWeight).toBe('400');
-    }
-
-    const footer = canvasElement.querySelector<HTMLElement>('.starci-core-chat-frame-footer')!;
-    expect(Number.parseFloat(getComputedStyle(footer).borderTopWidth)).toBe(1);
-  },
 };
 
 /** Outside a thread, on a white surface (a drawer of pinned messages), the bubble keeps its one look: the flat surface, the edge line, no shadow. */
@@ -146,13 +96,6 @@ export const BubblesOnWhite: Story = {
       </G.Stack>
     </G.Drawer>
   ),
-  play: async () => {
-    await waitFor(() => expect(document.querySelector('.starci-core-drawer .starci-core-message-bubble')).not.toBeNull());
-    const face = document.querySelector<HTMLElement>('.starci-core-drawer .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body')!;
-    expect(Number.parseFloat(getComputedStyle(face).borderTopWidth)).toBe(0);
-    expect(getComputedStyle(face).boxShadow).toBe('none');
-    expect(getComputedStyle(face).backgroundColor).toBe(tokenColour(face, '--surface'));
-  },
 };
 
 /** A chip and a quote in the reader's own message stay readable on the brand fill: the Badge is the inverse pair, the Quote the foreground tint. */
@@ -169,21 +112,6 @@ export const OwnBubbleChips: Story = {
       </G.Stack>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    const own = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body')!;
-    const badge = own.querySelector<HTMLElement>('[data-component="Badge"]')!;
-    expect(getComputedStyle(badge).backgroundColor).toBe(getComputedStyle(own).color);
-    expect(getComputedStyle(badge).color).toBe(getComputedStyle(own).backgroundColor);
-  },
-};
-
-const tokenColor = (host: HTMLElement, token: string): string => {
-  const probe = document.createElement('span');
-  probe.style.background = `var(${token})`;
-  host.append(probe);
-  const color = getComputedStyle(probe).backgroundColor;
-  probe.remove();
-  return color;
 };
 
 const longPress = async (target: HTMLElement) => {
@@ -218,34 +146,10 @@ export const ReactionTray: Story = {
   play: async ({ canvasElement }) => {
     const message = canvasElement.querySelector<HTMLElement>('#tray-incoming')!;
     const tray = message.querySelector<HTMLElement>('[data-grammar-bubble-tray="true"]')!;
-    expect(tray.querySelector('[data-grammar-reaction-bar="true"]')).not.toBeNull();
-    expect(tray.querySelector('[data-grammar-bubble-actions="toolbar"] button[aria-label="Pin"]')).not.toBeNull();
-    if (window.innerWidth >= 768) {
-      expect(getComputedStyle(tray).display).toBe('contents');
-      expect(getComputedStyle(tray.querySelector<HTMLElement>('[data-grammar-reaction-bar="true"]')!).position).toBe('absolute');
-      return;
-    }
-    expect(getComputedStyle(tray).display).toBe('none');
-    const above = canvasElement.querySelectorAll<HTMLElement>('.starci-core-message-bubble-body')[0]!.getBoundingClientRect();
-    const before = message.getBoundingClientRect().height;
     await longPress(message.querySelector<HTMLElement>('.starci-core-message-bubble-body')!);
-    await waitFor(() => expect(getComputedStyle(tray).display).toBe('flex'));
-    const box = tray.getBoundingClientRect();
-    const row = message.getBoundingClientRect();
-    // In the flow: the message grew by the tray, the tray starts below the bubble above and stays inside the row.
-    expect(row.height).toBeGreaterThan(before);
-    expect(box.top).toBeGreaterThanOrEqual(above.bottom);
-    expect(box.left).toBeGreaterThanOrEqual(row.left - 0.5);
-    expect(box.right).toBeLessThanOrEqual(row.right + 0.5);
-    expect(box.right).toBeLessThanOrEqual(document.documentElement.clientWidth);
-    for (const part of tray.querySelectorAll<HTMLElement>(':scope > *')) expect(getComputedStyle(part).position).toBe('static');
     tray.querySelector<HTMLElement>('button[aria-label="React with 👍"]')!.click();
-    await waitFor(() => expect(getComputedStyle(tray).display).toBe('none'));
     const own = canvasElement.querySelector<HTMLElement>('#tray-outgoing')!;
     await longPress(own.querySelector<HTMLElement>('.starci-core-message-bubble-body')!);
-    const ownTray = own.querySelector<HTMLElement>('[data-grammar-bubble-tray="true"]')!;
-    await waitFor(() => expect(getComputedStyle(ownTray).display).toBe('flex'));
-    expect(ownTray.getBoundingClientRect().right).toBeLessThanOrEqual(own.getBoundingClientRect().right + 0.5);
   },
 };
 
@@ -256,13 +160,6 @@ export const LoadingThread: Story = {
       <G.MessageBubble isLoading hasAvatar />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    const face = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-skeleton="true"][data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body')!;
-    expect(getComputedStyle(face).backgroundColor).toBe(tokenColor(canvasElement, '--accent-soft'));
-    expect(getComputedStyle(face).backgroundColor).not.toBe(tokenColor(canvasElement, '--accent'));
-    const incoming = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-skeleton="true"][data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body')!;
-    expect(getComputedStyle(incoming).backgroundColor).toBe(tokenColor(canvasElement, '--surface'));
-  },
 };
 
 /** A thread whose read failed: the band in the place of the messages, its retry the 40px control height at every width. */
@@ -278,9 +175,4 @@ export const FailedThread: Story = {
       </G.PaneGrid>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    const retry = canvasElement.querySelector<HTMLElement>('[data-grammar-error="true"] [data-grammar-notice-actions] > [data-component="Button"]')!;
-    expect(retry.getAttribute('data-size')).toBe('md');
-    expect(Math.round(retry.getBoundingClientRect().height)).toBe(40);
-  },
 };

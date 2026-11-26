@@ -394,7 +394,7 @@ slots:
       - "packages/grammar/scripts/*.mts"
       - "packages/grammar/scripts/lint/*.mts"
     presence: optional
-    holds: the grammar's build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots), TypeScript typechecked by tsconfig.scripts.json
+    holds: the grammar's build and capture tools (build stamp, clean, CSS copy, the static checks, the story shots of `npm run shoot`, reference and SVG shots), TypeScript typechecked by tsconfig.scripts.json
     rule: every package is TypeScript
   - id: packages.grammar-codemods
     path:
@@ -434,7 +434,6 @@ slots:
     path:
       - "packages/<name>/fixtures/"
       - "packages/<name>/migrations/*.sql"
-      - packages/grammar/scripts/theme-proof/app-theme.css
       - "packages/hfs/templates/"
       - "packages/<name>/**/*.{fixture,partial}"
     presence: optional

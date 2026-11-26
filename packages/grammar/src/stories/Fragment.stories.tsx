@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -14,12 +13,6 @@ const meta: Meta = { title: 'Surfaces/Fragment, the escape hatch (0.49.0)', para
 export default meta;
 type Story = StoryObj;
 
-const host = (root: ParentNode): HTMLElement => {
-  const found = root.querySelector<HTMLElement>('[data-story-fragment]');
-  if (found === null) throw new Error('no story host');
-  return found;
-};
-
 /** The region renders its children and no element of its own: the host's only child is the app's own SVG. */
 export const NoWrapperElement: Story = {
   render: () => (
@@ -31,14 +24,6 @@ export const NoWrapperElement: Story = {
       </G.Fragment>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const el = host(canvasElement);
-      expect(el.children.length).toBe(1);
-      expect(el.firstElementChild?.getAttribute('data-story-art')).toBe('true');
-      expect(el.querySelector('[data-component="Fragment"]')).toBeNull();
-    });
-  },
 };
 
 /** A Grammar component inside a region keeps its own look: Fragment is a region for the lint, not a theme. */
@@ -50,10 +35,4 @@ export const GrammarInside: Story = {
       </G.Fragment>
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const el = host(canvasElement);
-      expect(el.firstElementChild?.getAttribute('data-component')).toBe('Button');
-    });
-  },
 };

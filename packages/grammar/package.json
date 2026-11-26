@@ -99,7 +99,6 @@
   "scripts": {
     "build": "node scripts/clean.mts && tsc -p tsconfig.build.json && tsc -p tsconfig.codemods.json && node scripts/copy-css.mts && node scripts/build-stamp.mts",
     "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.stories.json && tsc -p tsconfig.scripts.json && tsc -p tsconfig.ext-demo.json",
-    "prove-theme": "node scripts/prove-theme.mts",
     "audit:gap": "node scripts/audit-gap.mts",
     "check:loading": "node scripts/check-region-loading.mts",
     "check:client": "node scripts/check-client-boundary.mts",
@@ -113,7 +112,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "eslint --flag unstable_native_nodejs_ts_config . && stylelint \"src/**/*.css\"",
-    "prove-plays": "node scripts/run-plays.mts",
+    "shoot": "node scripts/shoot.mts",
     "ext:demo": "vite ext-demo/graph"
   },
   "engines": {

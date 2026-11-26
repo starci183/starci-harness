@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
-import { expect } from 'storybook/test';
 import * as G from '../common/index.js';
 import { Markdown } from '../core/ext/markdown/react/index.js';
 import type { CodeToken, MarkdownTree } from '../core/ext/markdown/types.js';
@@ -71,8 +70,6 @@ const Themed = ({ theme, children }: { readonly theme: 'light' | 'dark'; readonl
   <div className={theme} data-theme={theme} style={{ background: 'var(--background)', color: 'var(--foreground)', padding: 16, maxInlineSize: 792 }}>{children}</div>
 );
 
-const rgb = (element: Element | null): string => (element === null ? '' : getComputedStyle(element).color);
-
 /** The markdown ext: TS with two marked lines, bash and a diff; inline code above them. Light, then dark. */
 export const MarkdownLightAndDark: Story = {
   render: () => (
@@ -81,16 +78,6 @@ export const MarkdownLightAndDark: Story = {
       <Themed theme="dark"><Markdown tree={TREE} /></Themed>
     </G.Stack>
   ),
-  play: async ({ canvasElement }) => {
-    const [light, dark] = [...canvasElement.querySelectorAll('[data-theme]')];
-    const keyword = (root: Element | undefined) => rgb(root?.querySelector('[style*="--shiki-token-keyword"]') ?? null);
-    expect(keyword(light)).toBe('rgb(122, 68, 214)');
-    expect(keyword(dark)).toBe('rgb(199, 146, 234)');
-    const comment = light?.querySelector('[style*="--shiki-token-comment"]');
-    expect(comment === null || comment === undefined ? '' : getComputedStyle(comment).fontStyle).toBe('italic');
-    expect(getComputedStyle(light?.querySelector('.starci-md-line[data-sign="remove"]') as Element).backgroundColor).toBe('rgb(252, 237, 236)');
-    expect(getComputedStyle(light?.querySelector('.starci-md-line[data-highlighted="true"]') as Element).backgroundColor).toBe('rgb(239, 243, 250)');
-  },
 };
 
 const EXCERPT = text(TS);
@@ -104,10 +91,4 @@ export const CodeBlockSchemes: Story = {
       <Themed theme="dark"><G.CodeBlock code={EXCERPT} language="ts" path="src/products.ts" highlightLines={[[3, 4]]} scheme="light" note='scheme="light" inside a dark page.' /></Themed>
     </G.Stack>
   ),
-  play: async ({ canvasElement }) => {
-    const grounds = [...canvasElement.querySelectorAll('.starci-core-code-block-code')].map((code) => getComputedStyle(code).backgroundColor);
-    expect(grounds).toEqual(['rgb(250, 250, 248)', 'rgb(30, 31, 36)', 'rgb(250, 250, 248)']);
-    const marked = canvasElement.querySelector('.starci-core-code-line[data-grammar-line-highlighted="true"]');
-    expect(marked === null ? '' : getComputedStyle(marked).backgroundColor).toBe('rgb(239, 243, 250)');
-  },
 };

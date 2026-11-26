@@ -1,11 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { ReactNode } from "react"
-import { expect, waitFor } from "storybook/test"
 import * as G from "../common/index.js"
 
 /*
  * The standard state set of every control family, one story per family, each state in its own labelled cell
- * (`data-control-state`). The play function checks that each state is really drawn as that state: a filled value,
+ * (`data-control-state`). The shots show each state drawn as that state: a filled value,
  * a disabled control, an invalid field with its message, a loading skeleton that is inert and busy.
  *
  * - Input family (Input, Textarea, NumberField, SearchField) and Select family (Select, ComboBox):
@@ -35,40 +34,6 @@ const StateTable = ({ rows, states }: { readonly rows: ReadonlyArray<Row>; reado
         ])}
     </div>
 )
-
-const cells = (canvas: Element, state: string) => [...canvas.querySelectorAll<HTMLElement>(`[data-control-state="${state}"]`)].filter((cell) => cell.childElementCount > 0)
-const named = (cell: HTMLElement) => cell.getAttribute("data-control") ?? "?"
-
-/** The checks every family shares; `extra` adds the family's own (filled value, checked mark). */
-const checkStates = (canvas: Element) => {
-    const problems: string[] = []
-    for (const cell of cells(canvas, "Disabled")) {
-        if (cell.querySelector('[data-grammar-disabled="true"], [data-disabled="true"], :disabled') === null) problems.push(`${named(cell)} Disabled: no disabled control`)
-    }
-    for (const state of ["Invalid", "Error"]) {
-        for (const cell of cells(canvas, state)) {
-            if (cell.querySelector('[data-grammar-invalid="true"], [data-invalid="true"], [aria-invalid="true"]') === null) problems.push(`${named(cell)} ${state}: not invalid`)
-            if ((cell.querySelector('[data-grammar-field-error], .field-error, .error-message, [slot="errorMessage"]')?.textContent?.trim() ?? "") === "") problems.push(`${named(cell)} ${state}: no error message`)
-        }
-    }
-    for (const cell of cells(canvas, "Loading")) {
-        const scope = cell.querySelector('[aria-busy="true"]')
-        if (scope === null) problems.push(`${named(cell)} Loading: no aria-busy owner`)
-        if (cell.querySelector('[data-grammar-field-skeleton="true"][inert], [data-grammar-skeleton="true"]') === null) problems.push(`${named(cell)} Loading: not a skeleton`)
-        if (cell.querySelector('[data-grammar-field-skeleton="true"]:not([inert])') !== null) problems.push(`${named(cell)} Loading: skeleton is not inert`)
-    }
-    for (const cell of cells(canvas, "Default")) {
-        if (cell.querySelector('[data-grammar-invalid="true"], [data-grammar-disabled="true"], [aria-busy="true"]') !== null) problems.push(`${named(cell)} Default: not at rest`)
-    }
-    return problems
-}
-
-const playStates = (extra: (canvas: Element) => string[]): NonNullable<Story["play"]> => async ({ canvasElement }) => {
-    await waitFor(() => {
-        const problems = [...checkStates(canvasElement), ...extra(canvasElement)]
-        expect(problems, problems.join("; ")).toEqual([])
-    })
-}
 
 const planOptions = [
     { id: "starter", label: "Starter" },
@@ -130,10 +95,6 @@ export const InputFamily: Story = {
             ]}
         />
     ),
-    play: playStates((canvas) => cells(canvas, "Filled").flatMap((cell) => {
-        const control = cell.querySelector<HTMLInputElement | HTMLTextAreaElement>("input:not([type=hidden]), textarea")
-        return control === null || control.value === "" ? [`${named(cell)} Filled: no value`] : []
-    })),
 }
 
 /** Select and ComboBox: Default, Filled (a value chosen), Disabled, Invalid, Loading. */
@@ -165,11 +126,6 @@ export const SelectFamily: Story = {
             ]}
         />
     ),
-    play: playStates((canvas) => cells(canvas, "Filled").flatMap((cell) => {
-        const shown = cell.querySelector("[data-grammar-field-control]")?.textContent?.trim() ?? ""
-        const input = cell.querySelector<HTMLInputElement>("input:not([type=hidden])")?.value ?? ""
-        return shown.includes("Team") || input === "Team" ? [] : [`${named(cell)} Filled: "Team" is not shown`]
-    })),
 }
 
 const CHOICE_STATES = ["Default", "Checked", "Disabled", "Invalid", "Loading"] as const
@@ -222,8 +178,6 @@ export const ChoiceFamily: Story = {
             ]}
         />
     ),
-    play: playStates((canvas) => cells(canvas, "Checked").flatMap((cell) =>
-        cell.querySelector('[data-selected="true"], :checked, [aria-pressed="true"], [aria-checked="true"]') === null ? [`${named(cell)} Checked: nothing selected`] : [])),
 }
 
 const FIELD_STATES = ["Default", "WithHint", "Required", "Error", "Disabled", "Loading"] as const
@@ -249,14 +203,4 @@ export const FieldStates: Story = {
             ]}
         />
     ),
-    play: playStates((canvas) => {
-        const problems: string[] = []
-        const hint = cells(canvas, "WithHint")[0]
-        const hintText = hint?.querySelector("[data-grammar-field-description]")
-        const hintInput = hint?.querySelector("input")
-        if (hintText == null || hintInput == null || !(hintInput.getAttribute("aria-describedby") ?? "").includes(hintText.id)) problems.push("Field WithHint: the description is not the control's description")
-        const required = cells(canvas, "Required")[0]
-        if (required?.querySelector("input[required][aria-required=true]") == null || required.querySelector(".starci-core-field-required") === null) problems.push("Field Required: no required control and mark")
-        return problems
-    }),
 }

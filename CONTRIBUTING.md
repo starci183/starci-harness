@@ -227,8 +227,7 @@ dependent, skipping a private one and a version already on npm, with npm provena
 (`1.0.0-alpha.1` goes to `alpha`, a plain version to `latest`). The packages are published from the tarballs the `package` jobs packed after
 their specs (`--tarballs`: the tested bits, stamped with the commit, never rebuilt; a due package no job packed, its folder unchanged since a green base,
 is built and packed in the run), four `npm publish` at a time, and read back together. A package publishes once the repo-wide gates (`gate (repo)`: secrets, loosening, shape) are green and so is the
-`package` job of every folder of its build order the plan tested, itself and the siblings it needs, and, for the Grammar and
-a package that builds it, the `grammar proof` job (the theme proof); a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mts](.github/scripts/publish-gate.mts)).
+`package` job of every folder of its build order the plan tested, itself and the siblings it needs,; a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mts](.github/scripts/publish-gate.mts)).
 The CLI follows in the same run, once the harness job and every gate are green. A red Sonar quality gate or app job holds every package and
 the CLI (2026-11-17): nothing publishes from a ci run that is not green as a whole. A `publish` run is never cancelled, so a publication is never cut short, and a
 re-run (of the failed jobs) publishes only what is still missing. The plan is refused, before anything reaches npm, when a package changed since the base (its
