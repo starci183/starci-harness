@@ -7,10 +7,11 @@ import { explicitSurfaceMarkdown, migrateExplicitSurface } from './explicit-surf
 import { commonBaseMarkdown, migrateCommonBase } from './common-base.mjs';
 import { migrateModuleDefinition, moduleDefinitionMarkdown } from './module-definition.mjs';
 import { migrateSeedsLayout, seedsLayoutMarkdown } from './seeds-layout.mjs';
+import { loggingWinstonLokiMarkdown, migrateLoggingWinstonLoki } from './logging-winston-loki.mjs';
 import { GRAMMAR_CODEMOD_ID, installedGrammar, listMarkdown, loadGrammarCodemods, rangeArguments, runGrammarCodemods } from './grammar.mjs';
 
 /** The codemods `starci app codemod` runs, by name. */
-export const CODEMODS = Object.freeze(['spacing-roles', 'small-renames', 'page-navigation', 'explicit-surface', 'module-definition', 'seeds-layout', 'common-base']);
+export const CODEMODS = Object.freeze(['spacing-roles', 'small-renames', 'page-navigation', 'explicit-surface', 'module-definition', 'seeds-layout', 'common-base', 'logging-winston-loki']);
 
 /** The arguments of every report-style `starci app codemod`: --execute, --json, --format and --out; any other is refused. */
 export function spacingRolesArguments(argv: readonly string[]): { write: boolean; format: 'json' | 'markdown'; out?: string } {
@@ -36,6 +37,10 @@ export function spacingRolesArguments(argv: readonly string[]): { write: boolean
 
 /** One of the report-style codemods run at an app root: its report object and the Markdown of it. */
 function runCodemod(name: Exclude<(typeof CODEMODS)[number], 'explicit-surface' | 'module-definition'>, root: string, write: boolean): { report: { findings: readonly unknown[] }; markdown: string } {
+  if (name === 'logging-winston-loki') {
+    const report = migrateLoggingWinstonLoki({ root, write });
+    return { report, markdown: loggingWinstonLokiMarkdown(report) };
+  }
   if (name === 'common-base') {
     const report = migrateCommonBase({ root, write });
     return { report, markdown: commonBaseMarkdown(report) };
