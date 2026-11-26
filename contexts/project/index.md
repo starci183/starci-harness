@@ -162,6 +162,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/capabilities.yaml](../harness/capabilities.yaml) · 4 KB — One capability, one owner (contexts/project/lint.md PROJECT-LINT-7).
   - ids: CONTRIB-10, PROJECT-LINT-7, app-lint, app-typecheck, check-cache-folder, git-merge-or-abort, git-outcome, git-worktree-remove, local-registry-publish, npm-ci
+- [harness/check-cache.md](../harness/check-cache.md) · 7 KB — The harness repository commits the verdicts of its own per-package checks in `.cache/`, keyed by content, the way an app commits its results in `.starcistacks/cache/` ...
+  - sections: Layout and format · The key · Who reuses what · Forged records · The nightly verify
 - [harness/host.md](../harness/host.md) · 25 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
   - sections: Spawning a process · The host stack · Roles and machines · Host services · WSL memory · Dependencies through a link · Files and folders
   - ids: Self-healing
@@ -176,8 +178,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 18 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
-- [hfs/harness.yaml](../hfs/harness.yaml) · 22 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
-  - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 44 more
+- [hfs/harness.yaml](../hfs/harness.yaml) · 23 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
+  - ids: app.package, app.tree, cache.check, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env and 45 more
 - [hfs/rules.yaml](../hfs/rules.yaml) · 190 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: PROJECT-LINT-7, R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R106, R107, R108, R109, R11, R110, R113, R12, R13 and 301 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 107 KB — The HFS slot manifest: what may exist in an app repository and where.
@@ -186,14 +188,14 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 49 KB — The canonical tree of an app, one per place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
-- [project/branches.md](../project/branches.md) · 11 KB — An app repository has two long-lived branches and one way between them (PROJECT-BRANCH-1, PROJECT-BRANCH-2); the harness repository itself has the same two lines under its own ...
+- [project/branches.md](../project/branches.md) · 12 KB — An app repository has two long-lived branches and one way between them (PROJECT-BRANCH-1, PROJECT-BRANCH-2); the harness repository itself has the same two lines under its own ...
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev` · PROJECT-BRANCH-2 A lane lands on `dev` itself: one squashed commit, right after its gate · PROJECT-BRANCH-3 The harness repository itself has `dev` and `main` too
 - [project/brand.md](../project/brand.md) · 10 KB — The brand an app's pictures and designs are made from: one folder, `.starcistacks/brand/`, that every design or image brief reads first.
   - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first · PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
 - [project/business-repo.md](../project/business-repo.md) · 12 KB — How one business is built on StarCi: one repository that holds the business's own services as an app, the business package its agents run from, and the seed standard that gives a ...
   - sections: PROJECT-BUSINESS-1 A business is one repository: an app, its nivoos package and its seed standard
 - [project/check-cache.md](../project/check-cache.md) · 83 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
-  - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · Flags, CI and side keys · Read with
+  - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · Flags, CI and side keys · The harness's own cache · Read with
   - ids: Machine-local
 - [project/cicd.md](../project/cicd.md) · 56 KB — Every StarCi app gets one delivery pipeline in its `.github/`, rendered by `starci app sync` from the `@starci/hfs` templates: a release push builds the release's images and ...
   - sections: Dev and prod · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Sources · Read with
@@ -208,7 +210,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-4 An app may switch every gate off but the hfs ones · PROJECT-LINT-3 A project extends the law through its ext folder · PROJECT-LINT-5 A production audit exception is time-boxed and the owner's · PROJECT-LINT-6 Lint has zero errors; a rule that catches a bug is an error, a style rule a warning · PROJECT-LINT-7 One condition has one check, and one capability has one owner · Read with
 - [project/master-plan-record.md](../project/master-plan-record.md) · 6 KB — A project's Master Plan is the one record of what it decided, why, and the rules every task holds, kept as data in `.starciwork/master-plan.yaml` at the app root.
   - sections: PROJECT-MASTER-PLAN-1 A project keeps its Master Plan as nine layers of data · PROJECT-MASTER-PLAN-2 A brief carries the layers of its op, and a task that contradicts a rule stops and asks · PROJECT-MASTER-PLAN-3 Each rule's enforcement is reported, so the plan shows what the harness holds · Read with
-- [project/monitoring.md](../project/monitoring.md) · 22 KB — A managed VPS runs one harness-owned monitoring stack, `starci-monitor`, beside the app stacks, the way it runs the Swarm UI and the edge proxy (harness/managed-vps.md).
+- [project/monitoring.md](../project/monitoring.md) · 24 KB — A managed VPS runs one harness-owned monitoring stack, `starci-monitor`, beside the app stacks, the way it runs the Swarm UI and the edge proxy (harness/managed-vps.md).
   - sections: PROJECT-MONITORING-1 One stack per server, every component a toggle · PROJECT-MONITORING-2 An environment opts in · PROJECT-MONITORING-3 Doors, credentials and alerts · PROJECT-MONITORING-4 Dev parity · PROJECT-MONITORING-5 Each app's own alert bot · PROJECT-MONITORING-6 The monitor bot: commands and alerts with buttons · Consul
   - ids: opt-in
 - [project/shared-services.md](../project/shared-services.md) · 13 KB — A managed VPS can run opt-in shared services beside the app stacks, the way it runs the monitoring stack (monitoring.md): one harness-owned stack per service per server, deployed ...
@@ -279,7 +281,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · A collection of files: MediaGrid · Owner split · Rules · Eager pictures and the fetch priority
 - [ui/components/lesson.md](../ui/components/lesson.md) · 7 KB — No contract role yet: these are the parts of a lesson page, each a Grammar component an app places; their look is the Grammar's (`src/common/components-lesson.css`), their words ...
   - sections: Job · Choose · Variants · Code palette · Size · States · Owner split · Accessibility · Rules
-- [ui/components/list-table.md](../ui/components/list-table.md) · 22 KB — Contract: List and Table.
+- [ui/components/list-table.md](../ui/components/list-table.md) · 23 KB — Contract: List and Table.
   - sections: Job · Choose · Filter row · Row edge tone · Unread row · Table totals, row ground, phone selection · Section head · Version diff rows · Variants · Size · States · Owner split · Row description · Rules · Key-value rows · Phone fixes for rows, figures, tables and timelines
 - [ui/components/markdown.md](../ui/components/markdown.md) · 5 KB — `@starci/grammar/core/ext/markdown` is part of Grammar core, used ONLY for long authored documents (an article, a lesson, a report written as markdown).
   - sections: Minimal use · Entries · `<Markdown>` props · Highlights · What a text may hold · Built on Grammar core
