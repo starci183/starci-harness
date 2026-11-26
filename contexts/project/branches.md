@@ -5,7 +5,8 @@ itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file o
 
 ## PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev`
 
-1. An app repository must have exactly two long-lived branches: `main` and `dev`.
+1. An app repository must have exactly two long-lived branches: `main` and `dev`, plus at most one integration branch its lanes land into
+   instead of `dev` (PROJECT-BRANCH-4).
 2. `main` is what is released on git. It moves only by a release (the annotated `v*` tag through `release push`), and only by
    fast-forward to a commit that is on `dev`.
 3. `dev` is the working branch, forked from `main`, and always at or ahead of `main`: `main` is always an ancestor of `dev`, and
@@ -58,7 +59,32 @@ itself has the same two lines under its own rule (PROJECT-BRANCH-3). This file o
 **Enforced by** `starci lane gate --land` (`cli/src/core/lane/land-direct.ts`, proven by `land-direct.test.ts`: the squash on the dev it landed on,
 the re-check only after dev moved, the conflict that lands nothing, the lock released) and the dev lock (`takeDevLock`). That a lane ran its gate before `--land` is the verb's own order: `--land` runs only after a green `--push`.
 
-PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has no managed app hook, and its own `dev` and `main` follow PROJECT-BRANCH-3.
+PROJECT-BRANCH-1, PROJECT-BRANCH-2 and PROJECT-BRANCH-4 are an app's: the harness repository has no managed app hook, and its own `dev` and `main` follow PROJECT-BRANCH-3.
+
+## PROJECT-BRANCH-4 An app's lanes may land into an integration branch; `dev` moves to it only when the owner asks
+
+The owner's words are quoted in [authority/lanes.md](../authority/lanes.md) "Landing into an integration branch".
+
+1. An app whose dev stack must hold still (a demo being filmed, say) names an integration branch for its lanes: `landInto` of its
+   `devSync.repos` entry in this machine's local settings ([cicd.md](cicd.md) "The debounced dev sync"; `starci lane into` prints it), or
+   `lane gate --land --into <branch>` for one landing. Absent, the lanes land on `dev`. It is never `main` or a `lane/` branch, and the branch exists on
+   origin before the first landing (`git push origin origin/dev:refs/heads/<branch>`; else `LANE_LAND_NO_BRANCH`).
+2. With it set, `lane gate` merges `origin/<branch>` instead of `origin/dev`, and `--land` lands exactly as PROJECT-BRANCH-2 says, on that branch: under its
+   own lock (`<lanes>/_dev-push-into-<branch>.lock`), the newest `origin/<branch>` merged, the fast re-check only when it moved, ONE squashed commit with the
+   `Landed-lane:` trailer pushed without force, the lane's status (`into` names the branch) and the CI watch. It marks no dev sync and publishes no harness dev
+   line: `dev` is what the app's dev stack runs and what the dev sync follows, so nothing restarts.
+3. A push of the integration branch lands on a dev line: the managed pre-push hook reads `starci lane into` and judges it at the fast level as a push of
+   `dev`, and its deps check accepts the local-registry pins `dev` accepts; a CLI without the verb leaves such a push at the full level.
+4. `dev` moves only by `starci dev promote --dir <app> [--from <branch>] --execute`, run when the owner asks. Under the repository's dev lock it
+   fast-forwards `dev` to `origin/<branch>`, or, when `dev` holds commits the branch lacks (a hotfix, a back-merge), makes ONE merge commit of the two
+   (`git merge-tree`, no checkout moved; a conflict refuses `DEV_PROMOTE_CONFLICT` with its files and pushes nothing); never forced. An app's push is
+   `app push` from a worktree at the pushed commit (installed and prepared as a lane is, removed after), so the hook judges the tree `dev` receives. Then the
+   dev sync is marked once. Without `--execute` it prints the lanes (`Landed-lane:` trailers) that would arrive on `dev`, as `starci lane status` lists the
+   lanes on the branch that are not on `dev` yet.
+
+**Enforced by** `starci lane gate --land` with `--into` or `landInto` (`cli/src/core/lane/land-direct.ts`, proven by `land-direct.test.ts`: the landing on
+the branch, its own lock, no dev sync), `starci dev promote` (`cli/src/core/dev/promote.ts`, `promote.test.ts`: the fast-forward, the one merge commit, the
+conflict that pushes nothing, the dry run), the hook (`packages/hfs/src/pre-push-branches.spec.mts`) and `landsOnDev` (`cli/src/core/deps/dev-local.ts`).
 
 ## PROJECT-BRANCH-3 The harness repository itself has `dev` and `main` too
 

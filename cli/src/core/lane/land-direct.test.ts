@@ -142,3 +142,35 @@ void test("a conflict with the newest dev stops with its files, lands nothing an
     assert.equal(gitIn(lane, "status", "--porcelain"), "")
     assert.equal(existsSync(landPaths(dir).devLock), false)
 })
+
+void test("a lane whose repository lands into an integration branch lands there under that branch's own lock, and marks no dev sync", async (t) => {
+    const { lane, pusher, dir, origin } = scratch(t)
+    gitIn(pusher, "push", "-q", "origin", "dev:dev2")
+    gitIn(lane, "fetch", "-q", "origin")
+    const dev = gitIn(origin, "rev-parse", "dev")
+    const gated = gitIn(lane, "rev-parse", "origin/dev2")
+    const log: string[] = []
+    const said: string[] = []
+    const done = await landLane({ root: lane, lane: "feature", branch: "lane/feature", profile: "app", dir, gatedBase: gated, into: "dev2", say: (line) => said.push(line) }, {
+        ...fakeDeps(log),
+        push: (root, _profile, sha, into) => {
+            log.push(`push ${into}`)
+            return captureTool("git", ["push", "origin", `${sha}:refs/heads/${into}`], root)
+        },
+    })
+    assert.deepEqual(log, ["push dev2", "watch feature sha"], "no dev sync is marked for a landing on the integration branch")
+    assert.equal(done.into, "dev2")
+    assert.deepEqual(done.syncs, [])
+    assert.equal(gitIn(origin, "rev-parse", "dev2"), done.sha)
+    assert.equal(gitIn(origin, "rev-parse", "dev"), dev, "dev does not move")
+    assert.match(gitIn(origin, "log", "-1", "--format=%B", "dev2"), /land lane feature onto dev2[\s\S]*Landed-lane: feature [0-9a-f]{40}/u)
+    const status = JSON.parse(readFileSync(join(landPaths(dir).status, "feature.json"), "utf8")) as { into?: string }
+    assert.equal(status.into, "dev2")
+    assert.ok(said.some((line) => line.includes("dev promote")), "the landing names the promote that brings it to dev")
+    assert.equal(existsSync(landPaths(dir, "into-dev2").devLock), false, "the integration branch's lock is released")
+})
+
+void test("a landing into a branch origin lacks lands nothing and names how to create it", async (t) => {
+    const { lane, dir } = scratch(t)
+    await assert.rejects(landLane({ root: lane, lane: "feature", branch: "lane/feature", profile: "app", dir, gatedBase: undefined, into: "dev2", say: () => undefined }, fakeDeps([])), (error: { code?: string }) => error.code === "LANE_LAND_NO_BRANCH")
+})

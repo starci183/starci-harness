@@ -1,7 +1,7 @@
 # Lanes
 
 A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the
-app's integration branch (`dev`, [project/branches.md](../project/branches.md) PROJECT-BRANCH-1). Many lanes share one host and one
+app's integration branch (`dev`, [project/branches.md](../project/branches.md) PROJECT-BRANCH-1, or the branch its lanes land into, PROJECT-BRANCH-4). Many lanes share one host and one
 lanes folder. A lane brief is this file plus the task: read it, then call the verbs below. A lane never writes its own lock,
 slot or landing script; every step that coordinates with other lanes is a verb.
 
@@ -134,7 +134,20 @@ One verb gates and lands (PROJECT-BRANCH-2):
    stands, and the next `starci lane remove <worktree> --execute` (which clears it) or `starci lane prune-installs --execute` (the janitor sweeps
    the markers with the same guard) finishes it. The verb prints one line, `worktree removed` or `kept: <reason>`; it never changes the exit code.
 
-`starci lane status` prints the dev lock and each lane's landing status.
+`starci lane status` prints the dev lock, each lane's landing status and the lanes an integration branch holds that dev lacks.
+
+### Landing into an integration branch
+
+The owner's rule, in his words:
+
+> "lane riêng vào dev2 và khi nào yêu cầu thì vào dev"
+
+A repository may name an integration branch its lanes land into instead of dev (`landInto` of its `devSync.repos` entry, or `lane gate --push --land
+--into <branch>` for one landing). Every step above then runs on that branch: `lane gate` merges `origin/<branch>`, and `--land` lands under the
+branch's own lock as one squashed commit with its `Landed-lane:` trailer, writes the status and starts the CI watch; it marks no dev sync and publishes no
+harness dev line, so the app's dev stack does not move. Dev takes the branch only when the owner asks: `starci dev promote --dir <app> --from <branch>`
+(dry: the lanes that would arrive) and then `--execute` (dev fast-forwarded, or one merge commit, pushed under the dev lock, the dev sync marked once). A lane
+never runs the promote. The rule, its refusals and its enforcers are [project/branches.md](../project/branches.md) PROJECT-BRANCH-4.
 
 **A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same verb.
 `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the

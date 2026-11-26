@@ -5,6 +5,7 @@ import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { appRootOf } from "../../harness/memory-plan.js"
 import { levelOfTarget, pushTargetOfArgs } from "./fast-check.js"
 import type { CheckLevel } from "./fast-check.js"
+import { integrationRefs } from "../deps/dev-local.js"
 
 /** The committed cache folder of an app. */
 /** The committed check cache folder, without its trailing slash (shared/git.ts CHECK_CACHE_DIR owns the path). */
@@ -186,7 +187,7 @@ const FLAGS = {
 /** `starci app push`: run the push gate's check first, commit the cache records it writes, then `git push` once. */
 export const appPushVerb = defineVerb({
     path: ["app", "push"],
-    summary: "push once: a landing on dev (every pushed ref dev or a lane branch) runs no check of its own, and its pre-push hook runs the fast level once (app check --level dev); any other push (main, a release tag, another branch) first runs app check --env prod --level full, commits the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a red check",
+    summary: "push once: a landing on dev (every pushed ref dev, a lane branch or the integration branch the repository's lanes land into) runs no check of its own, and its pre-push hook runs the fast level once (app check --level dev); any other push (main, a release tag, another branch) first runs app check --env prod --level full, commits the cache records a real run writes as their own commit, then git push (its pre-push hook finds nothing to refuse); refuses a tree with uncommitted work or a red check",
     effect: "remote",
     roles: WRITERS,
     schema: "starci/app-push@1",
@@ -194,7 +195,7 @@ export const appPushVerb = defineVerb({
     run: (context: VerbContext, flags): Promise<VerbResult<PushOutcome>> => {
         const ports = realPorts(context.cwd, context.progress)
         const branch = ports.git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.trim()
-        const level = levelOfTarget(pushTargetOfArgs(flags.args, branch === "" || branch === "HEAD" ? undefined : branch))
+        const level = levelOfTarget(pushTargetOfArgs(flags.args, branch === "" || branch === "HEAD" ? undefined : branch), integrationRefs(context.cwd))
         const outcome = warmAndPush(ports, flags.args, level, branch === "" || branch === "HEAD" ? undefined : branch)
         return Promise.resolve({ data: outcome, message: outcome.pushed ? "pushed" : (outcome.refusal ?? "not pushed"), exitCode: outcome.exitCode })
     },

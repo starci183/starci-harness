@@ -236,7 +236,7 @@ export const hotfixLand = async (given: { readonly root: string; readonly dir: s
         const release = grantPass(root, sha)
         let pushed: Awaited<ReturnType<HotfixDeps["push"]>>
         try {
-            pushed = await deps.push(root, profile, sha)
+            pushed = await deps.push(root, profile, sha, "dev")
         } finally {
             release()
         }

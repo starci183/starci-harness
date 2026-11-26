@@ -34,6 +34,20 @@ test('the happy path: main fast-forwards to a commit on dev, judged as main by t
   assert.match(other.stdout, /judged branch: \(the checkout\).*level full/);
 });
 
+test('the integration branch the lanes land into (starci lane into) runs the fast level as dev does; without that verb, or for another branch, it is the full level', t => {
+  const repo = repository(t, HOOK, { landInto: 'dev2' });
+  const landed = push(repo, [ref('refs/heads/dev2', repo.head, repo.older)]);
+  assert.equal(landed.status, 0, landed.stderr);
+  assert.match(landed.stdout, /app check level dev, push refs: .*refs\/heads\/dev2/);
+  const together = push(repo, [ref('refs/heads/dev2', repo.head, repo.older), ref('refs/heads/dev', repo.head, repo.older)]);
+  assert.match(together.stdout, /app check level dev/);
+  const other = push(repo, [ref('refs/heads/dev3', repo.head)]);
+  assert.match(other.stdout, /level full/);
+  const plain = fixture(t);
+  const older = push(plain, [ref('refs/heads/dev2', plain.head)]);
+  assert.match(older.stdout, /level full/);
+});
+
 test('a push of main from a dev checkout, and a release tag, are judged as main whatever branch is checked out', t => {
   const repo = fixture(t);
   git(repo.root, 'checkout', '-q', 'dev');

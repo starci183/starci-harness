@@ -56,8 +56,9 @@ to `origin/dev` and its running dev stack onto that code:
    reinstalled for. Then the processes stop, the checkout fast-forwards, and the staged outputs (git's ignored
    entries of the staging tree, each folder whole and nothing inside a listed folder: every `node_modules`, every `dist`, generated files such as husky's `.husky/_`) are moved in by rename on the same volume, the workspace
    links npm made into the staging tree (absolute junctions on Windows) are re-pointed at the checkout, the staging tree's manifests and lockfiles
-   are copied (each one its install changed and each one the previous overlay had changed), and what they replaced is removed, retrying a file an
-   antivirus holds for a moment. A move that fails puts every move back (`DEV_SYNC_SWAP`), and the checkout goes back to the commit it was on with
+   are copied (each one its install changed and each one the previous overlay had changed), and what they replaced is left aside as
+   `<entry>.starci-old`, deleted without blocking only once the stack runs again (a `node_modules` delete takes many minutes on Windows and is no part of the
+   downtime); an entry still held then is deleted by the next sync before it stops anything. A move that fails puts every move back (`DEV_SYNC_SWAP`), and the checkout goes back to the commit it was on with
    the previous overlay, so the stopped processes restart on the code and the install that belong together; only when git cannot move it back is
    it marked (`<git dir>/starci-dev-sync-unswapped`) so the next sync installs, builds, migrates and restarts whole. The runner retries a refused
    swap once after 20 s. The swapped install is smoke-checked again; a repairable miss there, though the staged one resolved, replaces it with a clean
@@ -111,7 +112,10 @@ and syncs again only when a landing marked the checkout during that sync. `npm c
 scanning a large file) runs again up to four times, its `node_modules` removed with retries before each try. Its files are in the checkout's git folder, the same for every CLI copy of the machine: `<git common dir>/starci-dev-sync/` holds the mark
 (`wanted.json`), the status (`status.json`: `waiting`, `syncing`, `synced`, or `failed` with the refusal's code and message), the runner's lock
 (its pid) and its log. `starci dev sync-runner --status --dir <checkout>` prints the status and the pending mark; `--request` marks and starts it
-by hand. The runner's lock and the sync's own lock per checkout keep two syncs of a checkout from ever running at once.
+by hand. The runner's lock and the sync's own lock per checkout keep two syncs of a checkout from ever running at once. **The watchdog.** While a sync holds
+stack processes stopped, no line said for `devSync.stallMinutes` (20) ends it as `failed` with `DEV_SYNC_STALLED` and the step that stalled; the runner then
+brings the stack up as after any failed sync, marks the checkout to sync whole (the unswapped and unmigrated marks) and exits, so the stuck step never runs on beside
+the next sync, which `--request` or the next landing starts. A wait outside that window (the heavy queue while the stack still serves) is never judged.
 
 **Warming the cache after a pin move (a design, not built).** A pin or lockfile move that changes a part of the check cache fingerprint
 ([check-cache.md](check-cache.md) "The fingerprint") leaves the committed records cold, and the next gate pays for the full run (NIVO's: `hfs structure reused 0 checked 12868`,
@@ -149,7 +153,8 @@ installed in an app's `node_modules` reads the same file through the harness hom
 ```
 
 **One entry per app.** The file is machine-wide but a landing marks only its own repository's dev checkout: `devSync.repos` maps the repository
-a lane lands in to its checkout (and optional `afterLand`, `env`, `debounceSeconds`, `processes`). With any entry listed, a repository without one syncs
+a lane lands in to its checkout (and optional `afterLand`, `landInto`, `env`, `debounceSeconds`, `processes`; `landInto` names the integration branch
+its lanes land into instead of dev, which marks no sync until `starci dev promote` moves dev, [branches.md](branches.md) PROJECT-BRANCH-4). With any entry listed, a repository without one syncs
 nothing; with none listed the top-level `checkout` is a one-app machine's. And two syncs of one checkout never run together: `dev sync --execute` takes
 a lock per checkout (temp folder, by path) and a second one waits for the first (`DEV_SYNC_BUSY` after 30 minutes; a dead holder is reclaimed).
 

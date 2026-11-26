@@ -27,6 +27,8 @@ export interface LaneStatus {
     readonly sha: string
     readonly laneSha: string
     readonly branch: string
+    /** The branch it landed on when that is not dev: an integration branch (`dev2`), which reaches dev only by `starci dev promote`. */
+    readonly into?: string
     readonly at: string
     readonly reason?: string
     /** Migration files the lane added, to apply once landed. */
@@ -111,12 +113,35 @@ export const takeDevLock = async (dir: string, say: (line: string) => void, scop
     }
 }
 
+/**
+ * The scope of the lock a landing into `into` holds: dev's own (the repository's dev lock, `lockScope` of harness/land-profile.ts), or one per integration
+ * branch beside it, so a landing into `dev2` never waits for one into dev and two landings into `dev2` never push it at once. Pure.
+ */
+export const intoLockScope = (devScope: string, into: string): string => {
+    if (into === "dev") return devScope
+    const branch = `into-${into.replace(/[^A-Za-z0-9._-]/gu, "_")}`
+    return devScope === "" ? branch : `${devScope}-${branch}`
+}
+
 /** The trailer a landing commit carries for its lane: how a later landing knows the lane's sha is on dev although its commits are not. */
 export const LANDED_TRAILER = "Landed-lane"
 
 /** The message of a lane's one commit on dev: the lane, its branch and sha, and one `Landed-lane: <lane> <sha>` trailer. */
-export const squashMessage = (stamp: string, lane: { readonly lane: string; readonly branch: string; readonly sha: string }): string =>
-    [`land lane ${lane.lane} onto dev (${stamp})`, "", `- ${lane.lane} (${lane.branch} ${lane.sha})`, "", `${LANDED_TRAILER}: ${lane.lane} ${lane.sha}`].join("\n")
+export const squashMessage = (stamp: string, lane: { readonly lane: string; readonly branch: string; readonly sha: string }, into = "dev"): string =>
+    [`land lane ${lane.lane} onto ${into} (${stamp})`, "", `- ${lane.lane} (${lane.branch} ${lane.sha})`, "", `${LANDED_TRAILER}: ${lane.lane} ${lane.sha}`].join("\n")
+
+/** One lane a landing commit names by its trailer. */
+export interface LandedLane {
+    readonly lane: string
+    readonly sha: string
+}
+
+/** The lanes the `Landed-lane` trailers of `log` (commit messages, e.g. `git log --format=%B`) name, oldest first when the log is newest first. Pure. */
+export const landedLanesOf = (log: string): LandedLane[] => {
+    const found: LandedLane[] = []
+    for (const match of log.matchAll(/^Landed-lane: (\S+) ([0-9a-f]{7,40})\s*$/gmu)) found.push({ lane: match[1] ?? "", sha: match[2] ?? "" })
+    return found.reverse()
+}
 
 interface RawFinding {
     readonly code?: unknown
