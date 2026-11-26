@@ -12,6 +12,8 @@ import { installPackage, tail } from "../deps/packages.js"
 import { affectedBy } from "./affected.js"
 import type { Affected } from "./affected.js"
 import { isHarnessCheckout } from "./harness-checkout.js"
+import { bookOf, CACHED_STEPS, FORGED, hasGreen, isCachedKind, listVerifyRuns, loadPrimitives, readTreeFiles, treeKeys, verifyTrust, writeRecords } from "./check-cache.js"
+import type { KeyParts, VerifyRun } from "./check-cache.js"
 
 /**
  * The harness's own two-level gate, the harness counterpart of `app check --level dev|full`. The FAST level (`dev`) is what landing on the harness's `dev` runs once per lane, before the
@@ -165,13 +167,16 @@ export const runStep: StepRunner = async (root, step) => {
     }
 }
 
+/** How one step ended: green or red, skipped behind a red build, or reused from a green record (or unneeded preparation) without running. */
+export type StepOutcome = boolean | "skipped" | "reused"
+
 /** What one gate did. */
 export interface HarnessGate {
     readonly level: HarnessLevel
     readonly base: string | null
     readonly head: string
     readonly summary: readonly string[]
-    readonly steps: readonly (GateStep & { readonly ok: boolean | "skipped" })[]
+    readonly steps: readonly (GateStep & { readonly ok: StepOutcome })[]
     readonly findings: readonly GateFinding[]
     readonly verdict: "green" | "red"
 }
@@ -232,14 +237,34 @@ export const findingLines = (finding: { readonly code: string; readonly path: st
 }
 
 /**
- * Runs the steps in order. A red install or build of a folder skips every later step in that folder and in each package whose build order needs it,
- * since they would only repeat its failure; every other step still runs, so one gate names every red folder at once.
+ * The folders a gate must install and build for the steps that run: for every step that is not reused (`reused[i]`), the build order of its folder (a
+ * package's, the desktop app's after the packages it needs, the CLI alone), and the CLI for the light gates, which run its build. An install or build
+ * of a folder outside this set is only preparation nobody needs (its own build verdict reused), so the gate skips it. Pure.
  */
-export const runHarnessGate = async (root: string, plan: Affected, level: HarnessLevel, scriptsOf: (dir: string) => Readonly<Record<string, string>>, run: StepRunner = runStep, say: (line: string) => void = () => undefined): Promise<HarnessGate> => {
+export const neededFolders = (steps: readonly GateStep[], reused: readonly boolean[], plan: Pick<Affected, "packages" | "appBuild">): Set<string> => {
+    const orders = new Map(plan.packages.map((pkg) => [pkg.dir, pkg.build]))
+    const orderOf = (dir: string): readonly string[] => orders.get(dir) ?? (dir === APP_DIR ? [...plan.appBuild, APP_DIR] : [dir])
+    const needed = new Set<string>()
+    steps.forEach((step, index) => {
+        if (step.kind === "install" || reused[index] === true) return
+        for (const dir of step.kind === "check" ? [CLI_DIR] : orderOf(step.dir)) needed.add(dir)
+    })
+    return needed
+}
+
+/**
+ * Runs the steps in order. A red install or build of a folder skips every later step in that folder and in each package whose build order needs it,
+ * since they would only repeat its failure; every other step still runs, so one gate names every red folder at once. `reusable` says which steps a
+ * green record of the harness check cache already proves for the tree (check-cache.ts): those report `reused` and run nothing, and the installs and
+ * builds no running step needs are skipped with them (`neededFolders`).
+ */
+export const runHarnessGate = async (root: string, plan: Affected, level: HarnessLevel, scriptsOf: (dir: string) => Readonly<Record<string, string>>, run: StepRunner = runStep, say: (line: string) => void = () => undefined, reusable: (step: GateStep) => boolean = () => false): Promise<HarnessGate> => {
     const steps = harnessGateSteps(plan, level, scriptsOf)
+    const reused = steps.map((step) => isCachedKind(step.kind) && reusable(step))
+    const needed = neededFolders(steps, reused, plan)
     const broken = new Set<string>()
     const needs = new Map(plan.packages.map((pkg) => [pkg.dir, pkg.build]))
-    const outcomes: (GateStep & { ok: boolean | "skipped" })[] = []
+    const outcomes: (GateStep & { ok: StepOutcome })[] = []
     const failures: (GateFinding | undefined)[] = []
     // A typecheck reads what its folder and the packages of its build order built before it, and writes nothing, so it starts at its place in the order and the next
     // steps go on while it runs: the typechecks of the folders run together, each tsc taking its own heavy slot (cli/src/harness/heavy.ts), so the host's slots bound them.
@@ -254,6 +279,11 @@ export const runHarnessGate = async (root: string, plan: Affected, level: Harnes
     }
     try {
         await inOrder(steps.map((step, index) => ({ step, index })), async ({ step, index }) => {
+            const prepOnly = step.kind === "install" || step.kind === "build"
+            if ((reused[index] === true || step.kind === "install") && !(prepOnly && needed.has(step.dir))) {
+                outcomes[index] = { ...step, ok: "reused" }
+                return
+            }
             const blocked = broken.has(step.dir) || (needs.get(step.dir) ?? []).some((dir) => dir !== step.dir && broken.has(dir)) || (step.kind === "check" && broken.has(CLI_DIR))
             if (blocked) {
                 outcomes[index] = { ...step, ok: "skipped" }
@@ -272,6 +302,59 @@ export const runHarnessGate = async (root: string, plan: Affected, level: Harnes
     await Promise.all(pending)
     const findings = failures.filter((each): each is GateFinding => each !== undefined)
     return { level, base: plan.base, head: plan.head, summary: plan.summary, steps: outcomes, findings, verdict: findings.length === 0 ? "green" : "red" }
+}
+
+/** The harness check cache as one gate uses it: which steps it reuses, and the records it writes afterwards. */
+interface GateCache {
+    readonly line: string
+    readonly forged: readonly GateFinding[]
+    readonly reusable: (step: GateStep) => boolean
+    readonly record: (gate: HarnessGate) => Promise<{ readonly files: readonly string[]; readonly contradicted: readonly GateFinding[] }>
+}
+
+/**
+ * Opens the harness check cache for a gate over `root` (contexts/harness/check-cache.md): every node's key over the work tree, and the committed records,
+ * each checked (an edited or malformed record is a HARNESS_CHECK_CACHE_FORGED finding and is never reused). The FAST level trusts the work tree's records,
+ * as an app's host run does; the full level trusts them only while the nightly verify (`cache-verify.yml`) is green or has not run, and `--fresh` trusts
+ * none. After the gate, every cached step that ran green writes its record, and a step that ran red under a key a committed record claims green is a
+ * FORGED finding, its record removed.
+ */
+export const openGateCache = async (root: string, plan: Pick<Affected, "graph">, level: HarnessLevel, fresh: boolean, head: string, runs: () => Promise<VerifyRun[] | undefined> = () => listVerifyRuns(root)): Promise<GateCache> => {
+    const p = await loadPrimitives()
+    const keys = await treeKeys(root, plan.graph)
+    const book = bookOf(readTreeFiles(root), p)
+    const trust = fresh ? { trusted: false, reason: "--fresh: every step runs" } : level === "full" ? verifyTrust(await runs(), head) : { trusted: true, reason: "the work tree's records (the FAST level)" }
+    const stepOf = (step: GateStep): string | undefined => (isCachedKind(step.kind) ? CACHED_STEPS[step.kind] : undefined)
+    const keyOfStep = (step: GateStep): string | undefined => {
+        const name = stepOf(step)
+        return name === undefined ? undefined : keys.key(step.dir, name)
+    }
+    return {
+        line: trust.reason,
+        forged: book.forged,
+        reusable: (step) => {
+            const name = stepOf(step)
+            const key = keyOfStep(step)
+            return trust.trusted && name !== undefined && key !== undefined && hasGreen(book, name, step.dir, key)
+        },
+        record: async (gate) => {
+            const green: { dir: string; step: string; parts: KeyParts }[] = []
+            const red: { dir: string; step: string }[] = []
+            const contradicted: GateFinding[] = []
+            for (const step of gate.steps) {
+                const name = stepOf(step)
+                const parts = keys.parts.get(step.dir)
+                const key = keyOfStep(step)
+                if (name === undefined || parts === undefined || key === undefined) continue
+                if (step.ok === true) green.push({ dir: step.dir, step: name, parts })
+                if (step.ok === false && hasGreen(book, name, step.dir, key)) {
+                    red.push({ dir: step.dir, step: name })
+                    contradicted.push({ level: "error", code: FORGED, path: step.dir, message: `the committed record of ${step.dir} ${name} says green under the key this tree computes, and the step ran red: the record was forged or the step is not deterministic` })
+                }
+            }
+            return { files: await writeRecords(root, green, red), contradicted }
+        },
+    }
 }
 
 /** The base of a FAST gate when none is given: where HEAD forks from origin/dev (the branch it lands on), else from origin/main. */
@@ -302,6 +385,7 @@ export const checkVerb = defineVerb({
         release: { kind: "boolean", summary: "the release check of the train: the same as --level full" },
         level: { kind: "string", summary: "dev (default: the packages changed since --base and their dependents, built, typechecked and their npm test run) or full (everything, with lint, tests and CI's light gates)" },
         base: { kind: "string", summary: "the commit the FAST level measures from (default: where HEAD forks from origin/dev, else origin/main); the full level ignores it" },
+        fresh: { kind: "boolean", summary: "ignore the harness check cache (.cache/check): run every step, rewrite the records, and report a committed record the run contradicts as HARNESS_CHECK_CACHE_FORGED (the nightly verify runs --level full --fresh)" },
     },
     run: async (context, flags) => {
         if (flags.release === true && flags.level !== undefined && flags.level !== "full") throw new Refusal("CLI_USAGE", `--release is the full level; it takes no --level ${flags.level}`)
@@ -314,14 +398,22 @@ export const checkVerb = defineVerb({
         const plan = await affectedBy(root, base ?? "", undefined)
         const all = listPackages(root)
         const scriptsOf = (dir: string): Readonly<Record<string, string>> => all.find((pkg) => pkg.relativeDir === dir)?.scripts ?? {}
-        const gate = await runHarnessGate(root, plan, level, scriptsOf, runStep, context.progress)
-        const ran = gate.steps.filter((step) => step.ok !== "skipped").length
+        const cache = await openGateCache(root, plan, level, flags.fresh === true, plan.head)
+        const gate = await runHarnessGate(root, plan, level, scriptsOf, runStep, context.progress, cache.reusable)
+        const written = await cache.record(gate)
+        const findings = [...gate.findings, ...cache.forged, ...written.contradicted]
+        const verdict = findings.length === 0 ? "green" : "red"
+        const ran = gate.steps.filter((step) => step.ok === true || step.ok === false).length
+        const reusedCount = gate.steps.filter((step) => step.ok === "reused").length
+        const skipped = gate.steps.filter((step) => step.ok === "skipped").length
         const lines = [
             ...gate.summary,
-            `${level} gate ${gate.verdict}: ${String(ran)} step(s) ran, ${String(gate.steps.length - ran)} skipped behind a red build`,
-            ...gate.findings.flatMap((finding) => findingLines(finding)),
+            `cache: ${cache.line}; ${String(reusedCount)} step(s) reused, ${String(written.files.length)} record file(s) written`,
+            `${level} gate ${verdict}: ${String(ran)} step(s) ran, ${String(reusedCount)} reused, ${String(skipped)} skipped behind a red build`,
+            ...findings.flatMap((finding) => findingLines(finding)),
         ]
-        return { data: gate, message: lines.join("\n"), exitCode: gate.verdict === "green" ? 0 : 1 }
+        const data: HarnessGate & { readonly cache: { readonly line: string; readonly written: readonly string[] } } = { ...gate, findings, verdict, cache: { line: cache.line, written: written.files } }
+        return { data, message: lines.join("\n"), exitCode: verdict === "green" ? 0 : 1 }
     },
 })
 

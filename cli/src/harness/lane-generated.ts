@@ -38,3 +38,24 @@ export const commitGenerated = async (root: string, say: (line: string) => void 
     say(`regenerated ${String(files.length)} generated file(s) and committed them with the lane (${sha.slice(0, 10)}): ${files.join(", ")}`)
     return { files, sha }
 }
+
+/** The message of the commit that carries the harness check cache records a lane's gate wrote (contexts/harness/check-cache.md). */
+export const CACHE_COMMIT_MESSAGE = "chore(cache): harness check records (lane gate)"
+
+/**
+ * Commits the records the harness gate wrote into `.cache/` of the worktree `root` (and only them), so a lane lands its records with its code and the
+ * next gate, on any lane, reuses them. Nothing to commit commits nothing. Refuses LANE_GATE_GENERATED when the commit fails.
+ */
+export const commitCacheRecords = async (root: string, say: (line: string) => void = () => undefined): Promise<GeneratedCommit> => {
+    if (!existsSync(join(root, ".cache"))) return { files: [] }
+    const added = await captureGit(["add", "--all", "--", ".cache"], root)
+    if (added.exitCode !== 0) throw new Refusal("LANE_GATE_GENERATED", `git add of the cache records failed: ${added.stderr.trim()}`)
+    const staged = await captureGit(["diff", "--cached", "--name-only", "-z", "--", ".cache"], root)
+    const files = staged.stdout.split("\0").filter((file) => file !== "")
+    if (files.length === 0) return { files }
+    const committed = await captureGit(["commit", "-m", CACHE_COMMIT_MESSAGE, "--", ".cache"], root)
+    if (committed.exitCode !== 0) throw new Refusal("LANE_GATE_GENERATED", `git commit of the cache records failed: ${`${committed.stdout}\n${committed.stderr}`.trim().split("\n").slice(-3).join(" ")}`)
+    const sha = (await captureGit(["rev-parse", "HEAD"], root)).stdout.trim()
+    say(`committed ${String(files.length)} harness check cache record file(s) with the lane (${sha.slice(0, 10)})`)
+    return { files, sha }
+}

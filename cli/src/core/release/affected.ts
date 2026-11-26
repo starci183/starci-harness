@@ -6,6 +6,7 @@ import { NPMJS_FLAGS } from "../deps/local-refs.js"
 import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
+import { ciReuse } from "./check-cache.js"
 
 /** The CI nodes of this repository: each package under packages/, the CLI and the desktop app. */
 const NODE = /^(?:packages\/[^/]+|cli|app)$/
@@ -131,6 +132,40 @@ export const buildOrder = (start: string, edges: ReadonlyMap<string, ReadonlySet
     return order
 }
 
+/**
+ * One CI node as the harness check cache keys it (contexts/harness/check-cache.md "The key"): `needs` are the sibling nodes whose files can reach its
+ * steps' result (every sibling it requires, installs by `file:`, reads by relative path or names by repository path, in any strength, cycles allowed:
+ * the key takes the closure), `reads` the repository's top-level entries outside packages/ its own files name by a relative path that climbs to the root
+ * (`../../../ops/vps/recipients.yaml` from a package's spec), whose whole tracked tree joins its key.
+ */
+export interface GraphNode {
+    readonly dir: string
+    readonly needs: readonly string[]
+    readonly reads: readonly string[]
+}
+
+/** The top-level entries the CLI reads at run time, beyond what its text names: every tree its verbs and tests open from the repository root. */
+export const CLI_READS = ["contexts", "ops", "policy", "skills", "hfs.json", "README.md", "CONTRIBUTING.md", "AGENTS.md", "CLAUDE.md", "CHANGELOG.md", ".github"]
+
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+
+/**
+ * The top-level entries `node`'s own files name by a path that climbs to the repository root: `<../ per depth><top>` or the segment form
+ * `"..", ..., "<top>"`. packages/ is never one (its folders are nodes, named through `needs`). Pure.
+ */
+export const outsideReads = (dir: string, own: readonly string[], tops: readonly string[]): string[] => {
+    const depth = dir.split("/").length
+    const climb = "../".repeat(depth)
+    const segments = Array.from({ length: depth }, () => String.raw`["']\.\.["'],\s*`).join("")
+    const reads = tops.filter((top) => {
+        if (top === "packages" || top === dir.split("/")[0]) return false
+        const named = new RegExp(`${escapeRegExp(climb + top)}(?:["'/\\s\`]|$)`, "m")
+        const parts = new RegExp(`${segments}["']${escapeRegExp(top)}["']`)
+        return own.some((text) => named.test(text) || parts.test(text))
+    })
+    return reads.toSorted((left, right) => left.localeCompare(right))
+}
+
 /** What a change affects: the packages CI tests (each with its build order), and whether the harness and app jobs run. */
 export interface Affected {
     readonly base: string | null
@@ -144,6 +179,8 @@ export interface Affected {
     readonly matrix: { readonly include: readonly { readonly package: string; readonly name: string; readonly build: string }[] }
     /** The plan in two lines: what was measured, then the packages and jobs that run. */
     readonly summary: readonly string[]
+    /** Every CI node with what its key reads (the harness check cache, check-cache.ts). */
+    readonly graph: readonly GraphNode[]
 }
 
 /** The files a cli-follow commit changes (publish.yml): the CLI's manifest and lockfile, and the changelog entry of the move. */
@@ -243,6 +280,14 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
         .map((node) => ({ name: node.pkg.name, dir: node.pkg.relativeDir, build: orderOf(node.pkg.relativeDir) }))
     const harness = hit.has("cli")
     const app = hit.has("app")
+    const tops = readdirSync(root).filter((entry) => entry !== "node_modules" && entry !== ".git" && entry !== ".cache" && entry !== ".runtime")
+    const graph: GraphNode[] = nodes.map((node) => {
+        const dir = node.pkg.relativeDir
+        const named = nodes.filter((other) => other !== node && node.own.some((text) => text.includes(`${other.pkg.relativeDir}/`))).map((other) => other.pkg.relativeDir)
+        const needed = [...new Set([...anyNeeds(needs.get(dir) ?? { hard: new Set(), built: new Set(), soft: new Set() }), ...named])].filter((other) => other !== dir).toSorted((left, right) => left.localeCompare(right))
+        const reads = dir === "cli" ? [...new Set([...outsideReads(dir, node.own, tops), ...CLI_READS.filter((top) => tops.includes(top))])].toSorted((left, right) => left.localeCompare(right)) : outsideReads(dir, node.own, tops)
+        return { dir, needs: needed, reads }
+    })
     const summary = [
         `base ${base ?? "-"} head ${head}${full ? " (full)" : ""}${done ? " (a cli-follow commit already tested and published: nothing to run)" : ""}: ${String((changed ?? []).length)} file(s) changed`,
         `packages: ${packages.map((pkg) => pkg.dir).join(", ") || "-"}; harness: ${harness ? "yes" : "no"}; app: ${app ? "yes" : "no"}`,
@@ -258,6 +303,7 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
         appBuild: orderOf("app").filter((dir) => dir !== "app"),
         matrix: { include: packages.map((pkg) => ({ package: pkg.dir, name: pkg.name, build: pkg.build.join(" ") })) },
         summary,
+        graph,
     }
 }
 
@@ -275,9 +321,24 @@ export const releaseAffectedVerb = defineVerb({
     flags: {
         base: { kind: "string", summary: "the commit the change is measured from (empty or unknown: every node is affected)" },
         sha: { kind: "string", summary: "the commit measured (default HEAD)" },
+        "cache-base": { kind: "string", summary: "the trusted commit whose harness check cache (.cache/check) CI may reuse: a matrix entry whose every job step has a green record there under this tree's key gets cached \"true\" and its job runs no step; the work tree's own records are checked, and a forged one fails the plan (HARNESS_CHECK_CACHE_FORGED)" },
     },
     run: async (context, flags) => {
-        const data = await affectedBy(context.cwd, flags.base, flags.sha)
-        return { data, message: data.summary.join("\n") }
+        const plan = await affectedBy(context.cwd, flags.base, flags.sha)
+        const cacheBase = flags["cache-base"]?.trim() ?? ""
+        if (cacheBase === "") return { data: plan, message: plan.summary.join("\n") }
+        const root = await repositoryRoot(context.cwd)
+        const all = listPackages(root)
+        const scriptsOf = (dir: string): Readonly<Record<string, string>> => all.find((pkg) => pkg.relativeDir === dir)?.scripts ?? {}
+        const reuse = await ciReuse(root, cacheBase, plan.graph, plan.packages.map((pkg) => pkg.dir), scriptsOf)
+        const data = {
+            ...plan,
+            matrix: { include: plan.matrix.include.map((entry) => ({ ...entry, cached: reuse.reused.includes(entry.package) ? "true" : "false" })) },
+            cache: { base: cacheBase, reused: reuse.reused },
+            findings: reuse.forged,
+            summary: [...plan.summary, `cache: ${String(reuse.reused.length)} of ${String(plan.packages.length)} package job(s) reused from the records of ${cacheBase.slice(0, 10)}${reuse.reused.length > 0 ? ` (${reuse.reused.join(", ")})` : ""}`],
+        }
+        const lines = [...data.summary, ...reuse.forged.map((finding) => `  ${finding.code} ${finding.path} ${finding.message}`)]
+        return { data, message: lines.join("\n"), exitCode: reuse.forged.length === 0 ? 0 : 1 }
     },
 })

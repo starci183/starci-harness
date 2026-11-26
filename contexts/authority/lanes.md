@@ -147,7 +147,7 @@ dependents, the CLI and the desktop app when affected, the publish checks, and t
 `package (...)` jobs run it; the typechecks of those folders run together, each `tsc` on its own heavy slot, and each package test takes a heavy `test` slot; the CLI's
 own suite runs only in the train's full gate: [project/branches.md](../project/branches.md) PROJECT-BRANCH-3 item 2). A red package test refuses the gate with
 `HARNESS_GATE_TEST`, the failing test names and the run's last lines, before anything is pushed; with `--push`
-pushes `lane/<lane>` with git once it is green, and with `--land` lands it on the harness's `dev` with `git push`. Before that gate the lane's own tree is brought up to the generator: `lane gate` regenerates the
+pushes `lane/<lane>` with git once it is green (first committing the harness check cache records the gate wrote, [harness/check-cache.md](../harness/check-cache.md), so a re-gate or another lane reuses them), and with `--land` lands it on the harness's `dev` with `git push`. Before that gate the lane's own tree is brought up to the generator: `lane gate` regenerates the
 generated contexts files (`contexts/project/index.md`, anatomy.md's block and slices, every `*-sections.md`: what `starci contexts anatomy --execute` writes, and
 what the train's full gate compares) and commits those that changed with the lane (cli/src/harness/lane-generated.ts), so a lane that edits a page never lands a
 stale size line. `contexts anatomy --execute` writes into the harness of `--cwd` (else of the working folder), never into the checkout the CLI was built in.

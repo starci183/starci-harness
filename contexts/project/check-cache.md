@@ -705,6 +705,12 @@ is the proof that the committed records are the ones a fresh run writes. The one
   trusted against its first parent, a candidate or tag run against its merge-base with main. The `format` step runs `app check --gate format`.
 - Side keys take the untracked program inputs from the side's tsconfig `include` (generated code, never a build artifact git ignores), not from import resolution of files outside it.
 
+## The harness's own cache
+
+The harness repository keeps the same kind of cache for its own packages, in `.cache/check/` at its root, keyed per CI node and step and written by
+`starci release gate`: [harness/check-cache.md](../harness/check-cache.md) owns it. It reuses this cache's record format and hash combiner, and none of
+its rules above (families, fingerprint, sides) applies to it.
+
 ## Read with
 
 [lint.md](lint.md) (which machine judges what and where it runs), [stacks.md](stacks.md) (the `.starcistacks/` shape),
