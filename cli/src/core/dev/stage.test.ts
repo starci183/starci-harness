@@ -6,7 +6,7 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import test from "node:test"
 import { captureGitSync } from "../../shared/git.js"
-import { OLD, outermost, realSwapFs, stageTree, stagedOutputs, stagedTrackedChanges, stagingPath, swapStaged } from "./stage.js"
+import { OLD, outermost, realSwapFs, removeAside, stageTree, stagedOutputs, stagedTrackedChanges, stagingPath, swapStaged } from "./stage.js"
 
 const gitIn = (cwd: string, ...args: string[]): string => {
     const run = captureGitSync(["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false", ...args], cwd)
@@ -48,7 +48,7 @@ void test("the staging worktree sits beside the checkout at the new commit, and 
     assert.equal(existsSync(join(staging, "node_modules")), false, "what a previous sync left is cleaned")
 })
 
-void test("the swap moves the staged build in, re-points the workspace links into the checkout, copies the changed pins and removes what it replaced", async (t) => {
+void test("the swap moves the staged build in, re-points the workspace links into the checkout, copies the changed pins and leaves what it replaced aside, removed after the restart without blocking", async (t) => {
     const { checkout } = scratch(t)
     const staging = await stageTree(checkout, gitIn(checkout, "rev-parse", "HEAD"))
     // The staged install and build: a root node_modules with a workspace link into the staging tree, and the package's dist.
@@ -75,8 +75,11 @@ void test("the swap moves the staged build in, re-points the workspace links int
     assert.equal(swapped.relinked, 1)
     assert.match(readFileSync(join(checkout, "package.json"), "utf8"), /0\.57\.1-dev\.3/u)
     assert.equal(readFileSync(join(checkout, ".env"), "utf8"), "KEEP=1\n", "what the staging never built stays")
+    assert.deepEqual(swapped.aside, [`node_modules${OLD}`, `packages/ui/dist${OLD}`].filter((entry) => existsSync(join(checkout, entry))), "only what it replaced is aside")
+    assert.equal(readFileSync(join(checkout, `node_modules${OLD}`, "dep.js"), "utf8"), "old\n", "the replaced install waits aside: no delete while the stack is stopped")
+    const removed = await removeAside(checkout, swapped.aside)
+    assert.deepEqual(removed.held, [])
     assert.equal(existsSync(join(checkout, `node_modules${OLD}`)), false)
-    assert.deepEqual(swapped.leftover, [])
 })
 
 void test("a move that fails puts every earlier move back and refuses DEV_SYNC_SWAP: the checkout keeps its running install", async (t) => {
@@ -116,6 +119,7 @@ void test("husky's generated .husky/_ (a .gitignore of `*` inside) is staged as 
     assert.deepEqual(swapped.moved.filter((entry) => entry.startsWith(".husky")), [".husky/_"])
     assert.equal(readFileSync(join(checkout, ".husky", "_", "h"), "utf8"), "new\n")
     assert.equal(readFileSync(join(checkout, ".husky", "_", ".gitignore"), "utf8"), "*")
+    await removeAside(checkout, swapped.aside)
     assert.equal(existsSync(join(checkout, ".husky", `_${OLD}`)), false)
 })
 
