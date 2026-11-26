@@ -9,7 +9,7 @@ import { dirname, join } from "node:path"
 import test from "node:test"
 import { captureGitSync } from "../../shared/git.js"
 import { listPackages } from "../../shared/workspace.js"
-import { affectedBy, outsideReads } from "./affected.js"
+import { affectedBy, climbsToRoot, outsideReads } from "./affected.js"
 import type { Affected } from "./affected.js"
 import { bookOf, ciReuse, closureOf, FORGED, loadPrimitives, readTreeFiles, recordFile, treeKeys, verifyTrust } from "./check-cache.js"
 import type { VerifyRun } from "./check-cache.js"
@@ -109,6 +109,14 @@ void test("outside reads: a package's spec that climbs to the root names that to
     assert.deepEqual(outsideReads("app", ['import type { Contract } from "../cli/src/core/ui/contract.js"'], tops), ["cli"])
 })
 
+void test("a node whose files climb to the repository root from below its folder is a root reader; one that reaches a sibling or its own root is not", () => {
+    assert.equal(climbsToRoot("packages/hfs", ["const repoRoot = path.resolve(here, '..', '..', '..')"]), true)
+    assert.equal(climbsToRoot("packages/grammar", ['new URL("../../../contexts/ui/components/diagram.md", import.meta.url)']), true)
+    assert.equal(climbsToRoot("packages/stylelint-canon", ['path.resolve(here, "..", "..", "eslint-canon-fe")']), false)
+    assert.equal(climbsToRoot("packages/test-world", ['join(__dirname, "..", "..", "tsconfig.json")']), false)
+    assert.equal(climbsToRoot("cli", ['join(here, "..", "..", "contexts")']), true)
+})
+
 void test("keying: a key is stable, portable between an uncommitted edit and its commit, and moves only for the node whose tree changed", async () => {
     const repo = harnessLike()
     try {
@@ -136,7 +144,9 @@ void test("keying: a root tree a package's spec reads joins its key, so an edit 
     const repo = harnessLike()
     try {
         const plan = await fullPlan(repo)
-        assert.deepEqual(plan.graph.find((node) => node.dir === "packages/hfs")?.reads, ["ops"])
+        const hfs = plan.graph.find((node) => node.dir === "packages/hfs")
+        assert.ok(hfs?.reads.includes("ops") === true && hfs.reads.includes("contexts"), "a spec that climbs to the root may read any tree there: every top-level tree joins its key")
+        assert.deepEqual(hfs.needs, ["cli", "packages/gallery", "packages/grammar", "packages/heroicons"], "and every node")
         const before = await treeKeys(repo.root, plan.graph)
         repo.commit({ "ops/vps/recipients.yaml": "recipients: [age1]\n" })
         const after = await treeKeys(repo.root, plan.graph)

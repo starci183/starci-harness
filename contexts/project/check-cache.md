@@ -708,7 +708,7 @@ is the proof that the committed records are the ones a fresh run writes. The one
 ## The harness's own cache
 
 The harness repository keeps the same kind of cache for its own packages, in `.cache/check/` at its root, keyed per CI node and step and written by
-`starci release gate`: [harness/check-cache.md](../harness/check-cache.md) owns it. It reuses this cache's record format and hash combiner, and none of
+`starci check`: [harness/check-cache.md](../harness/check-cache.md) owns it. It reuses this cache's record format and hash combiner, and none of
 its rules above (families, fingerprint, sides) applies to it.
 
 ## Read with

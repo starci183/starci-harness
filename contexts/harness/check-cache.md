@@ -1,7 +1,7 @@
 # The committed check cache of the harness
 
 The harness repository commits the verdicts of its own per-package checks in `.cache/`, keyed by content, the way an app commits its results in
-`.starcistacks/cache/` ([project/check-cache.md](../project/check-cache.md)). The harness gate (`starci release gate`, both levels), the lane gate that runs
+`.starcistacks/cache/` ([project/check-cache.md](../project/check-cache.md)). The harness gate (`starci check`, both levels; `starci release gate` is its deprecated spelling), the lane gate that runs
 it, and CI's plan reuse a green verdict whose key the tree computes now, and run everything else. Its one rule is the app cache's: a reused verdict is the
 one a real run would produce now, and whenever the cache cannot prove that, the step runs. The code is `cli/src/core/release/check-cache.ts`; the record
 writer, parser and hash combiner are `@starci/hfs`'s own (`packages/hfs/cache/jsonl.mts`, `hash.mts`), so both caches share one format. The slot is
@@ -51,12 +51,12 @@ A change to a package therefore reruns its steps and those of every node whose c
 
 ## Who reuses what
 
-- **The lane gate.** `starci lane gate` of a harness lane runs `release gate --level dev`, which trusts the work tree's records, as an app's host run
+- **The lane gate.** `starci lane gate` of a harness lane runs `starci check --level dev`, which trusts the work tree's records, as an app's host run
   does: a step with a green record under its key reports `reused`, and the installs and builds no running step needs are skipped with it, so a lane that
   touched one leaf package runs that package's steps alone. With `--push` a green gate commits the records it wrote (`chore(cache): harness check records
   (lane gate)`, `commitCacheRecords` of `cli/src/harness/lane-generated.ts`) before it pushes, so the lane lands its records with its code. A lane never
   edits a record by hand; `trackedWorkChanges` and the landing's cleanup count `.cache/` as records, never work.
-- **The full gate.** `release gate --level full` trusts the committed records only while the newest finished `cache-verify.yml` run of `main`, or of the
+- **The full gate.** `starci check --release` (`--level full`) trusts the committed records only while the newest finished `cache-verify.yml` run of `main`, or of the
   gated sha, is green or none has run; a red or unreadable verify runs every step, and the report's `cache:` line says why. `--fresh` ignores the cache
   at either level and rewrites the records.
 - **A hotfix** (`starci hotfix land`) runs no gate ([authority/lanes.md](../authority/lanes.md) "Hotfix"), so it neither reuses nor writes a record: its
@@ -80,5 +80,5 @@ reused:
 ## The nightly verify
 
 `.github/workflows/cache-verify.yml` runs every night on the default branch and on `workflow_dispatch` on any branch: the full gate without the cache
-(`release gate --level full --fresh`). Every verdict is recomputed, a contradicted or edited record turns the run red, and the records the run writes that
+(`starci check --release --fresh`). Every verdict is recomputed, a contradicted or edited record turns the run red, and the records the run writes that
 the commit lacks are listed, never a failure (a hotfix lands without records). Its newest finished run is what the full gate's trust reads.

@@ -166,6 +166,17 @@ export const outsideReads = (dir: string, own: readonly string[], tops: readonly
     return reads.toSorted((left, right) => left.localeCompare(right))
 }
 
+/**
+ * Whether `dir`'s own files climb to the repository root from a folder below it: one `..` more than its depth, as a path (`../../../` from a
+ * package's `src/`) or as path segments (`"..", "..", ".."`). Such a file can read any tree of the repository, which no list names. Pure.
+ */
+export const climbsToRoot = (dir: string, own: readonly string[]): boolean => {
+    const depth = dir.split("/").length + 1
+    const path = "../".repeat(depth)
+    const segments = new RegExp(Array.from({ length: depth }, () => String.raw`["']\.\.["']`).join(String.raw`\s*,\s*`))
+    return own.some((text) => text.includes(path) || segments.test(text))
+}
+
 /** What a change affects: the packages CI tests (each with its build order), and whether the harness and app jobs run. */
 export interface Affected {
     readonly base: string | null
@@ -285,6 +296,9 @@ export const affectedBy = async (cwd: string, baseFlag: string | undefined, head
         const dir = node.pkg.relativeDir
         const named = nodes.filter((other) => other !== node && node.own.some((text) => text.includes(`${other.pkg.relativeDir}/`))).map((other) => other.pkg.relativeDir)
         const needed = [...new Set([...anyNeeds(needs.get(dir) ?? { hard: new Set(), built: new Set(), soft: new Set() }), ...named])].filter((other) => other !== dir).toSorted((left, right) => left.localeCompare(right))
+        // A node whose files climb to the repository root from below its own folder can read anything there (a spec that resolves the root and joins
+        // `packages/grammar` and `app` to judge them): its key takes every node and every top-level tree, since what it reads cannot be listed.
+        if (climbsToRoot(dir, node.own)) return { dir, needs: nodes.map((other) => other.pkg.relativeDir).filter((other) => other !== dir).toSorted((left, right) => left.localeCompare(right)), reads: tops.filter((top) => top !== "packages").toSorted((left, right) => left.localeCompare(right)) }
         const reads = dir === "cli" ? [...new Set([...outsideReads(dir, node.own, tops), ...CLI_READS.filter((top) => tops.includes(top))])].toSorted((left, right) => left.localeCompare(right)) : outsideReads(dir, node.own, tops)
         return { dir, needs: needed, reads }
     })
