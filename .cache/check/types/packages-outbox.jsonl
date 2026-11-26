@@ -1,0 +1,1 @@
+{"data":{"parts":{"format":"harness-check@1","reads":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","source":"c5c1ae6163490346e2bedf656903cad6e9343bc66d641748ade8261fff75ab6d","steps":"1","tool":"node24 npm-"},"verdict":"green"},"findings":[],"hash":"55c549c0563044b8b4ec69cb17a7956cc7e4c3ad1d31974c94d259616627404a","path":"packages/outbox","step":"types"}

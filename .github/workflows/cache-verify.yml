@@ -1,0 +1,47 @@
+name: cache-verify
+
+# The nightly proof of the harness check cache (contexts/harness/check-cache.md "The nightly verify"), the harness counterpart of an app's
+# managed cache-verify.yml: the FULL gate runs every package and the CLI without the cache (`starci check --release --fresh`), so every verdict is
+# recomputed, and a committed record that claims green under a key whose step now runs red, or that was edited by hand, is HARNESS_CHECK_CACHE_FORGED
+# and turns this run red. `starci check --release` (the train's dev -> main gate) trusts the committed records only while the newest finished run of
+# this workflow, on main or for the gated sha, is green (or none has run yet). Records the run writes that the commit lacks are listed, never a failure:
+# a hotfix lands without a gate and so without records.
+on:
+  schedule:
+    - cron: "17 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run per ref: a dispatch on dev never waits for the night run of main.
+concurrency:
+  group: cache-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            cli/package-lock.json
+            packages/*/package-lock.json
+            app/package-lock.json
+      - name: Install the CLI on this commit's packages
+        uses: ./.github/actions/cli-install
+      - name: Build the CLI
+        working-directory: cli
+        run: npm run build
+      - name: The full gate without the cache
+        run: node cli/dist/main.js check --release --fresh
+      - name: Records the commit lacks (info)
+        if: always()
+        run: git status --short -- .cache || true

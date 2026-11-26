@@ -77,7 +77,9 @@ PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has n
      package; a package without a `test` script is built and typechecked only, and a package's `test` script is its whole CI test command (the
      Grammar's is its static checks, with no specs and no Storybook plays). The CLI's own suite, lint, the light gates and sonar stay at the train
      (item 4): dev only reaches the local registry, and the CLI suite takes gigabytes under the RAM governor. Hotfix has no gate at all
-     ([authority/lanes.md](../authority/lanes.md) "Hotfix"), so it runs no package test;
+     ([authority/lanes.md](../authority/lanes.md) "Hotfix"), so it runs no package test. Every step that keeps a verdict (build, declarations,
+     typecheck, bundles, lint, test) reuses a green record of the harness check cache whose key the tree computes now and runs only what changed; the
+     records the gate writes are committed with the lane before its push ([harness/check-cache.md](../harness/check-cache.md));
    - the push of the squashed commit is `git push origin <sha>:dev` (there is no app hook);
    - one lanes folder serves every repository of the machine (its slots bound the machine), and each repository has its own dev lock (the harness's
      `_dev-push-harness.lock`).
@@ -90,7 +92,8 @@ PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has n
    dist-tag moves), a dev build whose release npm now serves is dropped from it, and every app's dev checkout of `devSync.repos` is marked for its
    debounced sync, which installs them.
 4. A release train is a `dev` -> `main` move with the FULL gate: `starci check --release` (the same as `--level full`) on the dev tip (every package and the CLI with
-   lint and their test suites, then CI's light gates), `main` fast-forwarded to that commit, `starci release push --execute`, and publish.yml publishes the plain versions
+   lint and their test suites, then CI's light gates; each step with a committed green record under its key is reused while the nightly
+   `cache-verify.yml` is green, [harness/check-cache.md](../harness/check-cache.md)), `main` fast-forwarded to that commit, `starci release push --execute`, and publish.yml publishes the plain versions
    (`release publish`, never a `-dev` version). Then `starci release back-merge --execute` brings `main` back into `dev`, the cli-follow commit
    included: a fast-forward when dev is behind, else a merge commit, pushed under the harness's dev lock. `release push` of main and
    `release publish --execute` print that step; it runs only with `--execute`. **Cadence:** one harness train per day, batching the Grammar and canon

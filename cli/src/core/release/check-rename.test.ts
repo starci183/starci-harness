@@ -26,7 +26,7 @@ void test("starci check is the harness check and release gate is its alias with 
 
 void test("--release is the full level: with another --level it is a usage refusal", async () => {
     await assert.rejects(
-        checkVerb.run({ cwd: tmpdir(), tree: "runtime", treeRoot: tmpdir(), verbs: [], json: true, progress: () => undefined } as never, { release: true, level: "dev", base: undefined }),
+        checkVerb.run({ cwd: tmpdir(), tree: "runtime", treeRoot: tmpdir(), verbs: [], json: true, progress: () => undefined } as never, { release: true, level: "dev", base: undefined, fresh: false }),
         /--release is the full level/,
     )
 })
