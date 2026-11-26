@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.62.0 - 2026-11-26
+
+- Versioned with @starci/grammar 0.62.0 (h-grammar-no-tests, following h-grammar-board-touch): the family minor moved with the Grammar; no rule changed.
+
 ## 0.61.0 - 2026-11-26
 
 - Versioned with @starci/grammar 0.61 (h-grammar-chat-avatars): the family minor moved with the chat card, the avatar cluster and the channel badge; no rule changed.
