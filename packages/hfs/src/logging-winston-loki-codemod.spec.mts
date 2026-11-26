@@ -20,7 +20,7 @@ function oldApp(): string {
   write(`${LOGGING}/logging.decorators.ts`, 'export const LOG_OUT: unique symbol = Symbol("platform.logging.out")\n');
   write(`${LOGGING}/logging.log-events.ts`, 'export enum LoggingLogEvent { ServerStarted = "server.started" }\n');
   write(`${LOGGING}/index.ts`, 'export { createJsonLogger } from "./json-logger.service"\n');
-  write('be/apps/api/src/main.ts', 'const logger = createJsonLogger(new SystemClockService(), new SystemIds())\n');
+  write('be/apps/api/src/main.ts', 'const logger = createJsonLogger(new SystemClockService())\nconst app = await NestFactory.create(AppModule)\n');
   write('be/apps/api/src/compose/platform.ts', 'LoggingModule.register({ isGlobal: true }),\n');
   write('be/apps/cli/src/compose/platform.ts', 'LoggingModule.register({ isGlobal: true, info: "stderr" }),\n');
   write('package.json', `${JSON.stringify({ name: 'app', dependencies: { zod: '4.0.0' } }, null, 2)}\n`);
@@ -34,9 +34,11 @@ test('logging-winston-loki is one of the codemods', () => {
 test('a dry run lists the adapter files and the edits left for a person, and writes nothing', () => {
   const root = oldApp();
   const report = migrateLoggingWinstonLoki({ root, write: false });
-  assert.equal(report.filesChanged.length, ADAPTER_FILES.length);
+  // the adapter's files, and the skeleton files the old app lacks (its correlation and the rest)
+  assert.ok(report.filesChanged.length > ADAPTER_FILES.length);
+  assert.ok(report.filesChanged.some((file) => file.endsWith('correlation.policy.ts')));
   assert.equal(fs.readFileSync(path.join(root, LOGGING, 'json-logger.service.ts'), 'utf8'), 'export class JsonLoggerService {}\n');
-  assert.deepEqual(report.findings.map((finding) => finding.code).sort(), ['LOGGING_BARREL', 'LOGGING_EVENT_MISSING', 'LOGGING_MAIN_CONTAINER_LOGGER', 'LOGGING_OPTIONS_UNWIRED', 'LOGGING_STREAM_TOKENS']);
+  assert.deepEqual(report.findings.map((finding) => finding.code).sort(), ['LOGGING_BARREL', 'LOGGING_BOOTSTRAP_IDS', 'LOGGING_EVENT_MISSING','LOGGING_MAIN_CONTAINER_LOGGER', 'LOGGING_OPTIONS_UNWIRED', 'LOGGING_STREAM_TOKENS']);
   assert.ok(report.findings.every((finding) => !finding.file.includes('apps/cli')));
   assert.match(loggingWinstonLokiMarkdown(report), /would be written/);
 });

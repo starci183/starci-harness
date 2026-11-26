@@ -107,9 +107,19 @@ export function migrateLoggingWinstonLoki({ root, write }: { root: string; write
     report.filesScanned += 1;
     if (!judged.marker.test(read(target))) report.findings.push({ file: relativePosix(root, target), line: 1, code: judged.code, reason: judged.reason });
   }
+  // a file of the skeleton's platform/logging the app lacks (an app scaffolded before correlation) is added as it is: the adapter imports it
+  for (const name of fs.readdirSync(path.join(SKELETON, LOGGING)).filter((entry) => !ADAPTER_FILES.includes(entry))) {
+    const target = path.join(be, LOGGING, name);
+    if (fs.existsSync(target)) continue;
+    const file = relativePosix(root, target);
+    report.filesChanged.push(file);
+    report.changes.push({ file, became: 'added from the skeleton' });
+    if (write) fs.writeFileSync(target, read(path.join(SKELETON, LOGGING, name)));
+  }
   for (const src of composedApps(be)) {
     const main = read(path.join(src, 'main.ts'));
-    if (/createJsonLogger\(/.test(main) && !/useLogger\(/.test(main)) report.findings.push({ file: relativePosix(root, path.join(src, 'main.ts')), line: 1, code: 'LOGGING_MAIN_CONTAINER_LOGGER', reason: 'create the app with `bufferLogs: true`, then `app.useLogger(createNestLogger(app.get<Logger>(LOGGER)))` and log ServerStarted through that logger, so the framework\'s lines reach Loki and the push is flushed on shutdown' });
+    if (/createJsonLogger\([^,()]*\(\)\)/.test(main)) report.findings.push({ file: relativePosix(root, path.join(src, 'main.ts')), line: 1, code: 'LOGGING_BOOTSTRAP_IDS', reason: 'createJsonLogger takes the Ids port as its second argument: `createJsonLogger(new SystemClockService(), new SystemIds())`' });
+    if (/NestFactory\.create\(/.test(main) && !/useLogger\(/.test(main)) report.findings.push({ file: relativePosix(root, path.join(src, 'main.ts')), line: 1, code: 'LOGGING_MAIN_CONTAINER_LOGGER', reason: 'create the app with `bufferLogs: true`, then `app.useLogger(createNestLogger(app.get<Logger>(LOGGER)))` and log ServerStarted through that logger, so the framework\'s lines reach Loki and the push is flushed on shutdown' });
   }
   for (const file of matching(be, /LoggingModule\.register\(\{\s*isGlobal: true\s*(?:,\s*info: "stderr"\s*)?\}\)/)) {
     // a cli keeps its logs on stderr for the person running it and pushes nothing
