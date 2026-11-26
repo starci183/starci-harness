@@ -1,4 +1,4 @@
-# StarCi lite .starciwork holds only workspace.yaml, master-plan.yaml, brand/ and concepts/ (plus .gitignore).
+# StarCi lite .starciwork holds only workspace.yaml, master-plan.yaml, brand/, concepts/ and prompts/ (plus .gitignore).
 # Runtime output lives in runtime.sqlite rows and blobs outside the repository.
 /*
 !/.gitignore
@@ -6,3 +6,4 @@
 !/master-plan.yaml
 !/brand/
 !/concepts/
+!/prompts/
