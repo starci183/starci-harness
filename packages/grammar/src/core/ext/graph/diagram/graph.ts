@@ -29,16 +29,37 @@ const wrap = (text: string, max: number, textWidth: TextWidth): readonly string[
 
 const LINE = 18
 const BOX_MAX = 240
-/** A node's icon: a square the height of one line of its words, and the gap before the words (`--grammar-identity-gap`). */
-export const ICON_SIZE = LINE
-export const ICON_GAP = 4
+/** A node's logo chip (`LogoChip`: 26px, the mark 18px inside) and the gap between it and the words (`--grammar-inline-gap`). */
+export const ICON_SIZE = 26
+export const ICON_GAP = 8
+/** The "learner edits here" chip after the words: the logo chip's size, the same gap. */
+export const EDIT_SIZE = ICON_SIZE
+/** A port pill's padding across (`--grammar-inline-gap` each side) and the caption words' share of the label size they are measured at. */
+const PORT_PAD = 16
+const PORT_SCALE = 0.93
+/** The least height of a node with a chip: the chip and 7px above and below it. */
+const CHIP_ROW = ICON_SIZE + 14
 
-/** The box a node needs for its words in its shape, and for its icon before them when it has one. */
+/** The width a port pill takes, `:4001` in the caption size with its padding. */
+export const portWidth = (port: string, textWidth: TextWidth): number => Math.ceil(textWidth(`:${port}`) * PORT_SCALE) + PORT_PAD
+
+/** The width the extras of a node take beside its words, each with its gap: the logo chip before them, the port pill and the edit chip after. */
+export const extrasWidth = (node: DiagramNode, textWidth: TextWidth): number => {
+    if (node.shape === "container" || node.shape === "bar" || node.shape === "start" || node.shape === "end") return 0
+    const items = [node.icon === undefined ? 0 : ICON_SIZE, node.port === undefined ? 0 : portWidth(node.port, textWidth), node.edit === true ? EDIT_SIZE : 0].filter((width) => width > 0)
+    if (items.length === 0) return 0
+    // One gap between every two parts of the row: the words count as a part when there are any.
+    const gaps = node.label === "" ? items.length - 1 : items.length
+    return items.reduce((sum, width) => sum + width, 0) + gaps * ICON_GAP
+}
+
+/** The box a node needs for its words in its shape, and for its logo chip, port pill and edit chip beside them when it has them. */
 export const nodeSize = (node: DiagramNode, direction: "LR" | "TB", textWidth: TextWidth, exits = 0): { readonly width: number; readonly height: number } => {
-    const icon = node.icon === undefined || node.shape === "container" || node.shape === "bar" || node.shape === "start" || node.shape === "end" ? 0 : ICON_SIZE + (node.label === "" ? 0 : ICON_GAP)
-    const words = wrap(node.label, BOX_MAX - 32 - icon, textWidth)
-    const wide = Math.max(0, ...words.map(textWidth)) + icon
-    const tall = words.length * LINE
+    const extras = extrasWidth(node, textWidth)
+    // The words wrap at the box's own measure; the extras widen the box beside them instead of squeezing the words.
+    const words = wrap(node.label, BOX_MAX - 32, textWidth)
+    const wide = Math.max(0, ...words.map(textWidth)) + extras
+    const tall = Math.max(words.length * LINE, extras > 0 ? CHIP_ROW - 22 : 0)
     switch (node.shape) {
         case "start":
         case "end":
@@ -55,7 +76,8 @@ export const nodeSize = (node: DiagramNode, direction: "LR" | "TB", textWidth: T
             return { width: side, height: side }
         }
         case "cylinder":
-            return { width: Math.max(96, wide + 40), height: Math.max(64, tall + 40) }
+            // A store's caps are 12 deep (STORE_CAP of MermaidDiagram.tsx): its lid above the words, its base under them.
+            return { width: Math.max(104, wide + 48), height: Math.max(72, tall + 48) }
         case "container":
             return { width: Math.max(120, wide + 32), height: 0 }
         default:

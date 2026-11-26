@@ -25,7 +25,7 @@ const plan = (over: Partial<Affected> = {}): Affected => ({
         { name: "@starci/grammar", dir: "packages/grammar", build: ["packages/tsconfig", "packages/grammar"] },
         { name: "@starci/gallery", dir: "packages/gallery", build: ["packages/tsconfig", "packages/grammar", "packages/gallery"] },
     ],
-    harness: false, app: false, appBuild: [], matrix: { include: [] }, summary: ["base b head h", "packages: grammar, gallery"],
+    harness: false, app: false, appBuild: [], matrix: { include: [] }, summary: ["base b head h", "packages: grammar, gallery"], graph: [],
     ...over,
 })
 
@@ -162,4 +162,19 @@ void test("a red package test at the FAST level is a blocking finding `lane gate
     assert.ok(ran.includes("test packages/gallery"), "a red test skips nothing after it")
     const read = blockingFindings(JSON.stringify({ ok: false, data: gate }))
     assert.deepEqual(read?.map((finding) => [finding.code, finding.path, finding.message.split("\n")[0]]), [["HARNESS_GATE_TEST", "packages/grammar", "test in packages/grammar failed: 1 failing: renders the empty state"]])
+})
+
+void test("long failing names never push the last lines out: the names line and each tail line are cut, and all 15 last lines are kept", () => {
+    const step: GateStep = { dir: "packages/eslint-grammar-offset-pop", kind: "test" }
+    const names = Array.from({ length: 6 }, (_, n) => `not ok ${String(n + 1)} - group ${String(n)}: ${"a long description of what the test proves ".repeat(8)}`)
+    const tail = Array.from({ length: 40 }, (_, line) => `line ${String(line)} ${"y".repeat(300)}`)
+    const message = failureMessage(step, [...names, ...tail].join("\n"))
+    const [first = "", ...rest] = message.split("\n")
+    assert.ok(message.length <= 2400)
+    assert.match(first, /^test in packages\/eslint-grammar-offset-pop failed: 6 failing: group 0: /)
+    assert.ok(first.length <= 600, "the names line is capped")
+    assert.equal(rest.length, 15, "all 15 last lines fit")
+    assert.match(rest[0] ?? "", /^line 25 y+…$/)
+    assert.match(rest.at(-1) ?? "", /^line 39 y+…$/)
+    assert.equal(findingLines({ code: "HARNESS_GATE_TEST", path: step.dir, message }).length, 16)
 })

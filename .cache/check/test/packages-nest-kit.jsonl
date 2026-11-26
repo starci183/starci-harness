@@ -1,0 +1,1 @@
+{"data":{"parts":{"format":"harness-check@1","reads":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","source":"54251e6cf193b1bb90ecfba60da755cb7f3d65e87593c3121d52cb08712ff75f","steps":"1","tool":"node24 npm-"},"verdict":"green"},"findings":[],"hash":"31dbecc4bd01c733a54766be6ee5c8368589f6a3382e4f820541738d75dc8324","path":"packages/nest-kit","step":"test"}

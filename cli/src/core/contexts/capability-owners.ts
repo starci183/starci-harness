@@ -68,12 +68,12 @@ export const capabilityGaps = (root: string, registryFile: string): CapabilityGa
             }),
         )
         const known = capability.known ?? {}
-        for (const file of [...holding].sort()) {
+        for (const file of [...holding].sort((a, b) => a.localeCompare(b))) {
             if (capability.owners.includes(file) || file in known) continue
             const owner = capability.owners.length > 0 ? `call its owner (${capability.owners.join(", ")})` : "run it through its owner verb"
             gaps.push({ kind: "capability-reimplemented", subject: file, detail: `${file} implements ${capability.id} (${capability.summary}) itself: ${owner} instead (contexts/harness/capabilities.yaml)` })
         }
-        for (const file of Object.keys(known).sort()) {
+        for (const file of Object.keys(known).sort((a, b) => a.localeCompare(b))) {
             if (!holding.has(file)) gaps.push({ kind: "capability-known-stale", subject: file, detail: `${file} is listed as a known reimplementation of ${capability.id} and no longer holds its mark: delete the entry from contexts/harness/capabilities.yaml` })
         }
     }

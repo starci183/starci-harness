@@ -183,17 +183,20 @@ export const TonedPaths: Story = {
   ),
 };
 
+// The shop-giay architecture of the lesson: four Express services behind the customer, each with its own Postgres, payments with a Redis too. A call
+// between services is a plain link (solid, accent); a service reading or writing its store is a dotted link (`-.->`, dashed, neutral). The port of a
+// service is the end of its label; `class P edit` marks the service the learner edits; `click X call note() "…"` gives a step its description line.
 const SHOP_GIAY = `flowchart LR
-  K[Khách] --> O[orders]
+  K[Khách] --> O[orders :4001]
   subgraph D["Docker trên máy bạn"]
-    O --> P[payments]
-    O --> S[stock]
-    O --> N[notify]
-    O --> OD[(orders db)]
-    P --> PD[(payments db)]
-    S --> SD[(stock db)]
-    N --> ND[(notify db)]
-    P --> R[(redis)]
+    O --> P[payments :4002]
+    O --> S[stock :4003]
+    O --> N[notify :4004]
+    O -.-> OD[(orders db)]
+    P -.-> PD[(payments db)]
+    S -.-> SD[(stock db)]
+    N -.-> ND[(notify db)]
+    P -.-> R[(redis)]
   end
   D@{ icon: "docker" }
   O@{ icon: "express" }
@@ -204,16 +207,33 @@ const SHOP_GIAY = `flowchart LR
   PD@{ icon: "postgresql" }
   SD@{ icon: "postgresql" }
   ND@{ icon: "postgresql" }
-  R@{ icon: "redis" }`;
+  R@{ icon: "redis" }
+  class P edit
+  click O call note() "Nhận đơn của khách rồi gọi payments, stock và notify"
+  click P call note() "Thu tiền; giữ phiên thanh toán trong Redis"`;
 
 /**
- * The built-in tech logos (owner 2026-11-26): the shop-giay architecture names its logos only by `R@{ icon: "name" }` and passes no `icons`; Grammar draws
- * express, postgresql, redis and docker in the node's ink, never a brand colour.
+ * The shop-giay architecture with the built-in tech logos (owner 2026-11-26, graph v2): the source names its logos only by `R@{ icon: "name" }` and passes
+ * no `icons`. Each logo stands in its own chip, filled with the brand's colour where it keeps 3:1 on the chip and with the node's ink where it does not
+ * (Express black on the dark chip). A service shows its port as a muted pill; payments carries the "learner edits here" pencil; the stores are tinted
+ * cylinders; calls are solid accent lines and data dashed neutral ones, with the legend chip in the corner because both are there.
  */
 export const TechLogos: Story = {
   render: () => (
     <Both>
-      <MermaidDiagram source={SHOP_GIAY} label="Kiến trúc shop giày" height="md" caption="Mỗi dịch vụ Express giữ database Postgres của nó; payments có thêm Redis." />
+      <MermaidDiagram source={SHOP_GIAY} label="Kiến trúc shop giày" height="md" labels={{ calls: 'Gọi', data: 'Dữ liệu', edit: 'bạn sửa ở đây' }} caption="Mỗi dịch vụ Express giữ database Postgres của nó; payments có thêm Redis." />
+    </Both>
+  ),
+};
+
+/**
+ * Hover focus (owner 2026-11-26): pointing at a step lights it, its neighbours and their edges, and dims the rest; Tab focus does the same, and Enter
+ * opens the step's description line (its Mermaid tooltip), Escape closes it. Point at payments, or Tab to orders and press Enter, to see it.
+ */
+export const HoverFocus: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={SHOP_GIAY} label="Kiến trúc shop giày" height="md" />
     </Both>
   ),
 };

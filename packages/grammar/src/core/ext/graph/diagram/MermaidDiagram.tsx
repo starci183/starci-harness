@@ -1,8 +1,9 @@
 "use client"
 
 import { Background, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore, type Edge, type EdgeProps, type EdgeTypes, type Node, type NodeProps, type NodeTypes } from "@xyflow/react"
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode, type RefObject } from "react"
-import { Alert, FencedCodeBlock, Skeleton, Text } from "../../../index.js"
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode, type RefObject } from "react"
+import { Alert, FencedCodeBlock, Icon, Skeleton, Text } from "../../../index.js"
+import { TablerPencil } from "../../../leaf/Icon/tabler.js"
 import type { NoChildren } from "../../../tier.js"
 import type { FlowLayout, SizedNode } from "../layout.js"
 import { measureLabel } from "../shared/canvas.js"
@@ -12,13 +13,14 @@ import { ZoomButtons } from "../shared/zoom.js"
 import { STYLE_RANK, dedupeRuns } from "../shared/overlap.js"
 import { PHONE_LAYOUT_WIDTH } from "../shared/phone.js"
 import type { StepEdgeData } from "../build.js"
-import { branchesWithoutDecision, describeDiagram, type DiagramEdge, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
+import { branchesWithoutDecision, describeDiagram, edgeKind, needsKindLegend, neighbourhood, type DiagramEdge, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
 import { INSETS, LEAST_OPEN_ZOOM, betterTopDown, canvasHeight, needsTopDown, openView, openZoom, type Box } from "./open.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
 import { layoutDiagram } from "./graph.js"
 import { layoutSequence, type Rect, type SequenceLayout } from "./sequence.js"
 import { resolveMermaidTheme } from "./theme.js"
-import { withTechIcons } from "./techIcons.js"
+import { LogoChip, brandColorOf, withTechIcons } from "./techIcons.js"
+import { logoFill, parseCssColor, type Rgb } from "./logoInk.js"
 
 /** The least height of the canvas, kept by the loading, ready and error states alike: `sm` 16rem, `md` 24rem, `lg` 32rem. */
 export type MermaidDiagramHeight = "sm" | "md" | "lg"
@@ -34,6 +36,11 @@ export interface MermaidDiagramLabels {
     readonly end: string
     /** How the text version joins the two ends of a link or a message ("Alice to Bob: hi"). */
     readonly to: string
+    /** The legend chip of a flowchart with both kinds of edge: a solid accent line is a call, a dashed neutral one carries data. */
+    readonly calls: string
+    readonly data: string
+    /** How a node marked "the learner edits here" (`class O edit`) is named to a screen reader, after its words. */
+    readonly edit: string
 }
 
 export type { MermaidTone } from "./model.js"
@@ -78,8 +85,9 @@ export type MermaidDiagramProps = NoChildren & {
     readonly legend?: ReadonlyArray<MermaidLegendItem>
     /**
      * What to draw for each icon name a node of the source names with Mermaid's own `R@{ icon: "redis" }` (the app passes small logo images): drawn
-     * before the node's words at the height of one line, the node widened for it. A name neither this map nor `techIcons` has draws nothing and takes no
-     * room. The map adds to the built-in tech logos (`techIcons`: `postgresql`, `redis`, `express`, `docker`, `database`, ...) and wins over one of the same name.
+     * in a logo chip before the node's words, the node widened for it. A name neither this map nor `techIcons` has draws nothing and takes no room. The map
+     * adds to the built-in tech logos (`techIcons`: `postgresql`, `redis`, `express`, `docker`, `database`, ...) and wins over one of the same name; an
+     * icon of this map keeps its own colours, while a built-in logo takes its brand colour where that keeps 3:1 against its chip.
      */
     readonly icons?: Readonly<Record<string, ReactNode>>
     /** One line under the drawing, in the caption role, saying what to look at. */
@@ -90,7 +98,7 @@ export type MermaidDiagramProps = NoChildren & {
 
 const isProduction = (): boolean => typeof process !== "undefined" && process.env.NODE_ENV === "production"
 
-const LABELS: MermaidDiagramLabels = { zoomIn: "Zoom in", zoomOut: "Zoom out", fit: "Fit to frame", reset: "Reset view", start: "start", end: "end", to: "to" }
+const LABELS: MermaidDiagramLabels = { zoomIn: "Zoom in", zoomOut: "Zoom out", fit: "Fit to frame", reset: "Reset view", start: "start", end: "end", to: "to", calls: "Calls", data: "Data", edit: "you edit this" }
 
 /** The reserved box of each height step. */
 const RESERVED: Readonly<Record<MermaidDiagramHeight, number>> = { sm: 256, md: 384, lg: 512 }
@@ -110,10 +118,33 @@ interface ShapeData extends Record<string, unknown> {
     node: DiagramNode
     /** What the app draws for the node's icon, before its words. */
     icon?: ReactNode
+    /** The fill of a built-in logo: its brand hex when it keeps 3:1 against its chip, else undefined, the node's ink (`logoFill`). */
+    logoColor?: string
     width: number
     height: number
     direction: "LR" | "TB"
 }
+
+/**
+ * The hover focus of a graph (owner 2026-11-26): the node the reader points at or focuses, and the node whose description line is open. The canvas
+ * dims what is not one edge from it; a node reports to it by pointer and keyboard alike.
+ */
+interface FocusApi {
+    readonly opened: string | null
+    readonly focus: (id: string | null) => void
+    readonly press: (id: string) => void
+    readonly close: () => void
+    readonly describedBy: string
+    readonly editWord: string
+}
+
+const FocusContext = createContext<FocusApi | null>(null)
+
+/** The shapes a reader can point at and focus: every step and store, never a container, a start or end mark or a bar. */
+const pointable = (node: DiagramNode): boolean => node.shape !== "container" && node.shape !== "start" && node.shape !== "end" && node.shape !== "bar"
+
+/** What a node is called by its button: its words, its port and the edit mark, as the text version says it. */
+const spokenName = (node: DiagramNode, editWord: string): string => `${node.label}${node.port === undefined ? "" : ` :${node.port}`}${node.edit === true ? ` (${editWord})` : ""}`
 
 type Drawn =
     | { readonly kind: "graph"; readonly graph: DiagramGraph; readonly layout: FlowLayout; readonly sizes: readonly SizedNode[]; readonly entry?: Box; readonly width: number; readonly height: number }
@@ -129,36 +160,77 @@ const handles = (direction: "LR" | "TB"): ReactElement[] => [
 
 const toneProps = (tone: MermaidTone | undefined): Record<string, string> => (tone === undefined ? {} : { "data-tone": tone })
 
+/** The depth of a store's elliptic cap: its lid and its base (the cylinder's room for it is `nodeSize` in graph.ts). */
+const STORE_CAP = 12
+
 /** A node of a flowchart or a state diagram in its shape: the words centred, the shape drawn from the tokens. */
 const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
-    const { node, icon, width, height, direction } = data
+    const { node, icon, logoColor, width, height, direction } = data
+    const focus = useContext(FocusContext)
     // A bar is the mark of a parallel: its words (a fork's "Song song") stand beside it, never in it.
     const text = node.label === "" ? null : <span className={node.shape === "bar" ? "starci-graph-diagram-bar-words" : "starci-graph-diagram-words"}>{node.label}</span>
-    // An icon stands before the words, one line high; the text version names the node by its words alone.
+    const hasIcon = icon !== undefined && icon !== null
+    // One row: the logo in its chip before the words, the port pill and the edit chip after them; the text version names the node by its words.
     const words =
-        icon === undefined || icon === null ? (
+        !hasIcon && node.port === undefined && node.edit !== true ? (
             text
         ) : (
             <span className="starci-graph-diagram-labelled">
-                <span className="starci-graph-diagram-icon" aria-hidden="true">
-                    {icon}
-                </span>
+                {hasIcon ? <LogoChip icon={icon} color={logoColor} /> : null}
                 {text}
+                {node.port === undefined ? null : (
+                    <span className="starci-graph-diagram-port" aria-hidden="true">
+                        :{node.port}
+                    </span>
+                )}
+                {node.edit === true ? (
+                    <span className="starci-graph-diagram-chip starci-graph-diagram-edit" data-grammar-mermaid-edit="true" aria-hidden="true">
+                        <Icon source={TablerPencil} usage="text" />
+                    </span>
+                ) : null}
             </span>
         )
+    // A step or store is a Tab stop: pointing at it or focusing it lights its neighbours; pressing it (click, Enter, Space) opens its description line.
+    const interactive =
+        focus === null || !pointable(node)
+            ? {}
+            : {
+                  tabIndex: 0,
+                  role: "button" as const,
+                  "aria-label": spokenName(node, focus.editWord),
+                  ...(node.description === undefined ? {} : { "aria-expanded": focus.opened === node.id, "aria-controls": focus.describedBy }),
+                  // The pointer reaches the canvas's own node handlers (onNodeMouseEnter, onNodeClick): they also give xyflow's node its pointer events.
+                  onFocus: () => focus.focus(node.id),
+                  onBlur: () => focus.focus(null),
+                  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          focus.press(node.id)
+                      } else if (event.key === "Escape") focus.close()
+                  },
+              }
     const outline =
         node.shape === "diamond" ? (
             <svg className="starci-graph-diagram-outline" viewBox={`0 0 ${String(width)} ${String(height)}`} aria-hidden="true">
                 <polygon points={`${String(width / 2)},1 ${String(width - 1)},${String(height / 2)} ${String(width / 2)},${String(height - 1)} 1,${String(height / 2)}`} />
             </svg>
         ) : node.shape === "cylinder" ? (
+            // A store is a rounder cylinder than a service's box: deep elliptic caps (STORE_CAP), its top a tinted lid, so a database or a cache reads apart.
             <svg className="starci-graph-diagram-outline" viewBox={`0 0 ${String(width)} ${String(height)}`} aria-hidden="true">
-                <path d={`M1 9 A${String(width / 2 - 1)} 8 0 0 1 ${String(width - 1)} 9 V${String(height - 9)} A${String(width / 2 - 1)} 8 0 0 1 1 ${String(height - 9)} Z`} />
-                <path className="starci-graph-diagram-rim" d={`M1 9 A${String(width / 2 - 1)} 8 0 0 0 ${String(width - 1)} 9`} />
+                <path d={`M1 ${String(STORE_CAP)} A${String(width / 2 - 1)} ${String(STORE_CAP - 1)} 0 0 1 ${String(width - 1)} ${String(STORE_CAP)} V${String(height - STORE_CAP)} A${String(width / 2 - 1)} ${String(STORE_CAP - 1)} 0 0 1 1 ${String(height - STORE_CAP)} Z`} />
+                <ellipse className="starci-graph-diagram-lid" cx={width / 2} cy={STORE_CAP} rx={width / 2 - 1} ry={STORE_CAP - 1} />
             </svg>
         ) : null
     return (
-        <div className="starci-graph-diagram-node" data-shape={node.shape} data-direction={node.shape === "bar" ? direction : undefined} {...toneProps(node.tone)} style={{ inlineSize: width, blockSize: height }}>
+        <div
+            className="starci-graph-diagram-node"
+            data-shape={node.shape}
+            data-direction={node.shape === "bar" ? direction : undefined}
+            data-edit={node.edit === true ? "true" : undefined}
+            {...toneProps(node.tone)}
+            {...interactive}
+            style={{ inlineSize: width, blockSize: height }}
+        >
             {outline}
             {handles(direction)}
             {words}
@@ -172,7 +244,7 @@ const GroupNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => (
         {handles(data.direction)}
         <span className="starci-graph-diagram-group-label">
             {data.icon === undefined || data.icon === null ? null : (
-                <span className="starci-graph-diagram-icon" aria-hidden="true">
+                <span className="starci-graph-diagram-icon" aria-hidden="true" style={data.logoColor === undefined ? undefined : { color: data.logoColor }}>
                     {data.icon}
                 </span>
             )}
@@ -318,6 +390,13 @@ const parentsFirst = (nodes: readonly DiagramNode[]): readonly DiagramNode[] => 
     return [...nodes].sort((a, b) => depth(a.id) - depth(b.id))
 }
 
+/** The node a graph's hover focus is on, with the nodes one edge away and the edges between them (`neighbourhood`). */
+interface Lit {
+    readonly id: string
+    readonly nodes: ReadonlySet<string>
+    readonly edges: ReadonlySet<string>
+}
+
 /** A loop's back edge and an author's dotted link are dashed (dashes mean something); every other edge is plain. */
 const edgeStyle = (edge: DiagramEdge): "back" | "fallback" | "plain" => (edge.back === true ? "back" : edge.dashed ? "fallback" : "plain")
 
@@ -326,7 +405,13 @@ const edgeStyle = (edge: DiagramEdge): "back" | "fallback" | "plain" => (edge.ba
  * its own line (owner 2026-11-24: separate, coloured edges, no merge points): the layout gives each its own exit and entry, no route is cut back to
  * another's line, so no edge draws a junction dot and each keeps its arrowhead; a middle run in another's corridor still moves aside.
  */
-const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>, icons: Readonly<Record<string, ReactNode>> | undefined): { readonly nodes: Node[]; readonly edges: Edge[] } => {
+const graphElements = (
+    drawn: Extract<Drawn, { readonly kind: "graph" }>,
+    icons: Readonly<Record<string, ReactNode>> | undefined,
+    appIcons: Readonly<Record<string, ReactNode>> | undefined,
+    chip: Rgb | null,
+    focus: Lit | null,
+): { readonly nodes: Node[]; readonly edges: Edge[] } => {
     const { graph, layout, sizes } = drawn
     const size = new Map(sizes.map((each) => [each.id, each] as const))
     const nodes = parentsFirst(graph.nodes).map((node): Node => {
@@ -336,10 +421,15 @@ const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>, icons:
         const width = isGroup ? (box?.width ?? own?.width ?? 120) : (own?.width ?? 80)
         const height = isGroup ? (box?.height ?? own?.height ?? 40) : (own?.height ?? 40)
         const icon = node.icon === undefined ? undefined : icons?.[node.icon]
-        const data: ShapeData = { node, ...(icon === undefined ? {} : { icon }), width, height, direction: graph.direction }
+        // A built-in logo takes its brand colour where it keeps 3:1 on its chip; the app's own art (`icons`) keeps its own colours.
+        const logoColor = icon === undefined ? undefined : logoFill(brandColorOf(node.icon, appIcons), chip)
+        const data: ShapeData = { node, ...(icon === undefined ? {} : { icon }), ...(logoColor === undefined ? {} : { logoColor }), width, height, direction: graph.direction }
+        // While a node is pointed at, its neighbours stand out and every other step dims; a container stays as it is.
+        const lit = focus === null || isGroup ? undefined : node.id === focus.id ? "starci-graph-diagram-focus" : focus.nodes.has(node.id) ? "starci-graph-diagram-near" : "starci-graph-diagram-dim"
         return {
             id: node.id,
             type: isGroup ? "mermaid-group" : "mermaid-shape",
+            ...(lit === undefined ? {} : { className: lit }),
             position: layout.positions[node.id] ?? { x: 0, y: 0 },
             data,
             width,
@@ -361,8 +451,12 @@ const graphElements = (drawn: Extract<Drawn, { readonly kind: "graph" }>, icons:
         const style = edgeStyle(edge)
         const route = layout.routes[edge.id]
         const drawn = once.get(edge.id)
-        const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed: false, route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: false, joinEnd: false, ...(edge.tone === undefined ? {} : { pillTone: edge.tone }) }
-        const className = `${edgeClassName(style)}${edge.thick ? " starci-graph-diagram-edge--thick" : ""}${edge.tone === undefined ? "" : ` starci-graph-diagram-edge--${edge.tone}`}`
+        const dimmed = focus !== null && !focus.edges.has(edge.id)
+        const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed, route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: false, joinEnd: false, ...(edge.tone === undefined ? {} : { pillTone: edge.tone }) }
+        // A flowchart's edge says what it carries: a call solid in the accent, data (`-.->`) dashed and neutral; a state's transition keeps the quiet line.
+        const kind = graph.kind === "flowchart" ? ` starci-graph-diagram-edge--${edgeKind(edge)}` : ""
+        const lit = focus === null ? "" : dimmed ? " starci-graph-edge--dimmed" : " starci-graph-diagram-edge--near"
+        const className = `${edgeClassName(style)}${kind}${edge.thick ? " starci-graph-diagram-edge--thick" : ""}${edge.tone === undefined ? "" : ` starci-graph-diagram-edge--${edge.tone}`}${lit}`
         return { id: edge.id, source: edge.source, target: edge.target, type: "step", sourceHandle: "out", targetHandle: "in", className, zIndex: 2, data, ...still }
     })
     return { nodes, edges }
@@ -445,27 +539,106 @@ const OpenOnce = ({ drawing }: { readonly drawing: Drawn }): null => {
 
 interface CanvasProps {
     readonly drawn: Drawn
+    /** Every icon the drawing may name: the built-in logos with the app's own on top (`withTechIcons`). */
     readonly icons: Readonly<Record<string, ReactNode>> | undefined
+    /** The app's own `icons` alone: a name it draws keeps the app's art in its own colours, never a brand colour. */
+    readonly own: Readonly<Record<string, ReactNode>> | undefined
     readonly label: string
     readonly words: MermaidDiagramLabels
     readonly height: number
     /** The scheme of the scope the diagram stands in: xyflow names its root `light` or `dark`, a theme scope, so it must be the one around it. */
     readonly scheme: "light" | "dark"
+    /** Bumped when the theme around the diagram changes: the logo chip's colour is read again. */
+    readonly themeRevision: number
 }
 
+/** A colour the canvas cannot parse (a browser's own form) read through a 1px 2D canvas instead; null where there is no canvas (a test's DOM). */
+const paintedColor = (css: string): Rgb | null => {
+    const parsed = parseCssColor(css)
+    if (parsed !== null) return parsed
+    const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true })
+    if (context === null) return null
+    context.fillStyle = css
+    context.fillRect(0, 0, 1, 1)
+    const [r = 0, g = 0, b = 0] = context.getImageData(0, 0, 1, 1).data
+    return [r, g, b]
+}
+
+/** The calls-and-data legend chip of a flowchart that has both kinds of edge, in the canvas's bottom right corner, clear of the drawing. */
+const KindLegend = ({ words }: { readonly words: MermaidDiagramLabels }): ReactElement => (
+    <ul className="starci-graph-diagram-kinds" data-grammar-mermaid-kinds="true">
+        {(["call", "data"] as const).map((kind) => (
+            <li key={kind} className="starci-graph-diagram-kind" data-kind={kind}>
+                <svg width={20} height={8} viewBox="0 0 20 8" aria-hidden="true">
+                    <path d="M1 4H19" />
+                </svg>
+                {kind === "call" ? words.calls : words.data}
+            </li>
+        ))}
+    </ul>
+)
+
 /** The canvas of a drawn diagram: xyflow with the graph's dot grid, panned by drag or touch and the arrow keys, zoomed by pinch, the controls or + and -. */
-const Canvas = ({ drawn, icons, label, words, height, scheme }: CanvasProps): ReactElement => {
+const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision }: CanvasProps): ReactElement => {
     const flow = useReactFlow()
     const open = useOpenView(drawn)
     const flowWidth = useStore((state) => state.width)
+    const flowHeight = useStore((state) => state.height)
     // The reader may zoom out as far as the first view went, so a very large drawing still opens whole.
     const least = flowWidth === 0 ? LEAST_OPEN_ZOOM : Math.min(LEAST_OPEN_ZOOM, openZoom({ width: flowWidth, height }, drawn))
+    // The colour of a logo chip in the theme in force, read from a probe chip: the surface every brand colour is judged against (`logoFill`).
+    const probe = useRef<HTMLSpanElement | null>(null)
+    const [chip, setChip] = useState<Rgb | null>(null)
+    useLayoutEffect(() => {
+        const element = probe.current
+        if (element !== null) setChip(paintedColor(getComputedStyle(element).backgroundColor))
+    }, [scheme, themeRevision])
+    // The hover focus: the node pointed at wins over the node focused by keyboard, which wins over the node whose description is open.
+    const [hovered, setHovered] = useState<string | null>(null)
+    const [focused, setFocused] = useState<string | null>(null)
+    const [opened, setOpened] = useState<string | null>(null)
+    const graph = drawn.kind === "graph" ? drawn.graph : null
+    const active = graph === null ? null : (hovered ?? focused ?? opened)
+    const lit = useMemo((): Lit | null => (graph === null || active === null ? null : { id: active, ...neighbourhood(graph, active) }), [active, graph])
+    const pointableIds = useMemo(() => new Set(graph === null ? [] : graph.nodes.filter(pointable).map((node) => node.id)), [graph])
+    const describedBy = `${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}-description`
+    const openedNode = graph?.nodes.find((node) => node.id === opened && node.description !== undefined)
+    /** A node focused by Tab that stands outside the view is panned into it (the canvas never scrolls; the view moves). */
+    const reveal = useCallback(
+        (id: string) => {
+            const node = flow.getInternalNode(id)
+            if (node === undefined || flowWidth === 0) return
+            const view = flow.getViewport()
+            const { x, y } = node.internals.positionAbsolute
+            const width = node.measured.width ?? 0
+            const tall = node.measured.height ?? 0
+            const left = x * view.zoom + view.x
+            const top = y * view.zoom + view.y
+            const inside = left >= 0 && top >= 0 && left + width * view.zoom <= flowWidth && top + tall * view.zoom <= flowHeight - INSETS.bottom
+            if (!inside) void flow.setCenter(x + width / 2, y + tall / 2, { zoom: view.zoom })
+        },
+        [flow, flowHeight, flowWidth],
+    )
+    const focusApi = useMemo(
+        (): FocusApi => ({
+            opened,
+            focus: (id) => {
+                setFocused(id)
+                if (id !== null) reveal(id)
+            },
+            press: (id) => setOpened((now) => (now === id || graph?.nodes.find((node) => node.id === id)?.description === undefined ? null : id)),
+            close: () => setOpened(null),
+            describedBy,
+            editWord: words.edit,
+        }),
+        [describedBy, graph, opened, reveal, words.edit],
+    )
     const elements = useMemo(() => {
-        if (drawn.kind === "graph") return graphElements(drawn, icons)
+        if (drawn.kind === "graph") return graphElements(drawn, icons, own, chip, lit)
         if (drawn.kind === "sequence") return sequenceElements(drawn)
         const data = { label: "", width: drawn.width, height: drawn.height, svg: drawn.svg }
         return { nodes: [{ id: "drawing", type: "mermaid-svg", position: { x: 0, y: 0 }, data, width: drawn.width, height: drawn.height, ...still }], edges: [] }
-    }, [drawn, icons])
+    }, [chip, drawn, icons, lit, own])
     const reset = (): void => open()?.set()
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
         if (event.target !== event.currentTarget) return
@@ -484,38 +657,75 @@ const Canvas = ({ drawn, icons, label, words, height, scheme }: CanvasProps): Re
         } else if (event.key === "0") {
             event.preventDefault()
             reset()
-        }
+        } else if (event.key === "Escape") setOpened(null)
     }
+    // A graph's steps are Tab stops inside the drawing, so it is a named group; a sequence or Mermaid's own SVG stays one image.
+    const drawingRole = graph === null ? "img" : "group"
     return (
-        <div className="starci-graph starci-graph-diagram-canvas" data-grammar-mermaid-canvas="true" role="region" aria-label={label} tabIndex={0} onKeyDown={onKeyDown} style={{ blockSize: height }}>
-            <div className="starci-graph-canvas" role="img" aria-label={label}>
-                <ReactFlow
-                    nodes={elements.nodes}
-                    edges={elements.edges}
-                    nodeTypes={NODE_TYPES}
-                    edgeTypes={EDGE_TYPES}
-                    defaultViewport={{ x: INSETS.left, y: INSETS.top, zoom: 1 }}
-                    minZoom={least}
-                    maxZoom={3}
-                    nodesDraggable={false}
-                    nodesConnectable={false}
-                    nodesFocusable={false}
-                    edgesFocusable={false}
-                    elementsSelectable={false}
-                    disableKeyboardA11y
-                    panOnDrag
-                    zoomOnPinch
-                    zoomOnScroll={false}
-                    panOnScroll={false}
-                    preventScrolling={false}
-                    zoomOnDoubleClick
-                    colorMode={scheme}
-                    proOptions={{ hideAttribution: true }}
-                >
-                    <Background gap={22} size={1.4} color="var(--starci-graph-grid)" />
-                    <OpenOnce drawing={drawn} />
-                </ReactFlow>
+        <div
+            className="starci-graph starci-graph-diagram-canvas"
+            data-grammar-mermaid-canvas="true"
+            data-focusing={lit === null ? undefined : "true"}
+            role="region"
+            aria-label={label}
+            tabIndex={0}
+            onKeyDown={onKeyDown}
+            style={{ blockSize: height }}
+        >
+            <span ref={probe} className="starci-graph-diagram-chip starci-graph-diagram-probe" aria-hidden="true" />
+            <div className="starci-graph-canvas" role={drawingRole} aria-label={label}>
+                <FocusContext.Provider value={graph === null ? null : focusApi}>
+                    <ReactFlow
+                        nodes={elements.nodes}
+                        edges={elements.edges}
+                        nodeTypes={NODE_TYPES}
+                        edgeTypes={EDGE_TYPES}
+                        defaultViewport={{ x: INSETS.left, y: INSETS.top, zoom: 1 }}
+                        minZoom={least}
+                        maxZoom={3}
+                        nodesDraggable={false}
+                        nodesConnectable={false}
+                        nodesFocusable={false}
+                        edgesFocusable={false}
+                        elementsSelectable={false}
+                        disableKeyboardA11y
+                        panOnDrag
+                        zoomOnPinch
+                        zoomOnScroll={false}
+                        panOnScroll={false}
+                        preventScrolling={false}
+                        zoomOnDoubleClick
+                        {...(graph === null
+                            ? {}
+                            : {
+                                  // Only a step or store is pointed at; a container under the pointer leaves the focus as it is.
+                                  onNodeMouseEnter: (_event: unknown, node: Node) => {
+                                      if (pointableIds.has(node.id)) setHovered(node.id)
+                                  },
+                                  onNodeMouseLeave: (_event: unknown, node: Node) => {
+                                      if (pointableIds.has(node.id)) setHovered(null)
+                                  },
+                                  onNodeClick: (_event: unknown, node: Node) => {
+                                      if (pointableIds.has(node.id)) focusApi.press(node.id)
+                                  },
+                              })}
+                        colorMode={scheme}
+                        proOptions={{ hideAttribution: true }}
+                    >
+                        <Background gap={22} size={1.4} color="var(--starci-graph-grid)" />
+                        <OpenOnce drawing={drawn} />
+                    </ReactFlow>
+                </FocusContext.Provider>
             </div>
+            {graph === null ? null : (
+                <p id={describedBy} className="starci-graph-diagram-describe" role="status" data-open={openedNode === undefined ? undefined : "true"}>
+                    {openedNode === undefined ? null : (
+                        <>
+                            <span className="starci-graph-diagram-describe-name">{openedNode.label}</span> {openedNode.description}
+                        </>
+                    )}
+                </p>
+            )}
             <div className="starci-graph-diagram-controls">
                 <ZoomButtons
                     words={{ zoomIn: words.zoomIn, zoomOut: words.zoomOut, fit: words.fit }}
@@ -525,6 +735,7 @@ const Canvas = ({ drawn, icons, label, words, height, scheme }: CanvasProps): Re
                     reset={{ label: words.reset, onPress: reset }}
                 />
             </div>
+            {graph !== null && needsKindLegend(graph) ? <KindLegend words={words} /> : null}
         </div>
     )
 }
@@ -536,7 +747,7 @@ const TextVersion = ({ drawn, words }: { readonly drawn: Drawn; readonly words: 
         drawn.kind === "graph"
             ? { ...drawn.graph, nodes: drawn.graph.nodes.map((node) => (node.shape === "start" ? { ...node, label: words.start } : node.shape === "end" ? { ...node, label: words.end } : node)) }
             : drawn.model
-    const { items, links } = describeDiagram(named, words.to)
+    const { items, links } = describeDiagram(named, words.to, words.edit)
     return (
         <div className="starci-core-visually-hidden" data-grammar-mermaid-text="true">
             {drawn.kind === "sequence" ? (
@@ -626,7 +837,12 @@ const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HT
  * journey, ...) is Mermaid's own SVG in the Grammar's diagram theme, as one node of the same canvas. Every edge of a flowchart is its own line: two edges
  * never leave or enter a node at one point and never share a stretch, so no junction dot is drawn and each keeps its arrowhead. Tones paint a node
  * (`tones`, `class B danger`), a message (`messageTones`) or an edge (`edgeTones`, or `A r1@--> B` then `class r1 info`); `legend` says under the canvas
- * what each edge tone means; a node's `R@{ icon: "name" }` draws `icons[name]` before its words. Loading keeps the canvas box with a Skeleton; a
+ * what each edge tone means; a node's `R@{ icon: "name" }` draws `icons[name]` (a built-in logo in its brand colour where it keeps 3:1 on its chip) in a
+ * logo chip before its words. A flowchart's edges say what they carry (owner 2026-11-26): a call solid in the accent, data (`-.->`) dashed and neutral,
+ * with a legend chip in the canvas corner when both are there; a service shows its port (`O[orders :4001]`) as a muted pill, `class O edit` marks the
+ * node the learner edits with a pencil chip, and a store (`[( )]`) is a rounder tinted cylinder. Pointing at or focusing a step lights it, its
+ * neighbours and their edges and dims the rest; pressing it opens its description line (Mermaid's tooltip, `click O call note() "..."`). Loading keeps
+ * the canvas box with a Skeleton; a
  * source Mermaid refuses is an error inside the same region, the title then the source as code. A visually hidden text version (the nodes and links, or
  * the messages in order) follows the canvas. Import `@starci/grammar/core/ext/graph.css` once.
  * Contract: overflow OVERFLOW-4; loading and failure keep the anatomy STATE-8.
@@ -707,7 +923,7 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
                 </div>
             ) : (
                 <ReactFlowProvider>
-                    <Canvas drawn={ready} icons={iconMap} label={label} words={words} height={canvas} scheme={scheme} />
+                    <Canvas drawn={ready} icons={iconMap} own={icons} label={label} words={words} height={canvas} scheme={scheme} themeRevision={themeRevision} />
                 </ReactFlowProvider>
             )}
             {ready === undefined ? null : <TextVersion drawn={ready} words={words} />}

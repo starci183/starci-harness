@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.63.0 - 2026-11-26
+
+- Versioned with @starci/grammar 0.63 (h-grammar-graph-v2): the family minor moved with the MermaidDiagram graph v2 (brand-coloured logo chips, ports, the edit mark, calls and data, hover focus); no rule changed.
+
 ## 0.62.0 - 2026-11-26
 
 - Versioned with @starci/grammar 0.62 (h-grammar-board-touch): the family minor moved with the Board drag and drop on react-aria (touch, keyboard and screen reader); no rule changed.

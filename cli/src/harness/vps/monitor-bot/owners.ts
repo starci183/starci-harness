@@ -59,7 +59,7 @@ export const memoryStore = (initial: ReadonlyMap<string, LearnedChat>, write: ((
     return {
         get: (key, username) => {
             const found = chats.get(key)
-            return found !== undefined && found.username === username ? found.chat : null
+            return found?.username === username ? found.chat : null
         },
         set: (key, username, chat, atMs) => {
             chats.set(key, { username, chat, at: new Date(atMs).toISOString() })

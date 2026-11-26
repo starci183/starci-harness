@@ -4,3 +4,7 @@
 # merge keeps both sides' lines instead of conflicting (a lane merges origin/dev with `git merge`, core/lane/gate.ts).
 CHANGELOG.md merge=union
 packages/*/CHANGELOG.md merge=union
+
+# The harness check cache (contexts/harness/check-cache.md): one self-contained keyed record per line, so a union merge of two lanes never conflicts and
+# never yields a wrong answer (a reader takes the record its key matches; the next write leaves one per file).
+.cache/** text eol=lf merge=union linguist-generated=true
