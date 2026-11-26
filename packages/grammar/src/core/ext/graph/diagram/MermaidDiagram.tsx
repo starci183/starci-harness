@@ -17,6 +17,7 @@ import { branchesWithoutDecision, describeDiagram, edgeKind, needsKindLegend, ne
 import { INSETS, LEAST_OPEN_ZOOM, betterTopDown, canvasHeight, needsTopDown, openView, openZoom, type Box } from "./open.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
 import { layoutDiagram } from "./graph.js"
+import { layoutArchitecture } from "./architecture.js"
 import { layoutSequence, type Rect, type SequenceLayout } from "./sequence.js"
 import { resolveMermaidTheme } from "./theme.js"
 import { LogoChip, brandColorOf, withTechIcons } from "./techIcons.js"
@@ -103,6 +104,8 @@ const LABELS: MermaidDiagramLabels = { zoomIn: "Zoom in", zoomOut: "Zoom out", f
 /** The reserved box of each height step. */
 const RESERVED: Readonly<Record<MermaidDiagramHeight, number>> = { sm: 256, md: 384, lg: 512 }
 const PAN_STEP = 48
+/** The least zoom the architecture layout may open at in its frame; under it the drawing is laid out by ELK instead. */
+const ROWS_LEAST_ZOOM = 0.8
 const px = (n: number): `${number}px` => `${String(n)}px` as `${number}px`
 /** The fit button: the whole drawing, clear of the controls row, down to `least` (the first view's own zoom when a very large drawing needs under 0.2). */
 const fitOptions = (least: number) => ({ padding: { top: px(INSETS.top), right: px(INSETS.right), bottom: px(INSETS.bottom), left: px(INSETS.left) }, minZoom: least, maxZoom: 1.5 }) as const
@@ -147,7 +150,7 @@ const pointable = (node: DiagramNode): boolean => node.shape !== "container" && 
 const spokenName = (node: DiagramNode, editWord: string): string => `${node.label}${node.port === undefined ? "" : ` :${node.port}`}${node.edit === true ? ` (${editWord})` : ""}`
 
 type Drawn =
-    | { readonly kind: "graph"; readonly graph: DiagramGraph; readonly layout: FlowLayout; readonly sizes: readonly SizedNode[]; readonly entry?: Box; readonly width: number; readonly height: number }
+    | { readonly kind: "graph"; readonly graph: DiagramGraph; readonly layout: FlowLayout; readonly sizes: readonly SizedNode[]; readonly entry?: Box; readonly width: number; readonly height: number; readonly merged?: ReadonlySet<string> }
     | { readonly kind: "sequence"; readonly model: SequenceModel; readonly layout: SequenceLayout; readonly width: number; readonly height: number }
     | { readonly kind: "other"; readonly type: string; readonly svg: string; readonly width: number; readonly height: number }
 
@@ -440,17 +443,19 @@ const graphElements = (
         }
     })
     // No two edges in one corridor (the routing law, rule 6), and none cut back to another's line: a middle run in a corridor moves aside.
+    // The architecture layout's calls share their trunk and bar on purpose (the merge-bar rule): they are drawn as laid out.
+    const merged = drawn.merged ?? new Set<string>()
     const once = dedupeRuns(
         graph.edges.flatMap((edge) => {
             const route = layout.routes[edge.id]
-            return route === undefined ? [] : [{ id: edge.id, points: route.points, rank: STYLE_RANK[edgeStyle(edge)] ?? 3 }]
+            return route === undefined || merged.has(edge.id) ? [] : [{ id: edge.id, points: route.points, rank: STYLE_RANK[edgeStyle(edge)] ?? 3 }]
         }),
         { join: false },
     )
     const edges = graph.edges.map((edge): Edge => {
         const style = edgeStyle(edge)
         const route = layout.routes[edge.id]
-        const drawn = once.get(edge.id)
+        const drawn = merged.has(edge.id) ? route : once.get(edge.id)
         const dimmed = focus !== null && !focus.edges.has(edge.id)
         const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed, route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: false, joinEnd: false, ...(edge.tone === undefined ? {} : { pillTone: edge.tone }) }
         // A flowchart's edge says what it carries: a call solid in the accent, data (`-.->`) dashed and neutral; a state's transition keeps the quiet line.
@@ -565,7 +570,7 @@ const paintedColor = (css: string): Rgb | null => {
 }
 
 /** The calls-and-data legend chip of a flowchart that has both kinds of edge, in the canvas's bottom right corner, clear of the drawing. */
-const KindLegend = ({ words }: { readonly words: MermaidDiagramLabels }): ReactElement => (
+const KindLegend = ({ words, edit }: { readonly words: MermaidDiagramLabels; readonly edit: boolean }): ReactElement => (
     <ul className="starci-graph-diagram-kinds" data-grammar-mermaid-kinds="true">
         {(["call", "data"] as const).map((kind) => (
             <li key={kind} className="starci-graph-diagram-kind" data-kind={kind}>
@@ -575,6 +580,13 @@ const KindLegend = ({ words }: { readonly words: MermaidDiagramLabels }): ReactE
                 {kind === "call" ? words.calls : words.data}
             </li>
         ))}
+        {/* The node the learner edits (`class O edit`), the third thing the drawing marks: its accent frame. */}
+        {edit ? (
+            <li className="starci-graph-diagram-kind" data-kind="edit">
+                <span className="starci-graph-diagram-kind-edit" aria-hidden="true" />
+                {words.edit}
+            </li>
+        ) : null}
     </ul>
 )
 
@@ -735,7 +747,7 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
                     reset={{ label: words.reset, onPress: reset }}
                 />
             </div>
-            {graph !== null && needsKindLegend(graph) ? <KindLegend words={words} /> : null}
+            {graph !== null && needsKindLegend(graph) ? <KindLegend words={words} edit={graph.nodes.some((node) => node.edit === true)} /> : null}
         </div>
     )
 }
@@ -812,8 +824,12 @@ const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HT
     // On a phone a flowchart or a state diagram is laid out top-down, so it fits the width (the routing law, rule 4).
     const parsed: ParsedDiagram = isPhone && (known.kind === "flowchart" || known.kind === "state") ? { ...known, direction: "TB" } : known
     if (parsed.kind === "flowchart" || parsed.kind === "state") {
-        const across = await layoutDiagram(parsed, textWidth, measureLabel)
         const frameWidth = anchor.getBoundingClientRect().width
+        // A lesson's system (a hub calling services, each over its own stores) is drawn by rows, the Essentials canvas's way, when it opens at a readable
+        // size in its frame; on a phone, or too wide for the frame, ELK lays it out like any other graph.
+        const rows = isPhone || parsed.kind !== "flowchart" ? undefined : layoutArchitecture(parsed, textWidth, measureLabel)
+        if (rows !== undefined && rows.width * ROWS_LEAST_ZOOM <= frameWidth) return { kind: "graph", ...rows }
+        const across = await layoutDiagram(parsed, textWidth, measureLabel)
         if (parsed.direction !== "LR" || !needsTopDown(frameWidth, across)) return { kind: "graph", ...across }
         // A graph too wide to read across its frame is laid out top-down when that opens it larger, whole either way (the fit rule, rule 3).
         const down = await layoutDiagram({ ...parsed, direction: "TB" }, textWidth, measureLabel)

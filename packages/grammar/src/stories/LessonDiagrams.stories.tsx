@@ -226,6 +226,61 @@ export const TechLogos: Story = {
   ),
 };
 
+// The lesson's system as Essentials draws it (owner 2026-11-26, the canvas): the customer from outside, orders the learner edits, its three calls numbered in
+// order, every service over its own store, all in the Docker frame. Built the way the app builds it from the lab record (`-.-` a service's own database).
+const SAGA_ROWS = `flowchart LR
+  K(["Khách"])
+  subgraph D["Docker trên máy bạn"]
+    O["orders :4001"]
+    OD[("orders")]
+    O -.- OD
+    P["payments :4002"]
+    PD[("payments")]
+    P -.- PD
+    P -.-> R(["redis"])
+    S["stock :4003"]
+    SD[("stock")]
+    S -.- SD
+    N["notify :4004"]
+    ND[("notify")]
+    N -.- ND
+    O -->|"1 trừ tiền"| P
+    O -->|"2 giữ hàng"| S
+    O -->|"3 gửi email"| N
+  end
+  K --> O
+  D@{ icon: "docker" }
+  O@{ icon: "express" }
+  P@{ icon: "express" }
+  S@{ icon: "express" }
+  N@{ icon: "express" }
+  OD@{ icon: "postgresql" }
+  PD@{ icon: "postgresql" }
+  SD@{ icon: "postgresql" }
+  ND@{ icon: "postgresql" }
+  R@{ icon: "redis" }
+  class O edit`;
+
+/**
+ * The architecture rows (owner 2026-11-26, the Essentials canvas): a hub calling services, each over its own stores, is drawn by rows instead of ELK. The
+ * customer on top; orders centred, wider, in the accent frame of the node the learner edits, its own database beside it; ONE trunk from orders down to a
+ * bar and a drop into each service with the call's number on it (the merge-bar rule); each service over its stores. The legend chip names the third
+ * mark. Under 0.8 zoom in its frame (a phone) the same source falls back to ELK.
+ */
+export const ArchitectureRows: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram
+        source={SAGA_ROWS}
+        label="Hệ thống trên máy bạn"
+        height="md"
+        labels={{ calls: 'Lời gọi giữa dịch vụ, đánh số theo thứ tự', data: 'Dữ liệu riêng của dịch vụ', edit: 'Nơi có file bạn sửa' }}
+        caption="Khách gọi orders; orders gọi lần lượt payments, stock và notify."
+      />
+    </Both>
+  ),
+};
+
 /**
  * Hover focus (owner 2026-11-26): pointing at a step lights it, its neighbours and their edges, and dims the rest; Tab focus does the same, and Enter
  * opens the step's description line (its Mermaid tooltip), Escape closes it. Point at payments, or Tab to orders and press Enter, to see it.

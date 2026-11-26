@@ -184,6 +184,11 @@ export interface DiagramLayout {
     readonly entry?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
     readonly width: number
     readonly height: number
+    /**
+     * The edges whose routes share a stretch on purpose (the architecture layout's calls: one trunk, one bar, a drop each): drawn as laid out, never moved
+     * aside by the corridor rule.
+     */
+    readonly merged?: ReadonlySet<string>
 }
 
 type Pt = readonly [number, number]
