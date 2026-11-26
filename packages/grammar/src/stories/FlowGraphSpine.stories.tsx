@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type ReactNode } from 'react';
 import { CodeBlock } from '../common/index.js';
-import { FlowGraph, FlowStepDrawer, type FlowLegendItem, type FlowNode, type FlowStatusLabels, type FlowStepSection, type GraphEdge } from '../core/ext/graph/index.js';
+import { FlowGraph, FlowStepDrawer, type FlowLegendItem, type FlowNode, type FlowStatusInput, type FlowStatusLabels, type FlowStepSection, type GraphEdge } from '../core/ext/graph/index.js';
 import '../core/ext/graph/styles.css';
 
 /**
@@ -426,7 +426,7 @@ export const ShapesLegend: Story = {
 const longRun = (): { readonly nodes: FlowNode[]; readonly edges: GraphEdge[] } => {
   const nodes: FlowNode[] = [];
   const edges: GraphEdge[] = [];
-  const status = (index: number): FlowNode['status'] => (index < 15 ? 'done' : index === 15 ? 'running' : 'todo');
+  const status = (index: number): FlowStatusInput => (index < 15 ? 'done' : index === 15 ? 'running' : 'todo');
   let previous: string | undefined;
   for (let index = 0; index < 25; index += 1) {
     const id = `s${String(index)}`;
@@ -477,7 +477,7 @@ const replies = (): { readonly nodes: FlowNode[]; readonly edges: GraphEdge[] } 
   cases.forEach((item, at) => {
     const taken = at === 0;
     const id = (step: number): string => `${item.id}${String(step)}`;
-    const state = (step: number): FlowNode['status'] => (taken ? (step < 5 ? 'done' : step === 5 ? 'running' : 'todo') : 'skipped');
+    const state = (step: number): FlowStatusInput => (taken ? (step < 5 ? 'done' : step === 5 ? 'running' : 'todo') : 'skipped');
     for (let step = 1; step <= 8; step += 1) {
       const label = `${item.label}: bước ${String(step)}`;
       nodes.push(step === 3 ? ask(id(step), `${item.label}: tự trả lời được?`, { status: state(step) }) : step === 6 ? ask(id(step), `${item.label}: khách trả lời?`, { status: state(step) }) : n(id(step), label, { status: state(step) }));

@@ -501,7 +501,7 @@
 }
 
 .starci-graph-node:is([data-shape="hexagon"], [data-shape="call"]) .starci-graph-node-body {
-    padding-inline: 1.25rem;
+    padding-inline: 1.5rem;
 }
 
 .starci-graph-shape-outline {
