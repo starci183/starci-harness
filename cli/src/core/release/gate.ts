@@ -186,11 +186,20 @@ const TAP_FAIL = /^\s*not ok \d+ - (.+?)\s*(?:#.*)?$/
 const SPEC_FAIL = /^\s*✖ (.+?)(?: \([\d.]+m?s\))?\s*$/
 /** Spec reporter headings that are not tests. */
 const NOT_A_TEST = /^(?:failing tests:?|fail(?:ed)? \d+)$/i
-/** How many failing test names a finding lists, and how long a finding may grow (a test's: the names, then the last lines of its run). */
+/**
+ * The budget of a red test's finding (TEST_FINDING_CHARS, what `lane gate` reads back): at most NAMED_FAILURES names, each cut at NAME_CHARS, on a
+ * names line cut at NAMES_CHARS; then the run's last TAIL_LINES lines, each cut at TAIL_LINE_CHARS. The caps add up below the budget, so a long
+ * names line never pushes the last lines out: all TAIL_LINES of them always fit.
+ */
 const NAMED_FAILURES = 8
-/** How many of a red test's last lines its finding keeps and a report prints under it. */
+const NAME_CHARS = 120
+const NAMES_CHARS = 480
 const TAIL_LINES = 15
+const TAIL_LINE_CHARS = 120
 const TEST_FINDING_CHARS = 2400
+
+/** `text` cut to `most` characters, marked with an ellipsis when it was cut. Pure. */
+const cut = (text: string, most: number): string => (text.length <= most ? text : `${text.slice(0, most - 1)}…`)
 const FINDING_CHARS = 600
 
 /**
@@ -215,12 +224,13 @@ export const failureMessage = (step: GateStep, output: string): string => {
     const named =
         names.length === 0
             ? "no failing test named (the run stopped before or outside its tests: see its last lines)"
-            : `${String(names.length)} failing: ${names.slice(0, NAMED_FAILURES).join("; ")}${names.length > NAMED_FAILURES ? `; +${String(names.length - NAMED_FAILURES)} more` : ""}`
-    const lines = output.split(/\r?\n/).filter((line) => line.trim() !== "")
-    // The last lines are kept whole when the output is long: the cut falls on the oldest lines, never on the end of the run.
-    let tail = lines.slice(-TAIL_LINES).join("\n")
-    while (tail.length + named.length + head.length > TEST_FINDING_CHARS && tail.includes("\n")) tail = tail.slice(tail.indexOf("\n") + 1)
-    return `${head}: ${named}\n${tail}`.slice(0, TEST_FINDING_CHARS)
+            : cut(`${String(names.length)} failing: ${names.slice(0, NAMED_FAILURES).map((name) => cut(name, NAME_CHARS)).join("; ")}${names.length > NAMED_FAILURES ? `; +${String(names.length - NAMED_FAILURES)} more` : ""}`, NAMES_CHARS)
+    const tail = output
+        .split(/\r?\n/)
+        .filter((line) => line.trim() !== "")
+        .slice(-TAIL_LINES)
+        .map((line) => cut(line.trimEnd(), TAIL_LINE_CHARS))
+    return [`${head}: ${named}`, ...tail].join("\n").slice(0, TEST_FINDING_CHARS)
 }
 
 /**
