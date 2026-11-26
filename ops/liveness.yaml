@@ -35,15 +35,18 @@ reviveMax: 3
 # Heavy commands (both runners, every verb): tsc, eslint, a test or suite command, a workspace or package build (build), an app's own build
 # @starci/hfs asks for (appBuild: the api and web builds of `app stack`, a compose build, the CI-parity build, the Sonar scan), npm ci or install,
 # a uat container. The owner's rule, the whole of admission (2026-11-26): "bỏ mấy luật như còn trống bao nhiêu, đơn giản có 16 slots cứ chiếm được và
-# làm xong trả job thế thôi, vì chắc chắn sẽ dư ram". The host has one slot per gbPerSlot GB of its physical RAM, never a fixed number, computed once
-# when a CLI process starts (64 GB: 16, 128 GB: 32); gbPerSlot is the host's own, `heavy.gbPerSlot` of its config.yaml (contexts/harness/host.md "Host
-# settings"), absent 4, and never set here. Each heavy command holds ONE slot while it runs: it starts when it heads the queue and a slot is free, and
-# gives it back when it ends. A gate or `app check` that runs several in turn takes one for each step; a running web or api server (the dev stack, a
-# look) takes none. No free RAM, free commit, weight, reserve or CPU rule decides a start, and no seat launch waits for memory. The one floor: while the
+# làm xong trả job thế thôi, vì chắc chắn sẽ dư ram", and of the weights "Theo độ nặng 1/2/3". The host has one slot unit per gbPerSlot GB of its physical
+# RAM, never a fixed number, computed once when a CLI process starts (64 GB: 16, 128 GB: 32); gbPerSlot is the host's own, `heavy.gbPerSlot` of its
+# config.yaml (contexts/harness/host.md "Host settings"), absent 4, and never set here. Each heavy command holds its WEIGHT in units while it runs:
+# ceil(planned MB / (gbPerSlot x 1024)), from 1 to 3 (MAX_WEIGHT), where the planned MB is its kind's caps.capMb below and a test run's parent plus its
+# workers (testRun): install and build 1, tsc and eslint 2, test and appBuild 3 at 4 GB a unit, so the units bound the planned memory of everything that
+# runs. It starts when it heads the queue and used + weight <= the units, and gives its units back when it ends; a light command behind a heavy one waits
+# with it, so the heavy one is never starved. A gate or `app check` that runs several in turn takes each one's units as it starts; a running web or api
+# server (the dev stack, a look) takes none. No free RAM, free commit, reserve or CPU rule decides a start, and no seat launch waits for memory. The one floor: while the
 # drive a command works on has under diskFloorMb free, nothing starts (npm installs onto a full drive died with ENOSPC and "disk I/O error", and a full
 # drive corrupts git and the sqlite stores), and the queue line names it.
 # The slots are rows of one queue per host (`heavy_slots` in the governor's store, cli/src/harness/heavy.ts, ledger.ts governorStorePath), shared by
-# every checkout and installed CLI, its admissions serialised by the store's lock. A command with every slot in use waits first come, first served, holding
+# every checkout and installed CLI, its admissions serialised by the store's lock. A command whose weight does not fit waits first come, first served, holding
 # nothing, polls every pollSeconds and prints its place and why every minute; a process that is gone is dropped at the next admission. A heavy
 # command a running one starts (its children inherit STARCI_HEAVY_PARENTS) is admitted on its own and its ancestors' rows never count against
 # it. A coordinator's turn (`kernel next`, `kernel submit`, `supervisor next`, `supervisor tick`) never waits: its own heavy command is refused
@@ -55,7 +58,7 @@ reviveMax: 3
 # as STARCI_TEST_WORKERS. Its timeout starts at admission: timeoutMinutes for its kind (an install's sized for a cold npm ci, an eslint's growing
 # with the files it names, timeoutMinutesPer1000Files), else the caller's.
 # When admission has held a command for more than starvedTicketMinutes without a break, `supervisor tick` opens one harness-defect ticket naming the
-# top unmanaged memory holders, once per episode. `starci host load` shows the slots in use ("N of M slots in use"), the running commands, the queue
+# top unmanaged memory holders, once per episode. `starci host load` shows the units in use ("N of M slot units in use"), each kind's weight, the running commands, the queue
 # with each wait and why, and who holds the memory. bootProofTimeoutSeconds is the budget of the lite boot proof's worker,
 # counted from its spawn (one timeout is retried, a second is BOOT_PROOF_TIMEOUT); @starci/hfs reads it and the heap caps through the
 # environment the CLI sets (heavy.ts hfsLimitsEnv). On Windows `host load` also reads the CPU of Defender's real-time scan (MsMpEng, percent of
@@ -66,7 +69,7 @@ heavy:
   # worktrees that can be removed; it deletes nothing. A host sets its own as host.diskWarnMb of config.yaml.
   diskWarnMb: 51200
   pollSeconds: 2
-  # The heap cap of one process of each kind is its measured peak (uat: its `--memory`), a process limit and never admission: a typecheck of a large app's back
+  # The heap cap of one process of each kind is its measured peak (uat: its `--memory`), a process limit, and sets its weight: a typecheck of a large app's back
   # end outgrows node's default heap (4 GB), and one ESLint child of an app check (a chunk of plan.lintChunk files) peaks near 8 GB on a typed
   # back end of about 9,500 files; a lower heap turns a green run into an out-of-memory one. appBuild is an estimate, not a measurement: a
   # Next.js production build of an app the size of NIVO with its build workers, about 12 GB over the whole tree; the CI-parity build of
@@ -76,7 +79,7 @@ heavy:
     eslint: { capMb: 8192 }
     build: { capMb: 4096 }
     appBuild: { capMb: 12288 }
-    # npm ci / npm install, measured live at 0.2 to 2.3 GB of working set each (2026-11-26, `host load`): 3 GB holds the peak.
+    # npm ci / npm install, measured live at 0.2 to 2.3 GB of working set each (2026-11-26, `host load`): 3 GB holds the peak, still one unit of 4 GB.
     install: { capMb: 3072 }
     uat: { capMb: 4096 }
   timeoutMinutes:

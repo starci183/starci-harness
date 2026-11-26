@@ -21,9 +21,9 @@ const laneLine = (slot: SlotView): string => {
     return `${name}: ${slot.state} lane ${String(slot.holder)} ${pid}${child} age ${String(slot.ageMinutes)} min alive ${String(slot.alive)} reclaimable ${slot.reclaimable === true ? "yes" : "no"}${command}${foreign}${why}`
 }
 
-/** One heavy slot as a line: id, state, pid, child, age, command (its label), and an older copy's row marked. */
+/** One heavy slot as a line: id, state, units, pid, child, age, command (its label), and an older copy's row marked. */
 const heavyLine = (slot: HeavySlot): string =>
-    `heavy ${slot.id}: ${slot.state} ${slot.kind} pid ${String(slot.pid)}${slot.childPid === null ? "" : ` child ${String(slot.childPid)}`} age ${minutesSince(slot.at)} min command ${slot.label}${slot.source === "foreign" ? " [older copy's governor.sqlite, counted, never written]" : ""}`
+    `heavy ${slot.id}: ${slot.state} ${slot.kind} ${String(slot.weight)} unit(s) pid ${String(slot.pid)}${slot.childPid === null ? "" : ` child ${String(slot.childPid)}`} age ${minutesSince(slot.at)} min command ${slot.label}${slot.source === "foreign" ? " [older copy's governor.sqlite, counted, never written]" : ""}`
 
 /**
  * `starci slot list [kind]`: every slot of the host store (machine.sqlite, the same file from every folder and CLI copy): the lane slots with their lane,
@@ -32,7 +32,7 @@ const heavyLine = (slot: HeavySlot): string =>
 export const slotListVerb = defineVerb({
     path: ["slot", "list"],
     summary:
-        "list the machine-wide slots, all rows of the host store (machine.sqlite: the same file from every folder and CLI copy): each lane slot (npm, gate, shoot, stack) with lane, pid, child, age, command, holder alive (yes, no, unknown), state and whether it is reclaimable (free, held, old: a warning only; reclaimable: dead, reused, rebooted, gone), a foreign lock file of an older copy marked with its path, then every heavy-command slot (kind heavy: id, state, pid, child, age, command); a held slot says why it is not reclaimable",
+        "list the machine-wide slots, all rows of the host store (machine.sqlite: the same file from every folder and CLI copy): each lane slot (npm, gate, shoot, stack) with lane, pid, child, age, command, holder alive (yes, no, unknown), state and whether it is reclaimable (free, held, old: a warning only; reclaimable: dead, reused, rebooted, gone), a foreign lock file of an older copy marked with its path, then every heavy-command slot (kind heavy: id, state, units, pid, child, age, command); a held slot says why it is not reclaimable",
     effect: "read",
     roles: EVERYONE,
     schema: "starci/slot-list@2",

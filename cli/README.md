@@ -324,12 +324,30 @@ The rule, the owner's (2026-11-26), in his words:
 
 > "bỏ mấy luật như còn trống bao nhiêu, đơn giản có 16 slots cứ chiếm được và làm xong trả job thế thôi, vì chắc chắn sẽ dư ram"
 
-and of the commit floor: "bỏ cái này đi, đang chiếm thì chạy luôn". The host has one slot per `gbPerSlot` GB of its physical RAM, at least one and
-never a fixed number, computed once when a CLI process starts (`hostSlots`, `slotsOf`: 64 GB is 16, 128 GB is 32, 32 GB is 8; the RAM counted in whole
-GB as installed, so 63.8 GB reported is 64). `gbPerSlot` is the host's own: `heavy.gbPerSlot` of its config.yaml ([contexts/harness/host.md](../contexts/harness/host.md)
-"Host settings"), absent 4 (`DEFAULT_GB_PER_SLOT`); it is never in ops/. Each heavy command holds ONE slot for as long as it runs, whatever its kind (a
-tsc, an ESLint chunk, a build, an install, a test run, a uat container): a gate or `app check` that runs several in turn takes one for each step as it
-starts and gives it back when the step ends, and a running web or api server takes none. There is no weight and no planned-memory sum.
+and of the commit floor: "bỏ cái này đi, đang chiếm thì chạy luôn"; of the weights, his choice: "Theo độ nặng 1/2/3". The host has one slot unit per
+`gbPerSlot` GB of its physical RAM, at least one and never a fixed number, computed once when a CLI process starts (`hostSlots`, `slotsOf`: 64 GB is 16,
+128 GB is 32, 32 GB is 8; the RAM counted in whole GB as installed, so 63.8 GB reported is 64). `gbPerSlot` is the host's own: `heavy.gbPerSlot` of its
+config.yaml ([contexts/harness/host.md](../contexts/harness/host.md) "Host settings"), absent 4 (`DEFAULT_GB_PER_SLOT`); it is never in ops/. Each heavy
+command holds its weight, 1, 2 or 3 units, for as long as it runs, so the units bound the planned memory of everything that runs; a gate or `app check`
+that runs several in turn takes each step's units as it starts and gives them back when the step ends, and a running web or api server takes none.
+
+The weight comes from the caps alone, never from a second table (`heavyWeight`): ceil(planned MB / (`gbPerSlot` x 1024)), clamped to 1..`MAX_WEIGHT`
+(3), where the planned MB is the kind's `heavy.caps.<kind>.capMb` and, for a test run, its parent and every worker it is sized to (`testRunSizing`). A
+measured cap that changes moves the weight with it. At 4 GB a unit on a 28-core host:
+
+| kind | what runs as it | planned | units |
+|---|---|---|---|
+| `install` | `npm ci`, `npm install` (measured 0.2 to 2.3 GB) | 3 GB | 1 |
+| `build` | a package or CLI build, codegen, `build:modules`, `npm pack`, `npm publish`, `prepare` | 4 GB | 1 |
+| `uat` | a uat container | 4 GB | 1 |
+| `tsc` | a typecheck | 8 GB | 2 |
+| `eslint` | one ESLint chunk of an app check | 8 GB | 2 |
+| `appBuild` | a `build` @starci/hfs asks for: the api and web builds of `app stack` (`next build`), a compose build, pull or up, the CI-parity build of `app check`, the Sonar scan | 12 GB | 3 |
+| `test` | a test or suite run: the jest parent and its workers | 2 GB + workers x 1.5 GB | 3 (1 for a one-worker run) |
+
+`appBuild`'s 12 GB is an estimate of a Next.js production build of an app the size of NIVO with its build workers, not a measurement; the CI-parity
+build of `app check` prints the measured peak of its run, the number its cap takes once read. A row another CLI copy wrote without a weight holds
+its kind's weight.
 
 Every heavy command the harness spawns (tsc, eslint, a command check, a workspace or package build, `npm ci` or `npm install`, a contract's setup, a test
 run, a uat container) runs through `withHeavySlot` of `harness/heavy.ts`: a row of one queue per host (`heavy_slots` in the host store, machine.sqlite,
@@ -337,22 +355,22 @@ run, a uat container) runs through `withHeavySlot` of `harness/heavy.ts`: a row 
 whose admissions the store's lock serialises. The row maps 1-1 to the work: `pid` and `pid_start` name the CLI process holding it, `child_pid` and
 `child_start` the heavy command once spawned, and it is deleted the moment the command ends (its exit, an error or a signal; a holder killed outright leaves a
 row whose pid is dead, dropped at the next admission or listing and logged in `slot_events`). A live row of an older CLI copy's own
-`%LOCALAPPDATA%/starci/governor.sqlite` is foreign: read only, it holds one slot until its command ends (`legacyHeavyRows`); a row an older copy wrote
-in this store with a weight holds one slot too, and this copy writes `weight` 1 only so such a copy, which sums the column, counts its rows as one.
-`admission` is the whole rule: a command starts when it heads the queue and a slot is free (`used < slots`). No free RAM, free commit, weight, reserve
-or CPU rule decides a start. One host floor holds every start, a lone command included, and the queue line names it: the disk, while the drive the command
+`%LOCALAPPDATA%/starci/governor.sqlite` is foreign: read only, its units count against the host's until its command ends (`legacyHeavyRows`).
+`admission` is a sum and nothing else: a command starts when it heads the queue and `used + weight <= units` (a weight above the units counts as all of
+them, so the heaviest command still runs alone on a small host). No free RAM, free commit, reserve or CPU rule decides a start. One host floor holds every start, a lone command included, and the queue line names it: the disk, while the drive the command
 works on has under the host's disk floor free (`harness/host-floors.ts`): npm installs onto a full drive died with ENOSPC and "disk I/O error", and a full
 drive corrupts git and the sqlite stores. The disk floor is the machine's, set in ONE place every CLI copy reads: `host.diskFloorMb` of config.yaml (`harness/host-settings.ts`,
 [contexts/harness/host.md](../contexts/harness/host.md) "Host settings"); `heavy.diskFloorMb` of ops/liveness.yaml is only the default of a host
 that sets none. A waiting command reads the rules again at every admission attempt (`currentHeavyRules`), so a floor or a cap changed while it
-waits reaches it without a restart. A command that finds every slot in use waits in a first come, first served queue (`servingOrder`), holding nothing;
-only the head may start; every minute it prints its place, why it waits ("16 of 16 slots in use", or the disk floor) and who runs (`waitLine`).
-`starci host load` prints "N of M slots in use", where gbPerSlot came from, and each running and queued command. A row whose process is gone is dropped at the next admission (`pidAlive`). A heavy command a running one starts (a
+waits reaches it without a restart. A command that does not fit waits in a first come, first served queue (`servingOrder`), holding nothing; only the
+head may start, so a light command behind a heavy head waits with it even when it would fit, and the heavy one is never starved; every minute it prints its
+place, why it waits ("14 of 16 slot units in use; next build needs 3", or the disk floor) and who runs with the units each holds (`waitLine`).
+`starci host load` prints "N of M slot units in use", where gbPerSlot came from, the weight of every kind, and the units of each running and queued command. A row whose process is gone is dropped at the next admission (`pidAlive`). A heavy command a running one starts (a
 `starci check run` inside a command check) is admitted on its own: every child inherits `STARCI_HEAVY_PARENTS`, and an admission leaves those
 ancestors' rows out of its count, since they wait on it. `starci app check` holds no row: each heavy child of its steps (a tsc program, an ESLint chunk,
 the jest run, a CI build step, the boot proof, the contract compiler, the Sonar scanner) is admitted on its own the moment its step starts it
-(`hfsNodeRunner` and `hfsCommandRunner` of `core/app/hfs.ts`); the room it hands @starci/hfs for its parallel children (`heavyRoomMb`) is the free slots, at
-least one, times the eslint cap, so it starts as many as can be admitted at once. `starci app check --release` reaches `hfsCommandRunner` the same way. A CI
+(`hfsNodeRunner` and `hfsCommandRunner` of `core/app/hfs.ts`); the room it hands @starci/hfs for its parallel children (`heavyRoomMb`) is how many eslint
+children the free units admit, at least one, times the eslint cap, so it starts as many as can be admitted at once. `starci app check --release` reaches `hfsCommandRunner` the same way. A CI
 runner (`CI` set) keeps no queue and no lock: its one job runs at once.
 
 Process limits, never admission: each child runs below normal priority, a node tool under `--max-old-space-size` of its kind's `heavy.caps` (`heapFor`), a
@@ -379,8 +397,8 @@ is `reap.graceMinutes` (ops/slots.yaml) old it stops the run's whole process tre
 logs it in `<slot root>/_reap.log`. A process the harness did not record is never touched, nor the reaper and its ancestors.
 No free-RAM floor holds a seat launch: a queued task launches, and its heavy commands take the host's slots.
 `workflow status` names why a node stands still instead of a bare state: a verify waiting for a heavy slot ("held: heavy-command slot for test,
-16 of 16 slots in use (since …)"), a task awaiting the owner with the reason its verify recorded.
-`host load` prints "N of M slots in use", the disk floor when it holds, the running commands with each child's pid and RSS, the queue with how long each
+14 of 16 slot units in use; jest needs 3 (since …)"), a task awaiting the owner with the reason its verify recorded.
+`host load` prints "N of M slot units in use" and each kind's weight, the disk floor when it holds, the running commands with each child's pid and RSS, the queue with how long each
 command waited and why, and who holds the memory (`harness/host-holders.ts`): the top processes by working set, managed
 (a recorded heavy command or seat, a process under one, or one working in the harness's state folder) or unmanaged (other
 node, WSL and Docker, IDEs, agents, the rest), each command line clipped and redacted. Another app's `starci app` run is

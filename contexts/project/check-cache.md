@@ -626,7 +626,7 @@ report lines and family reports are folded in graph and family order.
 
 Before its families run, `app check` measures the cache folder of the app (the MB of every record) and takes the check's own heap and the files of one lint chunk
 from it and the constants of `ops/liveness.yaml` `heavy.plan` (`cli/src/harness/memory-plan.ts`; the check re-executes itself under its heap when
-node's limit is lower). Every heavy command then takes one of the host's heavy slots while it runs (one per `heavy.gbPerSlot` GB of the host's RAM, config.yaml, default 4; one command holds one; `withHeavySlot` of
+node's limit is lower). Every heavy command then takes one of the host's heavy slots while it runs (one unit per `heavy.gbPerSlot` GB of the host's RAM, config.yaml, default 4; a command holds its weight of 1 to 3 units; `withHeavySlot` of
 `cli/src/harness/heavy.ts`, [cli/README.md](../../cli/README.md) "Heavy-command governor") and runs under the process limits of `heavy.caps` and `heavy.testRun`:
 
 - A test run takes min(`heavy.testWorkers` of the cores, cores - 1) workers, at least one: the jest parent is held to its cap, each worker to its cap by

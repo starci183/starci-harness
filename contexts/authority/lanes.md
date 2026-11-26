@@ -32,10 +32,12 @@ rule (2026-11-26), in his words:
 
 > "bỏ mấy luật như còn trống bao nhiêu, đơn giản có 16 slots cứ chiếm được và làm xong trả job thế thôi, vì chắc chắn sẽ dư ram"
 
-and of the commit floor: "bỏ cái này đi, đang chiếm thì chạy luôn". The host has one heavy slot per `gbPerSlot` GB of its physical RAM (`heavy.gbPerSlot`
-of the host's config.yaml, absent 4: 16 on a 64 GB host, 32 on 128 GB), never a fixed number, and each heavy command (a tsc, an eslint, a build, an
-install, a test run) holds ONE while it runs, whichever checkout or installed CLI starts it, and gives it back when it ends; a gate that runs several in
-turn takes one for each step, and a running web or api server takes none. No free-RAM, free-commit or seat-memory rule holds anything. The one floor
+and of the commit floor: "bỏ cái này đi, đang chiếm thì chạy luôn"; of the weights, his choice: "Theo độ nặng 1/2/3". The host has one heavy slot unit
+per `gbPerSlot` GB of its physical RAM (`heavy.gbPerSlot` of the host's config.yaml, absent 4: 16 on a 64 GB host, 32 on 128 GB), never a fixed number,
+and each heavy command holds its weight while it runs, whichever checkout or installed CLI starts it, and gives it back when it ends: an install or a
+build 1 unit, a tsc or an ESLint chunk 2, a test run or an app build 3 (its planned MB in units, at most 3), so the units bound the planned memory of all
+that runs; admission is enough free units, first come, first served. A gate that runs several in turn takes each step's units as it starts, and a
+running web or api server takes none. No free-RAM, free-commit or seat-memory rule holds anything. The one floor
 kept: nothing starts while the drive has under the host's disk floor free (`host.diskFloorMb` of config.yaml, else `heavy.diskFloorMb`), since a full drive
 corrupts git and the sqlite stores; the per-kind heap caps stay too, as process limits (`--max-old-space-size`), never admission. The lane slots of
 `ops/slots.yaml` coordinate the lanes themselves: `npm` (an install), `gate` (a full `app check` or a push), `shoot` (a shot or a look), `stack` (the shared
@@ -49,7 +51,7 @@ the host's free memory.
 | `starci slot run <kind> -- <command...>` | holds a slot for exactly the command's life, recording this process and the command's own pid as its child; npm and npx run through the governor |
 | `starci slot take <kind> --pid <pid>` | holds a slot until released; `--pid` names the long-lived process it belongs to (in Git Bash, `$(cat /proc/$$/winpid)`) |
 | `starci slot release <kind>` | releases the lane's own slots, each only once read and found to name the lane |
-| `starci slot list [kind\|heavy] [--events N]` | every lane slot (lane, pid, child, age, command, alive, state, reclaimable) and every heavy slot (id, pid, child, age, command), from any folder |
+| `starci slot list [kind\|heavy] [--events N]` | every lane slot (lane, pid, child, age, command, alive, state, reclaimable) and every heavy slot (id, units, pid, child, age, command), from any folder |
 | `starci slot release <kind\|all> --stale` | reclaims every slot whose holder is proven gone |
 | `starci slot kill <kind> <n> [--execute]`, `starci slot kill heavy <id> [--execute]` | the last resort: kills the process tree of the one process the slot maps to and frees the slot |
 

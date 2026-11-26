@@ -1,6 +1,6 @@
 # The machine-wide lane slots: how many lanes run one kind of job at once (an install, a gate, a shot, the shared stack) across every checkout
 # and agent of a host; each heavy command inside a job also takes one of the host's heavy slots (ops/liveness.yaml heavy: one per gbPerSlot GB of the
-# host's RAM, config.yaml, default 4) while it runs. Read by
+# host's RAM, config.yaml, default 4; its weight of 1 to 3 units) while it runs. Read by
 # cli/src/harness/slots.ts (`starci slot take|release|list|run|kill`, `starci lane gate`, `starci gallery shoot` and `starci app look`). A slot is one row of
 #   `lane_slots` in the host store (machine.sqlite, the same file for every CLI copy and folder), naming the ONE process it lives as long as (pid and start),
 #   its command and its child; taken in one transaction, deleted the moment that process lets it go, released only by the holder it names.

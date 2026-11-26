@@ -119,16 +119,16 @@ host:
   diskFloorMb: 15360   # the free space a heavy command's drive keeps; over heavy.diskFloorMb of ops/liveness.yaml, the default
   diskWarnMb: 51200    # under this much free, lane gate warns early and lists the landed worktrees that can be removed; over heavy.diskWarnMb of ops/liveness.yaml
 heavy:
-  gbPerSlot: 4         # the GB of physical RAM one heavy-command slot stands for; absent 4
+  gbPerSlot: 4         # the GB of physical RAM one heavy-command slot unit stands for; absent 4
 ```
 
 A host with no config.yaml (a CI runner) reads every default.
 
 The `heavy` block is the heavy-command governor's one per-host knob, the owner's (2026-11-26): "chỉnh trong config.yaml ấy", never ops/ and never a
-fixed slot count ("không có số cố định"). The host's slots are always its physical RAM over `gbPerSlot`, computed once when a CLI process starts
-(`hostSlots` of `cli/src/harness/heavy.ts`): 64 GB is 16 slots, 128 GB is 32, so a host with more RAM gets more slots with no edit. Each heavy command
-holds one slot and no free-RAM rule holds a start ([cli/README.md](../../cli/README.md) "Heavy-command governor"); `starci host load` prints
-"N of M slots in use" and where `gbPerSlot` came from. A config.yaml with a damaged `heavy` block is refused like any other (`MACHINES_INVALID`).
+fixed slot count ("không có số cố định"). The host's slot units are always its physical RAM over `gbPerSlot`, computed once when a CLI process starts
+(`hostSlots` of `cli/src/harness/heavy.ts`): 64 GB is 16 units, 128 GB is 32, so a host with more RAM gets more with no edit. `gbPerSlot` also sizes
+each command's weight ("Theo độ nặng 1/2/3": its planned MB in units, 1 to 3), and no free-RAM rule holds a start ([cli/README.md](../../cli/README.md)
+"Heavy-command governor"); `starci host load` prints "N of M slot units in use", each kind's weight and where `gbPerSlot` came from. A config.yaml with a damaged `heavy` block is refused like any other (`MACHINES_INVALID`).
 
 ### Machines
 
