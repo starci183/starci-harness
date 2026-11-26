@@ -3,7 +3,7 @@
  * a hairline edge, and syntax inks that never borrow a status tone or the brand: keyword purple, function blue, string green, number and
  * constant orange, type teal, comment grey (italic), punctuation slate. Red is only `deleted`, the removed side of a diff. The palette is
  * brand-independent: no value reads --accent or --brand, so a red brand never turns keywords red. Every ink reaches WCAG AA 4.5:1 on the
- * ground and on each line tint (the highlighted line, the inserted and the deleted row) in both themes (specs/code-palette.spec.mts).
+ * ground and on each line tint (the highlighted line, the inserted and the deleted row) in both themes.
  *
  * Read by: the markdown ext's Shiki variables (core/ext/markdown/styles.css), FencedCodeBlock and its highlight slot, the lesson CodeBlock
  * (its `scheme="dark" | "light"` sets `data-theme` on the block, so these blocks apply inside it), inline code of a MarkdownArticle.

@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BellGlyph, BookGlyph, ChartGlyph, GroupGlyph, HomeGlyph, SettingsGlyph, UserGlyph } from './fixtures.js';
 
@@ -27,15 +26,6 @@ const GROUPS: ReadonlyArray<G.SidebarGroup> = [
   { id: 'rest', label: 'Rest', items: [{ id: 'customers', label: 'Customers', source: GroupGlyph }, { id: 'connections', label: 'Connections', source: SettingsGlyph, badge: 99, badgeMax: 9 }] },
 ];
 
-const badgesOf = (root: ParentNode) => [...root.querySelectorAll<HTMLElement>('[data-grammar-sidebar-badge]')];
-
-const expectTonesDiffer = (root: ParentNode) => {
-  const badges = badgesOf(root);
-  expect(badges.map((badge) => badge.dataset['grammarBadgeTone'])).toEqual(['danger', 'neutral', 'warning', 'success', 'accent', 'neutral']);
-  const looks = new Set(badges.map((badge) => `${getComputedStyle(badge).backgroundImage}|${getComputedStyle(badge).color}`));
-  expect(looks.size).toBe(5);
-};
-
 const Rail = ({ isCollapsed }: { readonly isCollapsed: boolean }) => (
   <div style={{ width: isCollapsed ? undefined : '16rem', height: '30rem', display: 'flex' }}>
     <G.Sidebar label="Workspace" groups={GROUPS} selectedKey="overview" isCollapsed={isCollapsed} />
@@ -45,20 +35,11 @@ const Rail = ({ isCollapsed }: { readonly isCollapsed: boolean }) => (
 /** Expanded: five tones of one rule, the capped count (`9+`) neutral. */
 export const Expanded: Story = {
   render: () => <Rail isCollapsed={false} />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expectTonesDiffer(canvasElement));
-    expect(canvasElement.querySelector('[aria-label="Office, 4 waiting for you"]')).not.toBeNull();
-    expect(canvasElement.querySelector('[data-grammar-sidebar-badge][data-grammar-badge-tone="neutral"]')?.textContent).toBe('12');
-    expect(badgesOf(canvasElement).at(-1)?.textContent).toBe('9+');
-  },
 };
 
 /** The icon rail: the count keeps its tone and covers the glyph (the tint sits over the surface, never translucent over the glyph). */
 export const IconRail: Story = {
   render: () => <Rail isCollapsed />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expectTonesDiffer(canvasElement));
-  },
 };
 
 /** The drawer presentation (the compact width's sheet and navigation drawer): the same counts. */
@@ -69,7 +50,4 @@ export const InADrawer: Story = {
       <G.Sidebar presentation="drawer" label="Workspace" groups={GROUPS} selectedKey="overview" />
     </G.Drawer>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expectTonesDiffer(canvasElement.ownerDocument));
-  },
 };

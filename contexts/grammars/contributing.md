@@ -155,8 +155,8 @@ No release check judges it; the author does. The three packages keep one version
 ## Codemods
 
 One codemod goes with one Grammar release that needs it, and it is named after that version: 0.54.0 is `v0540`
-(`v<major><minor><patch>`). It lives with the Grammar in `packages/grammar/codemods/<id>/`, beside its before/after fixtures and spec
-(`npm run test:codemods`), and it is registered in `packages/grammar/codemods/index.mts`. The package builds the codemods to
+(`v<major><minor><patch>`). It lives with the Grammar in `packages/grammar/codemods/<id>/`, beside its before/after fixtures
+(proven by its dry run on an app, `starci app codemod <id>`, never by a spec: GRAMMAR-NO-TESTS), and it is registered in `packages/grammar/codemods/index.mts`. The package builds the codemods to
 `dist/codemods` and publishes them as `@starci/grammar/codemods`. `starci app codemod` (in `@starci/hfs`, `codemod/grammar.mts`)
 imports them from the Grammar the app has installed and passes in the app's own TypeScript compiler, so neither package takes a
 runtime dependency on the other. An app installs the target Grammar first, and that Grammar carries every codemod up to its version.
@@ -171,24 +171,22 @@ runtime dependency on the other. An app installs the target Grammar first, and t
 **The CHANGELOG says which.** Every Grammar release that changes an app-facing API names its migration in its CHANGELOG entry: either
 "codemod: vXXXX" (the codemod of that release), "no codemod needed", or "manual steps" followed by the steps.
 
-## Render proof
+## Proof by looking
 
 Lint passing says nothing about looks. Before review:
 
-1. Render every story in **both families** (Core and Offset Pop), in **light and dark**, at **1920 and 390** wide, device scale factor 2:
-   Playwright's `toHaveScreenshot` over the built Storybook (`npm run prove-render` in `packages/grammar`) compares each with its baseline in
-   `packages/grammar/proof/baselines`. The baselines are unreviewed: they detect change and approve no look, and the report says "changed",
-   never "wrong". The proof runs by hand and is not part of build, push, lint or publish; a lane refreshes unreviewed baselines with `npm run prove-render:accept`. Only the pictures in
-   `proof/approved.json` are approved (the chat renderer, so far); a change to one needs a person (`npm run prove-render:approve`). Baselines are taken in the pinned Playwright image CI runs in (Linux), never on a laptop.
+1. Shoot every story it touches in **both families** (Core and Offset Pop), in **light and dark**, at **390 and 1440** wide
+   (`npm run build-storybook`, then `npm run shoot [title] --family=core|offset-pop` in `packages/grammar`), and look at each picture. The Grammar carries no tests, no pixel baselines and no test runner ([proof](../ui/proof.md) GRAMMAR-NO-TESTS,
+   the owner on 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless"); the pictures are looked at, never diffed.
 2. Measure the static laws with `starci dna check --storybook packages/grammar/storybook-static`; add a narrow container (a drawer or a rail) if it answers its container.
 3. With **real content**: the longest translated label, an empty value, a large count. Lorem ipsum hides the failure.
 4. Beside its **neighbours**: in a card, a pane and a row of controls.
-5. With a **foreign theme**: HeroUI's tokens set to an unrelated palette, radius and font, to prove nothing is hard-coded.
+5. With a **foreign theme**: HeroUI's tokens set to an unrelated palette, radius and font, looked at to see nothing is hard-coded.
 
 Every law must be measured, not merely pass: a law with zero matches is not exercised.
 
 ## The look, reviewed by a person
 
-Link the proof report (the `grammar-proof` artifact of CI, or `proof/report`) in the change. A person reads the screens, in the state a reader would see them, and
+In the change, link the story shots and the UI audit of the app screens that use it. A person reads the screens, in the state a reader would see them, and
 accepts or rejects. The owner reviews anything that changes how a component looks. A green check does not stand in for this, and a rejection
 means a rule is missing or wrong: the fix lands in a type, a law or the rule, then the component.

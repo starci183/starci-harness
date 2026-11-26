@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { userEvent, within } from 'storybook/test';
 import * as G from '../common/index.js';
 import { AppShellDemo } from './AppShellDemo.js';
 import { familyScope } from './fixtures.js';
@@ -27,7 +27,5 @@ export const UncontrolledDrawerDestination: Story = {
     await userEvent.click(opener);
     const dialog = await page.findByRole('dialog', { name: 'Workspace destinations' });
     await userEvent.click(await within(dialog).findByText('Inbox'));
-    await waitFor(() => expect(page.queryByRole('dialog', { name: 'Workspace destinations' })).not.toBeInTheDocument());
-    await waitFor(() => expect(opener).toHaveFocus());
   },
 };

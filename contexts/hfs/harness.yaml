@@ -41,18 +41,18 @@ slots:
     rule: CONTRIB-4 one owner per fact; CONTRIB-5 present tense, no ghosts
   - id: never.grammar-tests
     path:
-      - "packages/grammar/**/*.{spec,test}.{ts,tsx,js,jsx,mjs,cjs}"
+      - "packages/grammar/**/*.{spec,test}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"
+      - "packages/grammar/**/*.{spec,test}.d.{ts,mts,cts}"
+      - "packages/grammar/**/*.snap.json"
+      - "packages/grammar/**/{specs,spec,tests,test,__tests__,e2e,proof}/"
       - "packages/grammar/**/{jest,vitest,playwright}.config.*"
-    except:
-      # the render proof, which the Grammar keeps (packages.grammar-proof holds it)
-      - packages/grammar/playwright.config.ts
-      - packages/grammar/proof/stories.spec.ts
-      # the browser proof of the core's graph ext (packages.grammar-ext-demo holds it)
-      - packages/grammar/ext-demo/graph/playwright.config.ts
-      - "packages/grammar/ext-demo/graph/e2e/*.spec.ts"
+      - "packages/grammar/tsconfig.{specs,spec,test,tests,codemods-spec}.json"
     presence: forbidden
-    holds: a spec, test or test-runner config in the Grammar package, bar the render proof; a Grammar edit is proved by its typecheck and build, its plays and DNA gate are CI's
-    rule: contexts/authority/packages.md; contexts/ui/proof.md
+    holds: >-
+      a spec, test, snapshot, test folder or test-runner config in the Grammar package, with no exception. The owner, 2026-11-26:
+      "xóa tests grammars và ghi rules chặt vì useless". A Grammar change is proven by looking: its storybook stories shot at 390 and
+      1440 in light and dark, and the UI audit of the app screens that use it
+    rule: contexts/ui/proof.md GRAMMAR-NO-TESTS; packages/grammar/README.md "No tests"
   - id: never.cli-js
     path: "cli/src/**/*.{js,mjs,cjs,jsx}"
     presence: forbidden
@@ -394,7 +394,7 @@ slots:
       - "packages/grammar/scripts/*.mts"
       - "packages/grammar/scripts/lint/*.mts"
     presence: optional
-    holds: the grammar's build and capture tools (build stamp, clean, CSS copy, plays, reference and SVG shots), TypeScript typechecked by tsconfig.scripts.json
+    holds: the grammar's build and capture tools (build stamp, clean, CSS copy, the static checks, the story shots of `npm run shoot`, reference and SVG shots), TypeScript typechecked by tsconfig.scripts.json
     rule: every package is TypeScript
   - id: packages.grammar-codemods
     path:
@@ -404,29 +404,12 @@ slots:
     presence: optional
     holds: the Grammar's codemods, one folder per release that changes an app-facing API, named after its version (v0540 for 0.54.0), with its before/after fixtures; shipped as @starci/grammar/codemods and run by `starci app codemod`
     rule: contexts/grammars/contributing.md "Codemods"
-  - id: packages.grammar-specs
-    path:
-      - "packages/grammar/specs/*.spec.mts"
-      - "packages/grammar/specs/support/*.{mts,d.ts}"
-      - "packages/grammar/specs/fixtures/**/*.md"
-    presence: optional
-    holds: the Grammar's node specs (`npm run test:specs`, part of `npm test`), its register hook that loads the TSX source with no bundler, and the fixtures they read; a `*.browser.spec.mts` drives Chromium and is skipped where none is installed; never published (files lists dist only)
-    rule: contexts/grammars/contributing.md
   - id: packages.grammar-ext-demo
     path:
-      - "packages/grammar/ext-demo/graph/{index.html,*.tsx,*.css,vite.config.ts,playwright.config.ts}"
-      - "packages/grammar/ext-demo/graph/e2e/{*.spec.ts,*.snap.json,shared/*.ts}"
+      - "packages/grammar/ext-demo/graph/{index.html,*.tsx,*.css,vite.config.ts}"
     presence: optional
-    holds: the demo page of the core's graph ext (every story of FlowGraph, SchemaMap, ErdMap and KnowledgeMap, drawn from src/core/ext/graph; `npm run ext:demo`) and its Playwright collision and layout specs at 1440 and 390 (`npm run ext:e2e`); run by hand, never in build, push or publish, and not in the published files
+    holds: the demo page of the core's graph ext (every story of FlowGraph, SchemaMap, ErdMap and KnowledgeMap, drawn from src/core/ext/graph; `npm run ext:demo`), looked at by hand at 1440 and 390; never in build, push or publish, and not in the published files
     rule: contexts/ui/components/graph.md
-  - id: packages.grammar-proof
-    path:
-      - packages/grammar/playwright.config.ts
-      - "packages/grammar/proof/{README.md,approved.json,reporter.ts,stories.spec.ts}"
-      - "packages/grammar/proof/baselines/{1920,390}/*.png"
-    presence: optional
-    holds: the Grammar's render proof (Playwright toHaveScreenshot over the Storybook stories) with its committed baselines and the approved chat pictures; run by hand, never in build, push or publish
-    rule: contexts/ui/proof.md
   - id: packages.tests
     path: "packages/<name>/test/"
     presence: optional
@@ -451,7 +434,6 @@ slots:
     path:
       - "packages/<name>/fixtures/"
       - "packages/<name>/migrations/*.sql"
-      - packages/grammar/scripts/theme-proof/app-theme.css
       - "packages/hfs/templates/"
       - "packages/<name>/**/*.{fixture,partial}"
     presence: optional

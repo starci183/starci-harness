@@ -78,7 +78,7 @@ const LessonHeader = () => {
 
 /**
  * A phone-width page header (StarCi Next audit rounds 5 and 6): the trail's long last crumb fades at its end (the strip follows its inline scroll), and the
- * selected page tab, fourth of six, opens fully in view, clear of the next control and of the strip's fading edge. `specs/sideways-strips.browser.spec.mts` measures both.
+ * selected page tab, fourth of six, opens fully in view, clear of the next control and of the strip's fading edge. Shot at 390, light and dark, it shows both.
  */
 export const PhoneHeaderSelectedMiddle: Story = { render: () => <LessonHeader /> };
 

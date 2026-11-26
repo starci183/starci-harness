@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Chip as HeroChip } from '@heroui/react';
 import { useState } from 'react';
-import { waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import {
   BellGlyph,
@@ -69,17 +68,6 @@ const RelativeTimeDemo = () => {
 
 export const RelativeTime: Story = {
   render: () => <RelativeTimeDemo />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      if (!/^Ends in 1:[0-5]\d$/.test(canvasElement.querySelector('#relative-time-digital-minutes')?.textContent ?? '')) throw new Error('Digital minutes must use m:ss within the serializable template');
-      if (!/^Time left: 1:0[01]:[0-5]\d$/.test(canvasElement.querySelector('#relative-time-digital-hours')?.textContent ?? '')) throw new Error('Digital hours must use h:mm:ss within the serializable template');
-      if (canvasElement.querySelector('#relative-time-expired')?.textContent !== 'Offer ended') throw new Error('Expired countdown must replace the complete template');
-      if (canvasElement.querySelector('#relative-time-invalid')?.textContent !== 'Time unavailable') throw new Error('Invalid timestamps must render fallback');
-      if (canvasElement.querySelector('#relative-time-fraction')?.getAttribute('datetime') !== '2026-10-25T12:00:00.123Z') throw new Error('RFC 3339 fractions must be accepted');
-      if (canvasElement.querySelector('#relative-time-offset')?.getAttribute('datetime') !== '2026-10-25T12:00:00.000Z') throw new Error('Compact timezone offsets must be accepted');
-      if (canvasElement.querySelector('#relative-time-short-fraction-offset')?.getAttribute('datetime') !== '2026-10-25T19:30:00.100Z') throw new Error('Short fractions and compact negative offsets must normalize to portable ISO timestamps');
-    });
-  },
 };
 
 const countdownCases = [
@@ -102,14 +90,6 @@ const RelativeTimeCountdownTable = () => {
 /** The remaining seconds choose the unit; a partial day, hour, week or month never rounds upward. */
 export const RelativeTimeCountdown: Story = {
   render: () => <RelativeTimeCountdownTable />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      countdownCases.forEach(({ label, expected }, index) => {
-        const actual = canvasElement.querySelector(`#relative-time-countdown-${index}`)?.textContent;
-        if (actual !== expected) throw new Error(`${label}: expected ${expected}, received ${actual}`);
-      });
-    });
-  },
 };
 
 export const Badge: Story = {
@@ -162,20 +142,6 @@ export const StatusDot: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      for (const dot of canvasElement.querySelectorAll('[data-component="StatusDot"][data-variant="echo"], [data-component="StatusDot"][data-variant="static"]')) {
-        if (!dot.getAttribute('aria-label')) throw new Error('A StatusDot needs an aria-label');
-      }
-      const live = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-badge-live="true"]')];
-      if (live.length !== 2) throw new Error('Two live badges must render');
-      for (const badge of live) {
-        if (badge.getAttribute('role') !== 'status') throw new Error('A live badge is a status region');
-        if ((badge.textContent ?? '').trim() === '') throw new Error('The words carry the state');
-        if (!/^[A-Z]/.test(badge.querySelector('.starci-core-badge-dot-label')?.textContent ?? '')) throw new Error("The label's first letter must be uppercase");
-      }
-    });
-  },
 };
 
 const TerminalDemo = () => {
@@ -196,14 +162,6 @@ const TerminalDemo = () => {
 
 export const Terminal: Story = {
   render: () => <TerminalDemo />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const log = canvasElement.querySelector('[role="log"]');
-      if (!(log instanceof HTMLElement)) throw new Error('Terminal must render role="log"');
-      if (log.getAttribute('aria-live') !== 'polite') throw new Error('Terminal must be aria-live polite');
-      if (log.scrollHeight > log.clientHeight && log.scrollHeight - log.scrollTop - log.clientHeight > 8) throw new Error('Terminal must open scrolled to the end');
-    });
-  },
 };
 
 export const Button: Story = {

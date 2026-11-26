@@ -4,7 +4,8 @@
     "target": "ES2022",
     "lib": [
       "ES2022",
-      "DOM"
+      "DOM",
+      "DOM.Iterable"
     ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -17,8 +18,6 @@
     "noEmit": true
   },
   "include": [
-    "playwright.config.ts",
-    "proof/*.ts",
     "scripts/*.mts",
     "scripts/lint/*.mts",
     "eslint.config.ts",

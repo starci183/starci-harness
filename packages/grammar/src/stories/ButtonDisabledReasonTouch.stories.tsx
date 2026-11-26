@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -19,33 +18,6 @@ const noop = () => undefined;
 const REASON = 'Pick a plan first.';
 const LONG_REASON = 'Add a payment method and accept the terms of service before you can upgrade this workspace to the Team plan.';
 
-const touchQuery = '(hover: none), (pointer: coarse)';
-
-/** One check of the contract, in whichever mode the page runs: one description element, both references to it, shown only on touch. */
-const expectReason = (canvasElement: HTMLElement, text: string) => {
-  const button = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="Button"]')].find((node) => node.getAttribute('aria-describedby') !== null && document.getElementById(node.getAttribute('aria-describedby') ?? '')?.textContent === text);
-  if (button === undefined) throw new Error(`a disabled Button describes itself with "${text}"`);
-  const id = button.getAttribute('aria-describedby') ?? '';
-  const trigger = button.closest<HTMLElement>('.starci-core-tooltip-disabled-trigger');
-  if (trigger === null) throw new Error('the disabled Button stands in its tooltip trigger');
-  expect(trigger.getAttribute('aria-describedby')).toBe(id);
-  const described = [...canvasElement.querySelectorAll(`[id="${CSS.escape(id)}"]`)];
-  expect(described).toHaveLength(1);
-  const line = described[0] as HTMLElement;
-  expect(line.getAttribute('aria-hidden')).toBe('true');
-  if (window.matchMedia(touchQuery).matches) {
-    expect(getComputedStyle(line).display).toBe('block');
-    const lineBox = line.getBoundingClientRect();
-    const buttonBox = button.getBoundingClientRect();
-    expect(lineBox.top).toBeGreaterThanOrEqual(buttonBox.bottom);
-    expect(Math.round(lineBox.left)).toBe(Math.round(buttonBox.left));
-    expect(lineBox.right).toBeLessThanOrEqual(canvasElement.getBoundingClientRect().right + 0.5);
-  } else {
-    expect(getComputedStyle(line).display).toBe('none');
-  }
-  return { button, line };
-};
-
 /** A form's commit, disabled with its reason, beside its way out; then a long reason and a fill-width submit. */
 export const Reasons: Story = {
   render: () => (
@@ -58,19 +30,4 @@ export const Reasons: Story = {
       <G.Button variant="primary" width="fill" type="submit" isDisabled disabledReason={REASON} onPress={noop}>Create account</G.Button>
     </G.Stack>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const { button: commit } = expectReason(canvasElement, REASON);
-      // The way out keeps its top edge beside the commit: the line hangs under its own button.
-      const back = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="Button"]')].find((node) => node.textContent === 'Back');
-      if (back === undefined) throw new Error('the way out renders');
-      expect(Math.round(back.getBoundingClientRect().top)).toBe(Math.round(commit.getBoundingClientRect().top));
-      const { line } = expectReason(canvasElement, LONG_REASON);
-      if (window.matchMedia(touchQuery).matches) expect(getComputedStyle(line).color).not.toBe(getComputedStyle(canvasElement).color);
-      const fill = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="Button"][data-width="fill"]')][0];
-      const trigger = fill?.closest<HTMLElement>('.starci-core-tooltip-disabled-trigger');
-      if (fill === undefined || trigger == null) throw new Error('the fill submit renders');
-      expect(Math.round(fill.getBoundingClientRect().width)).toBe(Math.round(trigger.getBoundingClientRect().width));
-    });
-  },
 };

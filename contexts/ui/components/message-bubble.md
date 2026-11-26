@@ -120,7 +120,7 @@ thread; an outgoing bubble is the brand fill. Reactions are presentation only: `
 `actions` it is ONE tray: from 48rem the toolbar floats above the bubble and the actions beside it; below 48rem hover opens nothing and a
 long press on the bubble (or keyboard focus inside the message) opens the tray in the thread's flow above the body, one bordered piece whose
 buttons wrap inside the row, so it never covers the bubble above nor runs past the row's edge (the play of story
-`Chat surfaces / Reaction tray` proves it at 1440 and 390; a static law cannot open the tray); a tap on one of its buttons closes it. The pill on the bottom
+`Chat surfaces / Reaction tray` opens it for the shots at 1440 and 390; a static law cannot open the tray); a tap on one of its buttons closes it. The pill on the bottom
 corner shows up to three emoji and the total and adds the viewer's top reaction on press; each tap bursts floating emoji (none under reduced
 motion). The composer band (a `PaneSection as="footer"` or `rule="start"`) keeps the row gap between its divider and its rows. Stories
 `BubbleGrouping`, `Reactions`.
@@ -138,7 +138,7 @@ Modelled on Messenger. The owner asked for "hover ra icon… như facebook, 3 c�
 - **Names** are the app's i18n (`labels`): "Bày tỏ cảm xúc", "Trả lời", "Thêm".
 - **Not on engine cards** (approval, stop): they keep their own buttons.
 
-Story `Navigation & Data/Avatar initials and message actions`; specs `specs/message-actions.spec.mts` and `specs/message-actions.browser.spec.mts`.
+Story `Navigation & Data/Avatar initials and message actions`, shot at 390 and 1440 in light and dark.
 
 ## Variants
 None. `side` is whose message it is, not a style.

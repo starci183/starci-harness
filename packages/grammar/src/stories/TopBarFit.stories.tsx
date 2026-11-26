@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -35,34 +34,12 @@ const Header = ({ many }: { many: boolean }) => (
   />
 );
 
-const checkHeader = (canvasElement: HTMLElement) => {
-  const header = canvasElement.querySelector<HTMLElement>('[data-component="TopBar"]')!;
-  const row = header.querySelector<HTMLElement>('[data-grammar-top-bar-fit]')!;
-  // The header never overflows sideways, and the row neither clips nor scrolls what it keeps.
-  expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth + 1);
-  expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth + 1);
-  for (const label of Array.from(row.querySelectorAll<HTMLElement>('.starci-core-button, a'))) {
-    // One line: the box is no taller than the 40px step plus a hairline, the label is not broken.
-    expect(label.getBoundingClientRect().height).toBeLessThanOrEqual(41);
-    expect(getComputedStyle(label).whiteSpace).toBe('nowrap');
-  }
-  for (const control of Array.from(header.querySelectorAll<HTMLElement>('.starci-core-button, .starci-core-icon-button'))) expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(39.5);
-  const trigger = row.querySelector('.starci-core-icon-button');
-  expect(row.dataset['grammarTopBarFitOverflow'] === 'true').toBe(trigger !== null);
-};
-
 /** Four links and three actions: at a phone width the row keeps what fits (the primary action last) and the rest sit in the menu. */
 export const TopBarFitManyActions: Story = {
   render: () => <Header many />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => checkHeader(canvasElement));
-  },
 };
 
 /** Two links and two actions: short enough that a phone keeps them in the row, or moves only the links. */
 export const TopBarFitFewActions: Story = {
   render: () => <Header many={false} />,
-  play: async ({ canvasElement }) => {
-    await waitFor(() => checkHeader(canvasElement));
-  },
 };

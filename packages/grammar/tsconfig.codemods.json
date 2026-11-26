@@ -15,5 +15,5 @@
     "outDir": "dist/codemods"
   },
   "include": ["codemods/**/*.mts"],
-  "exclude": ["codemods/**/*.spec.mts", "codemods/**/fixtures/**"]
+  "exclude": ["codemods/**/fixtures/**"]
 }

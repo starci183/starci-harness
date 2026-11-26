@@ -66,7 +66,7 @@ Each takes `onAction` (a command) or `href` (a destination, an anchor). `actions
 and a development error names it). The dismiss stays the `border` icon button. No banner action carries a start icon. The paint is the stylesheet's (`.starci-core-alert .starci-core-button`), so a Grammar `Button` an app writes in
 the banner's copy takes it too; still, pass the buttons through `action` or `actions`, the slot that lays them out and stacks them on a phone. A
 negative banner's retry ("Thử lại") is the same tinted button, the one look of a recovery in a banner; a destructive decision belongs to an
-`AlertDialog`, never to a banner's action. Spec `specs/alert-actions.spec.mts`; story `Overlays/Alert actions in tone (0.55.1)`.
+`AlertDialog`, never to a banner's action. Story `Overlays/Alert actions in tone (0.55.1)`.
 
 ## ToastStack and stackToast
 `ToastStack` is the region of HeroUI's own Toast (white card, status icon, title, description, one action, close) and `stackToast` is its callable: `show({ title, description?, meta?, tone?, action?, timeout? })` answers an id, `update(id, options)` turns that toast into another, `dismiss(id)` closes it. One act is one toast: a check that starts pending is updated in place to its result, never followed by a second toast. Mount exactly one `ToastStack` inside the root (default `bottom end`); it sits beside `Toaster` and leaves it unchanged. Generic: the words, the tone and the one action are the app's.

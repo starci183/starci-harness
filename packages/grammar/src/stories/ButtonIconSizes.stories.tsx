@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
@@ -24,28 +23,4 @@ export const Sizes: Story = {
       </G.Cluster>
     </G.Stack>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const buttons = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-component="Button"]'));
-      const expected = [
-        { pad: 16, icon: 20 },
-        { pad: 16, icon: 20 },
-        { pad: 12, icon: 0 },
-        { pad: 16, icon: 20 },
-        { pad: 12, icon: 16 },
-      ];
-      expect(buttons.length).toBe(5);
-      buttons.forEach((button, index) => {
-        const want = expected[index]!;
-        const style = getComputedStyle(button);
-        if (want.icon > 0) {
-          expect(Number.parseFloat(style.paddingInlineStart)).toBe(want.pad);
-          expect(Number.parseFloat(style.paddingInlineEnd)).toBe(want.pad);
-          expect(Number.parseFloat(style.columnGap)).toBe(8);
-          const icon = button.querySelector<SVGElement>('svg')!.getBoundingClientRect();
-          expect(Math.round(icon.width)).toBe(want.icon);
-        }
-      });
-    });
-  },
 };

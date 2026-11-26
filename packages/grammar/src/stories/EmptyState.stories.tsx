@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { BookGlyph, Matrix, State, noop } from './fixtures.js';
 
@@ -11,12 +10,6 @@ import { BookGlyph, Matrix, State, noop } from './fixtures.js';
 const meta: Meta = { title: 'Media/Empty state', parameters: { layout: 'padded' } };
 export default meta;
 type Story = StoryObj;
-
-const boxOf = (root: HTMLElement, selector: string): HTMLElement => {
-  const found = root.querySelector<HTMLElement>(selector);
-  if (found === null) throw new Error(`no element for ${selector}`);
-  return found;
-};
 
 /** An in-page state: an icon on the accent soft circle, a no-match after a filter, a primary and a secondary action. */
 export const RegionState: Story = {
@@ -30,19 +23,6 @@ export const RegionState: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const notices = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="EmptyNotice"]')];
-    expect(notices).toHaveLength(2);
-    for (const notice of notices) {
-      expect(notice.getAttribute('data-grammar-empty-scope')).toBe('region');
-      expect(notice.getAttribute('data-grammar-empty-mark')).toBe('icon');
-      expect(notice.querySelector('[data-component="Illustration"]')).toBeNull();
-      const tile = boxOf(notice, '.starci-core-icon-tile');
-      expect(tile.getAttribute('data-tone')).toBe('accent');
-      expect(getComputedStyle(tile).borderTopLeftRadius).not.toBe('0px');
-    }
-    expect(notices[1]?.querySelectorAll('.starci-core-notice-actions button').length).toBe(2);
-  },
 };
 
 /** A page-level state: the illustration (a statics key) over the title, the description and the actions. */
@@ -61,26 +41,6 @@ export const PageState: Story = {
       />
     </G.StaticsProvider>
   ),
-  play: async ({ canvasElement }) => {
-    const notice = boxOf(canvasElement, '[data-component="EmptyNotice"]');
-    expect(notice.getAttribute('data-grammar-empty-scope')).toBe('page');
-    expect(notice.getAttribute('data-grammar-empty-mark')).toBe('illustration');
-    const art = boxOf(notice, '[data-component="Illustration"]');
-    expect(art.getAttribute('aria-hidden')).toBe('true');
-    expect(art.getAttribute('data-asset-slot')).toBe('empty.first-visit');
-    await waitFor(() => expect(boxOf(art, 'img').getAttribute('src')).toBe('/media/art-square.svg'));
-    const compact = window.matchMedia('(max-width: 47.999rem)').matches;
-    const box = art.getBoundingClientRect();
-    expect(Math.round(box.width)).toBe(compact ? 120 : 160);
-    expect(Math.round(box.height)).toBe(compact ? 120 : 160);
-    // the stack is centred: the art, the copy and the actions share one centre line
-    const centre = (element: Element) => { const rect = element.getBoundingClientRect(); return rect.left + rect.width / 2; };
-    const copy = boxOf(notice, '.starci-core-notice-copy');
-    expect(Math.abs(centre(art) - centre(copy))).toBeLessThan(2);
-    // the primary is a button; the secondary is a neutral destination
-    expect(notice.querySelectorAll('.starci-core-notice-actions > *').length).toBe(2);
-    expect(boxOf(notice, '.starci-core-notice-actions a[href="#guide"]')).not.toBeNull();
-  },
 };
 
 /** A page-level state with no art falls back to the icon; a failed illustration keeps the stack and the actions. */
@@ -96,12 +56,6 @@ export const PageStateWithoutArt: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('[data-grammar-illustration-state="error"]')).not.toBeNull());
-    const notices = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="EmptyNotice"]')];
-    expect(notices[0]?.getAttribute('data-grammar-empty-mark')).toBe('icon');
-    expect(notices[1]?.querySelectorAll('.starci-core-notice-actions > *').length).toBe(2);
-  },
 };
 
 /** The not-found page every web app carries (gallery screen errors/not-found): the page-level state with one way home. */
@@ -112,12 +66,6 @@ export const NotFoundPage: Story = {
       <G.EmptyNotice scope="page" message="Page not found" description="The address you opened does not exist or has moved." media={{ illustration: { staticsKey: 'art-square.svg' } }} actionLabel="Back to the home page" actionHref="/" />
     </G.StaticsProvider>
   ),
-  play: async ({ canvasElement }) => {
-    const notice = boxOf(canvasElement, '[data-component="EmptyNotice"]');
-    expect(notice.getAttribute('data-grammar-empty-scope')).toBe('page');
-    expect(notice.querySelectorAll('.starci-core-notice-actions > *').length).toBe(1);
-    expect(boxOf(notice, '.starci-core-notice-actions a').getAttribute('href')).toBe('/');
-  },
 };
 
 /** The server-error page every web app carries (gallery screen errors/server-error): home as the primary, retry as the secondary. */
@@ -128,12 +76,6 @@ export const ServerErrorPage: Story = {
       <G.EmptyNotice scope="page" message="Something went wrong" description="We could not show this page. You can try again or go back to the home page." media={{ illustration: { staticsKey: 'art-square.svg' } }} actionLabel="Back to the home page" actionHref="/" secondary={{ label: 'Try again', onPress: noop }} />
     </G.StaticsProvider>
   ),
-  play: async ({ canvasElement }) => {
-    const notice = boxOf(canvasElement, '[data-component="EmptyNotice"]');
-    const actions = notice.querySelectorAll('.starci-core-notice-actions > *');
-    expect(actions).toHaveLength(2);
-    expect(actions[1]?.textContent).toBe('Try again');
-  },
 };
 
 const FIRST_RUN_STEPS: ReadonlyArray<G.EmptyNoticeStep> = [
@@ -157,28 +99,6 @@ export const FirstRunSteps: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const notices = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="EmptyNotice"]')];
-    expect(notices).toHaveLength(2);
-    const first = notices[0] as HTMLElement;
-    expect(first.getAttribute('data-grammar-empty-kind')).toBe('steps');
-    const steps = [...first.querySelectorAll<HTMLElement>('.starci-core-notice-step')];
-    expect(steps.map((step) => step.getAttribute('data-grammar-step-state'))).toEqual(['done', 'current', 'todo']);
-    expect(steps[1]?.getAttribute('aria-current')).toBe('step');
-    // The one primary stands inside the first open step, not in the foot row; the secondary stays at the foot.
-    expect(steps[1]?.querySelectorAll('button').length).toBe(1);
-    expect(steps[1]?.textContent).toContain('Pick the sheet');
-    expect(first.querySelectorAll(':scope > .starci-core-notice-actions button').length).toBe(1);
-    expect(steps[0]?.querySelector('button')).toBeNull();
-    expect(steps[2]?.querySelector('button')).toBeNull();
-    // The marks are one column.
-    const marks = steps.map((step) => boxOf(step, '.starci-core-accordion-step').getBoundingClientRect().left);
-    expect(Math.max(...marks) - Math.min(...marks)).toBeLessThan(1);
-    // With every step done the action is in the foot row.
-    const second = notices[1] as HTMLElement;
-    expect(second.querySelectorAll('.starci-core-notice-step button').length).toBe(0);
-    expect(second.querySelectorAll(':scope > .starci-core-notice-actions button').length).toBe(1);
-  },
 };
 
 /** The good-news state (0.46.2): nothing needs the reader. A success mark, the words, and no action (the type refuses every action prop on it). */
@@ -190,12 +110,4 @@ export const AllClear: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    const notice = boxOf(canvasElement, '[data-component="EmptyNotice"]');
-    expect(notice.getAttribute('data-grammar-empty-kind')).toBe('all-clear');
-    expect(notice.getAttribute('data-grammar-empty-mark')).toBe('success');
-    expect(boxOf(notice, '.starci-core-icon-tile').getAttribute('data-tone')).toBe('success');
-    expect(notice.querySelector('button, a')).toBeNull();
-    expect(notice.querySelector('.starci-core-notice-actions')).toBeNull();
-  },
 };

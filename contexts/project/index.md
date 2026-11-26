@@ -154,7 +154,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/contract.yaml](../grammars/contract.yaml) · 196 KB — What every grammar implements.
   - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-ACTION-IN-TONE, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-CHANNEL-BADGE, DNA-COMMON-AVATAR-CLUSTER, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-ROUND, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP and 287 more
 - [grammars/contributing.md](../grammars/contributing.md) · 16 KB — How a component enters `@starci/grammar`, or a prop enters a component.
-  - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Codemods · Render proof · The look, reviewed by a person
+  - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Codemods · Proof by looking · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
   - sections: Material and why · How core fills the contract · Departures · Lint
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 6 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
@@ -176,8 +176,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 18 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
-- [hfs/harness.yaml](../hfs/harness.yaml) · 22 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
-  - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 44 more
+- [hfs/harness.yaml](../hfs/harness.yaml) · 21 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
+  - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 42 more
 - [hfs/rules.yaml](../hfs/rules.yaml) · 190 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: PROJECT-LINT-7, R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R106, R107, R108, R109, R11, R110, R113, R12, R13 and 301 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 107 KB — The HFS slot manifest: what may exist in an app repository and where.
@@ -208,7 +208,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-4 An app may switch every gate off but the hfs ones · PROJECT-LINT-3 A project extends the law through its ext folder · PROJECT-LINT-5 A production audit exception is time-boxed and the owner's · PROJECT-LINT-6 Lint has zero errors; a rule that catches a bug is an error, a style rule a warning · PROJECT-LINT-7 One condition has one check, and one capability has one owner · Read with
 - [project/master-plan-record.md](../project/master-plan-record.md) · 6 KB — A project's Master Plan is the one record of what it decided, why, and the rules every task holds, kept as data in `.starciwork/master-plan.yaml` at the app root.
   - sections: PROJECT-MASTER-PLAN-1 A project keeps its Master Plan as nine layers of data · PROJECT-MASTER-PLAN-2 A brief carries the layers of its op, and a task that contradicts a rule stops and asks · PROJECT-MASTER-PLAN-3 Each rule's enforcement is reported, so the plan shows what the harness holds · Read with
-- [project/monitoring.md](../project/monitoring.md) · 22 KB — A managed VPS runs one harness-owned monitoring stack, `starci-monitor`, beside the app stacks, the way it runs the Swarm UI and the edge proxy (harness/managed-vps.md).
+- [project/monitoring.md](../project/monitoring.md) · 24 KB — A managed VPS runs one harness-owned monitoring stack, `starci-monitor`, beside the app stacks, the way it runs the Swarm UI and the edge proxy (harness/managed-vps.md).
   - sections: PROJECT-MONITORING-1 One stack per server, every component a toggle · PROJECT-MONITORING-2 An environment opts in · PROJECT-MONITORING-3 Doors, credentials and alerts · PROJECT-MONITORING-4 Dev parity · PROJECT-MONITORING-5 Each app's own alert bot · PROJECT-MONITORING-6 The monitor bot: commands and alerts with buttons · Consul
   - ids: opt-in
 - [project/shared-services.md](../project/shared-services.md) · 13 KB — A managed VPS can run opt-in shared services beside the app stacks, the way it runs the monitoring stack (monitoring.md): one harness-owned stack per service per server, deployed ...
@@ -268,8 +268,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size and states · Name clash with React's Fragment · Owner split · What lint does inside and outside · Rules · Inventory (audit, never a failure)
 - [ui/components/freestyle.md](../ui/components/freestyle.md) · 2 KB — Contract: Freestyle.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/graph.md](../ui/components/graph.md) · 30 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
-  - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · The routing law · Look · Layout and helpers · The demo and the browser proof
+- [ui/components/graph.md](../ui/components/graph.md) · 29 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
+  - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · The routing law · Look · Layout and helpers · The demo
   - ids: string;
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 16 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Status marks: (A) inline and (B) the round 40px tile · Variants · Plates of an initials mark · Size · States · Owner split · Initials, marks and the AI Chip · Rules
@@ -279,7 +279,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · A collection of files: MediaGrid · Owner split · Rules · Eager pictures and the fetch priority
 - [ui/components/lesson.md](../ui/components/lesson.md) · 7 KB — No contract role yet: these are the parts of a lesson page, each a Grammar component an app places; their look is the Grammar's (`src/common/components-lesson.css`), their words ...
   - sections: Job · Choose · Variants · Code palette · Size · States · Owner split · Accessibility · Rules
-- [ui/components/list-table.md](../ui/components/list-table.md) · 22 KB — Contract: List and Table.
+- [ui/components/list-table.md](../ui/components/list-table.md) · 23 KB — Contract: List and Table.
   - sections: Job · Choose · Filter row · Row edge tone · Unread row · Table totals, row ground, phone selection · Section head · Version diff rows · Variants · Size · States · Owner split · Row description · Rules · Key-value rows · Phone fixes for rows, figures, tables and timelines
 - [ui/components/markdown.md](../ui/components/markdown.md) · 5 KB — `@starci/grammar/core/ext/markdown` is part of Grammar core, used ONLY for long authored documents (an article, a lesson, a report written as markdown).
   - sections: Minimal use · Entries · `<Markdown>` props · Highlights · What a text may hold · Built on Grammar core
@@ -326,9 +326,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: The four states · What the Grammar takes · The region carries it · Choose · Rules
 - [ui/presentation.md](../ui/presentation.md) · 42 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
   - sections: Space · Type · Paint · Room · Relations at a glance
-- [ui/proof.md](../ui/proof.md) · 18 KB — Proof exists only after render.
+- [ui/proof.md](../ui/proof.md) · 20 KB — Proof exists only after render.
   - sections: Who holds each proof · Lenses and verdicts · Accessibility (gating) · Contrast (gating) · Focus (gating) · Motion (gating) · Render truth (gating) · Taste (scored) · UX (scored) · Anatomy source and brand (provenance)
-  - ids: AUDIT-1, AUDIT-2, AUDIT-3, AUDIT-4, code-native
+  - ids: AUDIT-1, AUDIT-2, AUDIT-3, AUDIT-4, GRAMMAR-NO-TESTS, code-native
 - [ui/proof/README.md](../ui/proof/README.md) · 1 KB — Data the proof lenses read.
 - [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) · 5 KB — Every numeric threshold of contexts/ui, as data.
 - [ui/scale.md](../ui/scale.md) · 12 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.

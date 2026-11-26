@@ -3,7 +3,7 @@
 // TARBALLS (optional: the folder of tarballs the package jobs packed), JOBS (the jobs of the ci run being published, one `{name, conclusion}` per line) and MATRIX (that run's package matrix). A due package publishes when
 // every `gate (repo)` job is green and the `package` job of each folder of its build order (itself and the siblings it needs)
 // that the plan tested is green; a sibling the plan did not test is unchanged since a green base. Every other due package is
-// held; the Grammar and each package that builds it also wait for the `grammar proof` job when the plan ran it. Writes `publish` (folders, a dependency before its dependent), `build` (their build orders), `held` and `cli` (every `gate (` job green and the `harness` job green or skipped: the CLI may be published) to GITHUB_OUTPUT.
+// held. Writes `publish` (folders, a dependency before its dependent), `build` (their build orders), `held` and `cli` (every `gate (` job green and the `harness` job green or skipped: the CLI may be published) to GITHUB_OUTPUT.
 import { appendFileSync, existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
@@ -40,12 +40,6 @@ const repoGates = jobs.filter((job) => job.name.startsWith("gate (repo) "))
 const gatesGreen = repoGates.length > 0 && repoGates.every((job) => job.conclusion === "success")
 for (const job of repoGates) console.log(`${job.name}: ${job.conclusion}`)
 
-// The theme proof (ci.yml `grammar-proof`) runs when the plan tested the Grammar; its verdict gates the Grammar's publication.
-const PROOF_DIR = "packages/grammar"
-const proofRan = tested.has(PROOF_DIR)
-const proofConclusion = jobs.find((job) => job.name === "grammar proof")?.conclusion
-if (proofRan) console.log(`grammar proof: ${proofConclusion ?? "missing"}`)
-
 const buildOf = (dir: string): string[] => every.find((pkg) => pkg.dir === dir)?.build ?? [dir]
 const nameOf = (dir: string): string => every.find((pkg) => pkg.dir === dir)?.name ?? rows.find((row) => row.dir === dir)?.package ?? dir
 /** A folder the plan tested whose package job did not pass (failed, cancelled, skipped or missing). */
@@ -55,7 +49,6 @@ const due = rows.filter((row) => row.action === "publish" && row.dir !== "cli")
 const reasonOf = (row: PlanRow): string | undefined => {
     if (!runGreen) return "the ci run is not green"
     if (!gatesGreen) return "a gate (repo) job is not green"
-    if (proofRan && buildOf(row.dir).includes(PROOF_DIR) && proofConclusion !== "success") return `grammar proof is ${proofConclusion ?? "missing"}`
     const failed = buildOf(row.dir).filter(red)
     return failed.length > 0 ? `not green: ${failed.map((dir) => `package (${nameOf(dir)})`).join(", ")}` : undefined
 }

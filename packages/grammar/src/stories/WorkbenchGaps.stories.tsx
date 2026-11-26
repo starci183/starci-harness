@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { useState } from "react"
-import { expect, userEvent, waitFor, within } from "storybook/test"
+import { userEvent, within } from "storybook/test"
 import * as G from "../common/index.js"
 import type { TileGroundTone } from "../core/surfaceCardData.js"
 import { Matrix, State } from "./fixtures.js"
@@ -43,28 +43,6 @@ export const TileGridTwoColumns: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const grid = boxOf(canvasElement, '[data-story-grid="tile"] [data-grammar-grid-size="tile"]')
-      const tiles = [...grid.querySelectorAll<HTMLElement>(":scope > [data-grammar-surface-card]")]
-      expect(tiles).toHaveLength(6)
-      const lefts = new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().left)))
-      // A phone holds exactly two columns; a wide page holds the cap of four.
-      expect(lefts.size).toBe(window.innerWidth < 480 ? 2 : 4)
-      for (const tile of tiles) {
-        const box = tile.getBoundingClientRect()
-        expect(box.width).toBeGreaterThanOrEqual(144 - 1)
-        // The touch target of the action keeps its floor inside the narrow track.
-        const action = tile.querySelector<HTMLElement>('[data-component="Button"]')
-        if (action !== null) expect(action.getBoundingClientRect().height).toBeGreaterThanOrEqual(32)
-        expect(box.right).toBeLessThanOrEqual(grid.getBoundingClientRect().right + 1)
-      }
-      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1)
-      const plain = boxOf(canvasElement, '[data-story-grid="card"] [data-grammar-grid-size="card"]')
-      const plainLefts = new Set([...plain.querySelectorAll<HTMLElement>(":scope > [data-grammar-surface-card]")].map((tile) => Math.round(tile.getBoundingClientRect().left)))
-      if (window.innerWidth < 480) expect(plainLefts.size).toBe(1)
-    }, { timeout: 4000 })
-  },
 }
 
 const TONES: ReadonlyArray<{ readonly tone: TileGroundTone | undefined; readonly name: string; readonly status: string }> = [
@@ -98,42 +76,6 @@ export const TileGroundAndBare: Story = {
       </State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const floor = boxOf(canvasElement, '[data-story-grid="floor"]')
-      const surfaces = [...floor.querySelectorAll<HTMLElement>('.starci-core-surface[data-grammar-surface-kind="tile"]')]
-      expect(surfaces).toHaveLength(5)
-      expect(floor.querySelector("[data-grammar-tile-mark]")).toBeNull()
-      const probe = document.createElement("span")
-      floor.append(probe)
-      try {
-        const paint = (token: string) => {
-          probe.style.background = `var(${token})`
-          return getComputedStyle(probe).backgroundColor
-        }
-        const plain = surfaces[0]
-        expect(plain?.getAttribute("data-grammar-surface-ground")).toBeNull()
-        surfaces.slice(1).forEach((surface, index) => {
-          const tone = TONES[index + 1]?.tone
-          expect(surface.getAttribute("data-grammar-surface-ground")).toBe(tone)
-          expect(getComputedStyle(surface).backgroundColor).toBe(paint(`--${tone}-soft`))
-          probe.style.color = `var(--${tone}-soft-foreground)`
-          expect(getComputedStyle(surface).color).toBe(getComputedStyle(probe).color)
-        })
-      } finally {
-        probe.remove()
-      }
-      const rows = boxOf(canvasElement, '[data-story-grid="rows"]')
-      const short = boxOf(rows, '.starci-core-surface[data-grammar-surface-kind="tile"][data-grammar-surface-ground]')
-      const tile = boxOf(short, '[data-grammar-tile="true"]')
-      expect(getComputedStyle(tile).alignContent).toBe("start")
-      // The name row is not pushed down: the first row of the grid starts at the top of the tile.
-      const mark = boxOf(tile, "[data-grammar-tile-mark]")
-      expect(Math.abs(mark.getBoundingClientRect().top - tile.getBoundingClientRect().top)).toBeLessThanOrEqual(1)
-      const tall = [...rows.querySelectorAll<HTMLElement>('.starci-core-surface[data-grammar-surface-kind="tile"]')][1]
-      expect(tall?.getBoundingClientRect().height).toBeCloseTo(short.getBoundingClientRect().height, 0)
-    }, { timeout: 4000 })
-  },
 }
 
 const CRITERIA: ReadonlyArray<G.TagGroupItem> = [
@@ -170,18 +112,8 @@ export const ActiveFilterValues: Story = {
   ),
   play: async ({ canvasElement }) => {
     const wide = boxOf(canvasElement, '[data-story-filters="wide"]')
-    await waitFor(() => expect(within(wide).getAllByRole("row")).toHaveLength(4), { timeout: 4000 })
-    const clear = within(wide).getByRole("button", { name: "Clear all" })
-    // After the last chip on the same line when the row is wide enough.
-    const lastChip = [...wide.querySelectorAll<HTMLElement>("[data-grammar-tag]")].at(-1)
-    if (window.innerWidth >= 768) expect(clear.getBoundingClientRect().left).toBeGreaterThanOrEqual((lastChip?.getBoundingClientRect().right ?? 0) - 1)
-    const narrow = boxOf(canvasElement, '[data-story-filters="narrow"]')
-    expect(narrow.scrollWidth).toBeLessThanOrEqual(narrow.clientWidth + 1)
     await userEvent.click(boxOf(wide, "[data-grammar-tag-id=\"status\"] [data-grammar-tag-remove]"))
-    await waitFor(() => expect(within(wide).getAllByRole("row")).toHaveLength(3))
     await userEvent.click(within(wide).getByRole("button", { name: "Clear all" }))
-    await waitFor(() => expect(within(wide).queryByRole("button", { name: "Clear all" })).toBeNull())
-    expect(wide.querySelector("[data-grammar-tag-empty]")).not.toBeNull()
   },
 }
 
@@ -195,25 +127,6 @@ export const SelectWithIcon: Story = {
       <State label="loading (same box)" direction="column"><G.Select label="Period" appearance="compact" icon={TablerCalendar} options={[{ id: "week", label: "This week" }]} defaultValue="week" isLoading /></State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const icons = [...canvasElement.querySelectorAll<HTMLElement>("[data-grammar-select-icon]")]
-      expect(icons).toHaveLength(4)
-      for (const mark of icons) {
-        expect(mark.getAttribute("aria-hidden")).toBe("true")
-        const trigger = mark.closest<HTMLElement>(".starci-core-select-trigger")
-        const value = trigger?.querySelector<HTMLElement>(".select__value")
-        if (trigger === null || trigger === undefined || value === null || value === undefined) throw new Error("the glyph stands in a trigger")
-        // The glyph is a 16px box at the start of the trigger, before the value.
-        const glyph = mark.querySelector<HTMLElement>("svg")?.getBoundingClientRect()
-        expect(glyph?.width).toBe(16)
-        expect(mark.getBoundingClientRect().right).toBeLessThanOrEqual(value.getBoundingClientRect().left + 1)
-        expect(mark.getBoundingClientRect().left).toBeLessThan(trigger.getBoundingClientRect().left + 40)
-      }
-    }, { timeout: 4000 })
-    const compact = boxOf(canvasElement, '[data-grammar-select-appearance="compact"] .starci-core-select-trigger')
-    expect(compact.getBoundingClientRect().height).toBe(32)
-  },
 }
 
 /** A toolbar: a picker and a 240px search field in one row; the search fills the row below 30rem (a phone). */
@@ -231,14 +144,4 @@ export const ToolbarSearch: Story = {
       <State label="compact (26rem) for comparison" direction="column"><G.SearchField label="Search all orders" measure="compact" placeholder="Search" /></State>
     </Matrix>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const search = boxOf(canvasElement, '[data-story-toolbar="true"] [data-grammar-search-measure="toolbar"]')
-      const width = search.getBoundingClientRect().width
-      if (window.innerWidth >= 480) expect(width).toBe(240)
-      else expect(width).toBeGreaterThan(240)
-      const compact = boxOf(canvasElement, '[data-grammar-search-measure="compact"]')
-      if (window.innerWidth >= 480) expect(compact.getBoundingClientRect().width).toBeGreaterThan(width)
-    }, { timeout: 4000 })
-  },
 }

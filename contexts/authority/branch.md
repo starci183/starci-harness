@@ -21,7 +21,7 @@ The harness's cheap state checks, `check secrets` and `check loosening`, belong 
 
 ## What a branch never runs
 
-No tests, no coverage, no build, no Storybook plays or DNA measurement, no full lint and no full typecheck. Never an
+No tests, no coverage, no build, no Storybook shots or DNA measurement, no full lint and no full typecheck. Never an
 integration, e2e or contract suite either, unless the owner or the task names one: those run on request only (R12,
 [../project/cicd.md](../project/cicd.md) "Triggers and what runs"). The
 one build a branch takes is the one that publishes a package edit to the local registry ([packages.md](packages.md)). A branch never runs

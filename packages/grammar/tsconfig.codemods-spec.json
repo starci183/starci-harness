@@ -1,6 +1,0 @@
-{
-  "extends": "./tsconfig.codemods.json",
-  "compilerOptions": { "noEmit": true, "rootDir": "." },
-  "include": ["codemods/**/*.spec.mts", "codemods/**/*.mts", "src/common/typeRoles.ts"],
-  "exclude": ["codemods/**/fixtures/**"]
-}

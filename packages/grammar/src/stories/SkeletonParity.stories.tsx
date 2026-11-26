@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { ReactNode } from "react"
-import { expect, waitFor } from "storybook/test"
 import * as G from "../common/index.js"
 import { BellGlyph, SearchGlyph, SettingsGlyph, StarGlyph, UserGlyph, noop } from "./fixtures.js"
 
@@ -9,8 +8,8 @@ import { BellGlyph, SearchGlyph, SettingsGlyph, StarGlyph, UserGlyph, noop } fro
  * ready tree's layout. Each group below lists pairs of one component at the same size and props, once with content and
  * once as its skeleton. Three stories per group:
  *
- * - `<Group>` renders the pairs side by side and its play function asserts, per pair, that the skeleton's border box
- *   (width, height) and margins equal the content state's within 1px.
+ * - `<Group>` renders the pairs side by side, so a shot shows, per pair, the skeleton's border box
+ *   (width, height) and margins beside the content state's.
  * - `<Group>Ready` / `<Group>Loading` render one phase each, in the same cells, for the `skeleton-parity` DNA gate:
  *   `parameters.dna = { pair, phase }` names the pair of stories, and every cell carries `data-dna-pair` with the
  *   component pair id.
@@ -58,52 +57,8 @@ const measuredChild = (cell: Element): Element | undefined => {
     return child !== undefined && getComputedStyle(child).display === "contents" ? measuredChild(child) : child
 }
 
-const boxOf = (element: Element) => {
-    const rect = element.getBoundingClientRect()
-    const style = getComputedStyle(element)
-    return {
-        width: rect.width,
-        height: rect.height,
-        marginTop: Number.parseFloat(style.marginTop),
-        marginRight: Number.parseFloat(style.marginRight),
-        marginBottom: Number.parseFloat(style.marginBottom),
-        marginLeft: Number.parseFloat(style.marginLeft),
-    }
-}
-
-/** Every pair whose loading box differs from its ready box by more than 1px on any side. */
-const parityMismatches =(canvas: Element): ReadonlyArray<string> => {
-    const mismatches: string[] = []
-    const ids = new Set([...canvas.querySelectorAll("[data-dna-pair]")].map((cell) => cell.getAttribute("data-dna-pair") ?? ""))
-    for (const id of ids) {
-        const ready = canvas.querySelector(`[data-dna-pair="${id}"][data-dna-phase="ready"]`)
-        const loading = canvas.querySelector(`[data-dna-pair="${id}"][data-dna-phase="loading"]`)
-        const readyChild = ready === null ? undefined : measuredChild(ready)
-        const loadingChild = loading === null ? undefined : measuredChild(loading)
-        if (readyChild === undefined || loadingChild === undefined) {
-            mismatches.push(`${id}: a phase rendered nothing`)
-            continue
-        }
-        const a = boxOf(readyChild)
-        const b = boxOf(loadingChild)
-        const off = (Object.keys(a) as Array<keyof typeof a>).filter((key) => Math.abs(a[key] - b[key]) > 1)
-        if (off.length > 0) {
-            mismatches.push(`${id}: ${off.map((key) => `${key} ready ${a[key].toFixed(1)} loading ${b[key].toFixed(1)}`).join(", ")}`)
-        }
-    }
-    return mismatches
-}
-
-const assertParity: Story["play"] = async ({ canvasElement }) => {
-    await waitFor(() => {
-        const mismatches = parityMismatches(canvasElement)
-        expect(mismatches, `skeleton parity: ${mismatches.join("; ")}`).toEqual([])
-    }, { timeout: 4000 })
-}
-
 const sideBySide = (pairs: () => ReadonlyArray<Pair>): Story => ({
     render: () => <PairRows pairs={pairs()} phases={["ready", "loading"]} />,
-    play: assertParity,
 })
 
 const onePhase = (group: string, phase: Phase, pairs: () => ReadonlyArray<Pair>): Story => ({

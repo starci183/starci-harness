@@ -27,7 +27,7 @@ const story = [...STORIES, ...ERD_STORIES].find((candidate) => candidate.id === 
 const knowledge = KNOWLEDGE_STORIES.find((candidate) => candidate.id === id)
 const root = document.getElementById("root")
 
-/** What the collision specs need to know of the story on the page: its spine, its decisions and how many crossings it may have. */
+/** The story on the page (its spine, its decisions and how many crossings it may have), on `window.graphStory` for a look from the browser console. */
 const meta: StoryMeta = { id: id ?? "", mix: flow === undefined ? "" : mix, spine: flow?.spine ?? [], decisions: flow?.decisions ?? [], crossings: flow?.crossings ?? 0 }
 Object.assign(window, { graphStory: meta })
 

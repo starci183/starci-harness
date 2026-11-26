@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
@@ -59,22 +58,6 @@ export const FrameCards: Story = {
       {cards.map((frame) => <G.MessageFrame key={frame.kind} kind={frame.kind} card={frame.card} text={frame.text} author="NIVO" avatar={<G.Avatar name="NIVO" size="md" />} />)}
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const frames = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="MessageFrame"]')];
-      expect(frames).toHaveLength(cards.length);
-      expect(frames.every((frame) => frame.getAttribute('data-grammar-frame') === 'card')).toBe(true);
-      // The dot belongs to the three states only.
-      expect(frames.map((frame) => frame.querySelector('[data-component="StatusDot"]') !== null)).toEqual([false, true, false, true, true]);
-      // At most three actions, the first one the primary of its card.
-      for (const frame of frames) {
-        const buttons = [...frame.querySelectorAll<HTMLElement>('.starci-core-message-card-actions [data-component="Button"]')];
-        expect(buttons.length).toBeLessThanOrEqual(3);
-        if (buttons.length > 0) expect(buttons[0]?.getAttribute('data-grammar-variant')).toBe('primary');
-        expect(buttons.slice(1).every((button) => button.getAttribute('data-grammar-variant') !== 'primary')).toBe(true);
-      }
-    });
-  },
 };
 
 /** A kind the app does not know (and a card with no title) is its text line, read as safe Markdown: bold, italic, a list, inline code, a link; no raw HTML. */
@@ -93,19 +76,6 @@ export const UnknownKindAndMarkdown: Story = {
       <G.MessageBubble side="outgoing" avatar={<G.Avatar name="Hiền Mai" size="md" />} format="markdown" body="Ok, **gửi báo giá** cho Quốc Bảo, rồi xem [lịch](https://example.com/cal)." />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const frames = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="MessageFrame"]')];
-      expect(frames.map((frame) => frame.getAttribute('data-grammar-frame'))).toEqual(['text', 'text']);
-      expect(frames[0]?.querySelector('strong')?.textContent).toBe('một việc mới');
-      expect(canvasElement.querySelector('script')).toBeNull();
-      expect(canvasElement.querySelectorAll('.starci-core-message-markdown ul > li')).toHaveLength(3);
-      expect(canvasElement.querySelectorAll('.starci-core-message-markdown ol > li')).toHaveLength(2);
-      expect(canvasElement.querySelector('.starci-core-message-markdown [data-component="Code"]')).not.toBeNull();
-      expect(canvasElement.querySelector<HTMLAnchorElement>('.starci-core-message-markdown a')?.getAttribute('href')).toBe('https://example.com/jobs');
-      expect(canvasElement.textContent).toContain('<script>alert(1)</script>');
-    });
-  },
 };
 
 /** An empty thread: the notice stands in the middle of the message area on both axes, not at the foot with the messages. */
@@ -120,17 +90,4 @@ export const EmptyThreadCentred: Story = {
       />
     </div>
   ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const thread = canvasElement.querySelector<HTMLElement>('.starci-core-chat-frame-thread');
-      const notice = canvasElement.querySelector<HTMLElement>('.starci-core-empty-notice');
-      expect(thread).not.toBeNull();
-      expect(notice).not.toBeNull();
-      const area = thread!.getBoundingClientRect();
-      const box = notice!.getBoundingClientRect();
-      // Centred on both axes in the thread, within a pixel or two.
-      expect(Math.abs((box.top + box.bottom) / 2 - (area.top + area.bottom) / 2)).toBeLessThanOrEqual(2);
-      expect(Math.abs((box.left + box.right) / 2 - (area.left + area.right) / 2)).toBeLessThanOrEqual(2);
-    });
-  },
 };

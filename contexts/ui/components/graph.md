@@ -188,7 +188,7 @@ A container frame is thin, solid and lightly tinted in the tone of its state, ne
 
 ### Layout
 
-Top to bottom (`direction: "TB"`) is the layout the owner's spine rules are written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A back edge is routed after the layout: it leaves its source by the west or east side, runs in a lane and enters its target by the west or east side. Of every lane its ends allow (beside both, between them, in each gap between the nodes it passes) it takes the shortest that passes no node, frame or label; a crossing with another edge and a side of the target another back edge already enters cost extra, and a lane or label outside the box of all the nodes (it would widen the layout) its distance out; a lane more than one card and its gutter (320) outside the box of its ends, or more than its gutter (40) outside the box of all the nodes, is a last resort. A loop's back edge stays inside its frame, on its own branch's side when both sides are equal. The collision spec holds every back edge within 320 of the box of its ends, and it and its label within 40 of the box of all the nodes (rule 11).
+Top to bottom (`direction: "TB"`) is the layout the owner's spine rules are written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A back edge is routed after the layout: it leaves its source by the west or east side, runs in a lane and enters its target by the west or east side. Of every lane its ends allow (beside both, between them, in each gap between the nodes it passes) it takes the shortest that passes no node, frame or label; a crossing with another edge and a side of the target another back edge already enters cost extra, and a lane or label outside the box of all the nodes (it would widen the layout) its distance out; a lane more than one card and its gutter (320) outside the box of its ends, or more than its gutter (40) outside the box of all the nodes, is a last resort. A loop's back edge stays inside its frame, on its own branch's side when both sides are equal. Every back edge stays within 320 of the box of its ends, and it and its label within 40 of the box of all the nodes (rule 11), looked at in the demo shots.
 
 ELK `layered`, left to right or top to bottom, with ports and containers; edges are orthogonal with rounded corners, a dot where they leave and an arrowhead. **Islands** (parts of the graph with no edge between them) are laid out one by one and packed side by side in rows up to `islandsWidth` (default 1200 graph units); `islands: "stack"` puts them in one column. The layout depends on ids, sizes, ports, edge ends, direction and islands only: a status change neither moves nor refits the graph.
 
@@ -293,15 +293,10 @@ Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `Schema
    would lie along another edge's run slides clear (`separateEnds` in `diagram/graph.ts`), a step three or more edges enter is wide enough for them, and the
    canvas cuts no route short (`dedupeRuns` with `join: false`), so no junction dot is drawn.
 
-Proof: `specs/ext-graph-diagram.spec.mts` "the routing law" (no edge with a bend between ends on one rank line, at most one bend otherwise, no jog, the decision's
-main branch straight, branch words at the split, every point inside the fitted first view, the dot hidden read-only, one arrowhead size), "every stretch is
-drawn once" (no two drawn edges with collinear runs within 6px overlapping, one arrowhead per entry point, no second path on an edge), "every edge is its own line" (a
-diagram: no junction, no shared stretch, two ends on one node at least 16 apart, each on its node's border), "a branch is an if/else" (a lesson decision: each branch out of its own
-vertex with its words there, the two answers apart, the side branch ending on its target, the branches entering the step they rejoin at by their own points) "switch, parallel, loop and foreach" (a switch's exits on the outline of the diamond, each with its words, at most one bend, the branches entering the step under it
-in the order of the cases; a bar spanning its branches with straight lines; a loop's back edge with one bend into the side vertex crossing no step; a foreach frame entered at its top and left at its bottom) and
-`specs/ext-graph-arrange.spec.mts` (a decision's main branch under it, the other to the side). Known gap: the one-bend route is refused where it would cross a node,
-and an edge into or out of a container or on a named side port keeps ELK's route, so a crowded graph can still show an edge with two bends; the spec holds the law on
-graphs with room for it.
+Proof: by looking (GRAMMAR-NO-TESTS, [proof](../proof.md)): the graph stories and the `npm run ext:demo` routes, shot at 390 and 1440 in light and
+dark, show no edge with a bend between ends on one rank line, at most one bend otherwise, no jog, every stretch drawn once, each edge its own line, a
+branch as an if/else with its words at the split, and a decision's main branch under it. Known gap: the one-bend route is refused where it would cross a
+node, and an edge into or out of a container or on a named side port keeps ELK's route, so a crowded graph can still show an edge with two bends.
 
 ## Look
 
@@ -313,6 +308,6 @@ A card is 280 wide (a card with a column of ports down its end side, 376), radiu
 
 `@xyflow/react` and `elkjs` are dependencies; `react` and `react-dom` are peers.
 
-## The demo and the browser proof
+## The demo
 
-`npm run ext:demo` in packages/grammar serves every story (the six states, a decision, a loop, containers, islands, the legend, edge variants, a vertical graph, editing, loading, the schema map) at `http://127.0.0.1:5294/?story=<id> (one server, one port of its own; every mode is a route)`; `npm run ext:e2e` runs the Playwright specs in Chromium at 1440 and 390 wide against it (`GRAPH_SHOTS_DIR` is where the pictures go, `GRAPH_CHROMIUM` names a Chromium to launch). The demo and the specs are not published.
+`npm run ext:demo` in packages/grammar serves every story (the six states, a decision, a loop, containers, islands, the legend, edge variants, a vertical graph, editing, loading, the schema map) at `http://127.0.0.1:5294/?story=<id> (one server, one port of its own; every mode is a route)`, looked at in a browser at 1440 and 390 wide. The demo is not published.
