@@ -69,7 +69,7 @@ heavy:
   # The commit floor (Windows: the memory the host can still promise, FreeVirtualMemory): a heavy command waits while the free commit, less the planned MB
   # (its cap) of the commands admitted in the last commitRampSeconds, whose pages the reading does not show yet, and its own, is under commitFloorMb. Six
   # npm installs admitted at once while the host had about 6 GB of free commit left other processes unable to start (STATUS_COMMITMENT_LIMIT, 0xC000012D).
-  commitFloorMb: 8192
+  commitFloorMb: 0
   commitRampSeconds: 60
   pollSeconds: 2
   # The heap cap of one process of each kind is its measured peak (uat: its `--memory`), and sets its weight: a typecheck of a large app's back
