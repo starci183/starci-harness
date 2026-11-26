@@ -13,7 +13,6 @@
  */
 
 import { defineRule, type Rules, type Recommended } from "./lib/rule.ts"
-import { exemptFreestyle } from "./lib/freestyle.ts"
 import { attribute } from "./lib/ast.ts"
 
 /** Intrinsic elements a reader operates, that the grammar renders for the product. */
