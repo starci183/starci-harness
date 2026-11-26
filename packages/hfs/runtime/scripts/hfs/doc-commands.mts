@@ -235,9 +235,12 @@ function resolveCall(occurrence: CommandOccurrence, catalog: CommandCatalog, str
   if (stopped) return { stop: stopped };
   const group = catalog.groups[groupAlts[0] as string] as CatalogGroup;
   // a one-word verb (`starci explain [term]`): the group word is the whole command and the rest are its arguments, unless the next word is a verb of
-  // the same group (`starci check lint` beside `starci check --release`)
+  // the same group (`starci check lint` beside `starci check --release`), or a bare word the one-word verb takes no positional for
+  // (`starci check missing-verb` is an unknown verb of the group, `starci explain term` the term of explain)
   const next = tokens[i + 1]?.text;
-  if (group.self && groupAlts.length === 1 && !(next !== undefined && Object.hasOwn(group.verbs, next))) return { groupAlts, verbAlts: groupAlts, group: { verbs: { [groupAlts[0] as string]: group.self } }, rest: tokens.slice(i + 1), globals, bounded };
+  const namesVerb = next !== undefined && Object.hasOwn(group.verbs, next);
+  const strayWord = next !== undefined && !next.startsWith('-') && !isOpaque(next) && (group.self?.positional ?? []).length === 0 && Object.keys(group.verbs).length > 0;
+  if (group.self && groupAlts.length === 1 && !namesVerb && !strayWord) return { groupAlts, verbAlts: groupAlts, group: { verbs: { [groupAlts[0] as string]: group.self } }, rest: tokens.slice(i + 1), globals, bounded };
   const verbToken = tokens[i + 1];
   if (!verbToken || verbToken.text.startsWith('-') || isOpaque(verbToken.text)) return { stop: [] };
   const verbAlts = alternatives(verbToken.text);

@@ -64,7 +64,10 @@ export class JsonLoggerService implements Logger {
         options: LoggingOptions = {},
     ) {
         this.rootId = ids.next()
-        this.loki = options.loki === undefined ? undefined : new BoundedLokiTransport(options.loki, (cause) => this.reportOutage(cause))
+        this.loki =
+            options.loki === undefined
+                ? undefined
+                : new BoundedLokiTransport(options.loki, (cause) => this.reportOutage(cause))
         this.winston = createLogger({
             levels: LEVELS,
             level: "info",
@@ -118,7 +121,13 @@ export class JsonLoggerService implements Logger {
         if (now - this.lastOutageReport < OUTAGE_REPORT_MS) return
         this.lastOutageReport = now
         const record = {
-            ...stampLogFields({ errorMessage: cause instanceof Error ? cause.message : String(cause), dropped: this.loki?.dropped ?? 0 }, this.rootId),
+            ...stampLogFields(
+                {
+                    errorMessage: cause instanceof Error ? cause.message : String(cause),
+                    dropped: this.loki?.dropped ?? 0,
+                },
+                this.rootId,
+            ),
             level: "warn",
             event: LoggingLogEvent.LokiUnreachable,
             time: new Date(now).toISOString(),
@@ -132,4 +141,10 @@ export class JsonLoggerService implements Logger {
  * and Loki as well when `options.loki` is given; main.ts uses it before the DI container exists.
  */
 export const createJsonLogger = (clock: Clock, ids: Ids, options: LoggingOptions = {}): JsonLoggerService =>
-    new JsonLoggerService(clock, ids, options.info === "stderr" ? process.stderr : process.stdout, process.stderr, options)
+    new JsonLoggerService(
+        clock,
+        ids,
+        options.info === "stderr" ? process.stderr : process.stdout,
+        process.stderr,
+        options,
+    )

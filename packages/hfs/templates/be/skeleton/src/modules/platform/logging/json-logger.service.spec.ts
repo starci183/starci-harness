@@ -80,7 +80,12 @@ describe("JsonLoggerService error details", () => {
         const { logger, written } = build()
         const cause = Object.assign(new Error("connection lost"), { code: 0 })
         logger.error("db.failed", cause, { errorName: "fake", errorMessage: "fake", errorCode: "fake", stack: "fake" })
-        expect(readJsonLine(written[0]?.line)).toMatchObject({ errorName: "Error", errorMessage: "connection lost", errorCode: 0, stack: cause.stack })
+        expect(readJsonLine(written[0]?.line)).toMatchObject({
+            errorName: "Error",
+            errorMessage: "connection lost",
+            errorCode: 0,
+            stack: cause.stack,
+        })
     })
 
     it("serializes a non-Error cause and preserves a code carried by an object cause", () => {
@@ -88,7 +93,11 @@ describe("JsonLoggerService error details", () => {
         logger.error("db.failed", "plain failure")
         logger.error("db.failed", { code: "CONNECTION_CLOSED" })
         logger.error("db.failed", null)
-        expect(written.map(({ line }) => readJsonLine(line).errorMessage)).toEqual(["plain failure", "[object Object]", "null"])
+        expect(written.map(({ line }) => readJsonLine(line).errorMessage)).toEqual([
+            "plain failure",
+            "[object Object]",
+            "null",
+        ])
         expect(readJsonLine(written[1]?.line).errorCode).toBe("CONNECTION_CLOSED")
         expect(readJsonLine(written[0]?.line)).not.toHaveProperty("errorCode")
     })
@@ -113,7 +122,11 @@ describe("JsonLoggerService reserved fields and redaction", () => {
         logger.warn("cart.warning", fields)
         logger.error("cart.failed", "failure", fields)
         expect(written.map(({ line }) => readJsonLine(line).level)).toEqual(["info", "warn", "error"])
-        expect(written.map(({ line }) => readJsonLine(line).event)).toEqual(["cart.opened", "cart.warning", "cart.failed"])
+        expect(written.map(({ line }) => readJsonLine(line).event)).toEqual([
+            "cart.opened",
+            "cart.warning",
+            "cart.failed",
+        ])
         expect(written.every(({ line }) => readJsonLine(line).time === "2026-05-06T07:08:09.000Z")).toBe(true)
     })
 

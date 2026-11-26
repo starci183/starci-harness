@@ -9,11 +9,19 @@ describe("parseLoggingConfig", () => {
 
     it("reads the URL and the labels the stack render sets", () => {
         const options = parseLoggingConfig(
-            envOf({ LOKI_URL: "http://starci-monitor_loki:3100", LOKI_APP: "shop", LOKI_ENV: "production", LOKI_SERVICE: "worker" }),
+            envOf({
+                LOKI_URL: "http://starci-monitor_loki:3100",
+                LOKI_APP: "shop",
+                LOKI_ENV: "production",
+                LOKI_SERVICE: "worker",
+            }),
             "api",
         )
         expect(options).toEqual({
-            loki: { url: "http://starci-monitor_loki:3100", labels: { app: "shop", env: "production", service: "worker" } },
+            loki: {
+                url: "http://starci-monitor_loki:3100",
+                labels: { app: "shop", env: "production", service: "worker" },
+            },
         })
     })
 
@@ -26,7 +34,10 @@ describe("parseLoggingConfig", () => {
     })
 
     it("keeps basic auth revealable for the transport and masked when serialized, and passes the tenant", () => {
-        const loki = parseLoggingConfig(envOf({ LOKI_URL: "https://loki.example.org", LOKI_BASIC_AUTH: "u:p", LOKI_TENANT: "t-1" }), "api").loki
+        const loki = parseLoggingConfig(
+            envOf({ LOKI_URL: "https://loki.example.org", LOKI_BASIC_AUTH: "u:p", LOKI_TENANT: "t-1" }),
+            "api",
+        ).loki
         expect(loki?.basicAuth?.reveal()).toBe("u:p")
         expect(JSON.stringify(loki)).not.toContain("u:p")
         expect(loki?.tenant).toBe("t-1")

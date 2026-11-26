@@ -22,7 +22,8 @@ const bufferedLines = (transport: object): number => {
     const streams: unknown = Reflect.get(batch, "streams")
     if (!Array.isArray(streams)) return 0
     return streams.reduce<number>((sum, stream: unknown) => {
-        const entries: unknown = typeof stream === "object" && stream !== null ? Reflect.get(stream, "entries") : undefined
+        const entries: unknown =
+            typeof stream === "object" && stream !== null ? Reflect.get(stream, "entries") : undefined
         return sum + (Array.isArray(entries) ? entries.length : 0)
     }, 0)
 }

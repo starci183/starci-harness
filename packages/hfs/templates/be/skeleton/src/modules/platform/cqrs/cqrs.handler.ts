@@ -19,7 +19,8 @@ export abstract class ICQRSHandler<TMessage, TResult> {
         try {
             return await this.process(message)
         } catch (error) {
-            if (!isDomainError(error)) this.logger.error(CqrsLogEvent.OperationFailed, error, { operation: this.constructor.name })
+            if (!isDomainError(error))
+                this.logger.error(CqrsLogEvent.OperationFailed, error, { operation: this.constructor.name })
             throw error
         }
     }
