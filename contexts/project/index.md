@@ -12,7 +12,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 2 KB — CI is the critic.
-- [authority/lanes.md](../authority/lanes.md) · 30 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
+- [authority/lanes.md](../authority/lanes.md) · 31 KB — A lane is one session (a chat agent or an Orca seat) working one branch `lane/<lane>` in its own worktree of an app, cut from the app's integration branch (`dev`, ...
   - sections: The lane's name and its folder · Slots · The shared stack · Gate and land · Hotfix · Shots and looks: the one web and one api server of the app · Processes and cleanup
 - [authority/packages.md](../authority/packages.md) · 11 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
@@ -42,8 +42,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-CONFIG-1 One reader of the environment, one reader per app · BE-CONFIG-2 A capability parses its own config; classes read it through the injector · BE-CONFIG-3 No default for a secret or an address · BE-CONFIG-4 Secrets live only sealed in the stack
 - [code/be/domain.md](../code/be/domain.md) · 3 KB — Where a business decision lives: a capability that owns its rules, its tables and its transaction.
   - sections: BE-DOMAIN-1 A capability owns its rules, its tables and its transaction · BE-DOMAIN-2 Work that answers now is a direct call; work that runs later is enqueued
-- [code/be/error.md](../code/be/error.md) · 5 KB — How a failure or refusal is declared, thrown or returned, and answered on HTTP and GraphQL.
-  - sections: BE-ERROR-1 One shared base, one error family per capability · BE-ERROR-2 A code is stable text; an error carries no prose · BE-ERROR-3 A refusal is the capability error; an `Outcome` only when a caller branches on it · BE-ERROR-4 Every catch accounts for the error and keeps the cause · BE-ERROR-5 One REST filter and one GraphQL formatter answer every failure
+- [code/be/error.md](../code/be/error.md) · 7 KB — How a failure or refusal is declared, thrown or returned, and answered on HTTP and GraphQL.
+  - sections: BE-ERROR-1 One shared base, one error family per capability · BE-ERROR-2 A code is stable text; an error carries no prose · BE-ERROR-3 A refusal is the capability error; an `Outcome` only when a caller branches on it · BE-ERROR-4 Business code throws; a failure is logged once, where it is answered · BE-ERROR-5 One REST filter and one GraphQL formatter answer every failure
 - [code/be/event-bus.md](../code/be/event-bus.md) · 7 KB — Decides how a fact travels when another context or a background process must react: a typed event class, published by a domain service onto a pgmq topic in its own transaction, ...
   - sections: BE-EVENT-BUS-2 An event is a typed class equal to its vendored contract · BE-EVENT-BUS-3 Publish through the bus, in the domain transaction, to its pgmq topic only · BE-EVENT-BUS-4 A consumer is a thin door; delivery is at least once with retry and dead letter · BE-EVENT-BUS-5 A declared event bus is proven on the test world · BE-EVENT-BUS-6 Fan out on pgmq topics, dedupe on a business key and park poison per consumer
 - [code/be/folder.md](../code/be/folder.md) · 2 KB — Which directory back-end code lives in.
@@ -60,7 +60,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-INJECTION-1 Infrastructure arrives through an injector; a domain service by class · BE-INJECTION-2 An injector is one shape in its owner's decorators file · BE-INJECTION-3 A port has one injector name per capability · BE-INJECTION-4 No locator, forward reference or property injection · BE-INJECTION-5 No provider ring: a port sits on its own provider · BE-INJECTION-6 A command's composition root declares its boot entry, and the gate composes it
 - [code/be/jobs.md](../code/be/jobs.md) · 19 KB — How every long flow runs: a chain of jobs, each started by a queue outbox row, claimed under a fencing token that every claim bumps, judged by one runner and one retry ladder per ...
   - sections: BE-JOBS-1 `platform/jobs` alone writes the job row, claiming it atomically · BE-JOBS-2 Every write to a claimed job carries the token it was claimed with · BE-JOBS-3 An outside write goes through the effects piece; an outside read needs no intent · BE-JOBS-4 A job is a processor plus steps, both thin · BE-JOBS-5 The fence is proven on real Postgres · BE-JOBS-6 A recurring task is a tick of `platform/jobs`, fired once per minute for the deployment · BE-JOBS-7 One judge, one ladder per class of flow, then a dead letter a person resumes · BE-JOBS-8 The person's "stopped work" page is the app's, over the resume door the jobs platform gives · BE-JOBS-9 A job declares itself, starts from an outbox row and enqueues its next in the transaction that finishes it · BE-JOBS-10 Progress is an optional view of the job rows
-- [code/be/logging.md](../code/be/logging.md) · 2 KB — How a back-end event is recorded: one `Logger` port, enum identities declared by their owner, structured fields.
+- [code/be/logging.md](../code/be/logging.md) · 3 KB — How a back-end event is recorded: one `Logger` port, enum identities declared by their owner, structured fields.
   - sections: BE-LOGGING-1 `platform/logging` owns the one Logger port · BE-LOGGING-2 An event is an owner's enum member; fields are ids and codes · BE-LOGGING-4 Correlation, when the app declares it
 - [code/be/messages.md](../code/be/messages.md) · 2 KB — Where user-facing back-end text lives and which locale a lookup resolves to.
   - sections: BE-MESSAGES-1 One keyed bundle per owner, read through MessageCatalog · BE-MESSAGES-2 The locale is the receiver's, resolved once
@@ -149,10 +149,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and the Button looks · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 51 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 52 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Button variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 192 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-ACTION-IN-TONE, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-ONE-HEIGHT and 280 more
+- [grammars/contract.yaml](../grammars/contract.yaml) · 196 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-ACTION-IN-TONE, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-CHANNEL-BADGE, DNA-COMMON-AVATAR-CLUSTER, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-ROUND, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP and 287 more
 - [grammars/contributing.md](../grammars/contributing.md) · 16 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Codemods · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
@@ -176,7 +176,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 22 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 44 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 173 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+- [hfs/rules.yaml](../hfs/rules.yaml) · 174 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R106, R107, R108, R109, R11, R110, R113, R12, R13, R14 and 301 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 107 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-desktop-release, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.desktop and 163 more
@@ -269,7 +269,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/graph.md](../ui/components/graph.md) · 30 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
   - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · The routing law · Look · Layout and helpers · The demo and the browser proof
   - ids: string;
-- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 14 KB — Contract: Avatar and IconTile.
+- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 16 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Status marks: (A) inline and (B) the round 40px tile · Variants · Plates of an initials mark · Size · States · Owner split · Initials, marks and the AI Chip · Rules
 - [ui/components/illustration.md](../ui/components/illustration.md) · 3 KB — Contract: Illustration.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -285,8 +285,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 3 KB — Contract: Menu.
   - sections: Job · Choose · Variants · Size · States · Owner split · The header menu (TopBar fit) · Rules
-- [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 15 KB — Contract: MessageBubble.
-  - sections: Job · The chat surfaces · The chat frame · Choose · The hover rail: MessageActions · Variants · Size · States · Owner split · Rules
+- [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 17 KB — Contract: MessageBubble.
+  - sections: Job · The chat surfaces · The chat frame · The frame card and Markdown in a message · Choose · The hover rail: MessageActions · Variants · Size · States · Owner split · Rules
 - [ui/components/motion.md](../ui/components/motion.md) · 6 KB — Contract: motion.
   - sections: Job · Choose · Variants · How each one behaves · Size · States · Owner split · Rules
 - [ui/components/page-header.md](../ui/components/page-header.md) · 8 KB — Contract: Page, Section.
