@@ -2,6 +2,7 @@ import { type EnvSource, parseServerConfig } from "@modules/platform/config"
 import { parsePrimaryDatabaseConfig } from "@modules/platform/database"
 import { parseHttpConfig } from "@modules/platform/http"
 import { parseHttpSecurityConfig } from "@modules/platform/http-security"
+import { parseLoggingConfig } from "@modules/platform/logging"
 import { parsePassportConfig } from "@modules/integrations/passport"
 import { parseMailConfig } from "@modules/integrations/mail"
 import { parseObjectStorageConfig } from "@modules/integrations/object-storage"
@@ -10,6 +11,8 @@ import { parseObjectStorageConfig } from "@modules/integrations/object-storage"
 export interface ApiEnv {
     /** The HTTP listener. */
     readonly server: ReturnType<typeof parseServerConfig>
+    /** Where log lines go besides stdout and stderr: Loki when LOKI_URL is declared. */
+    readonly logging: ReturnType<typeof parseLoggingConfig>
     /** The origin allowlist and rate limits. */
     readonly httpSecurity: ReturnType<typeof parseHttpSecurityConfig>
     /** What the outbound HTTP client trusts beyond Node's bundled certificate authorities. */
@@ -27,6 +30,7 @@ export interface ApiEnv {
 /** Reads the API environment; missing or invalid values fail boot, and secrets use `_FILE` first. */
 export const readApiEnv = (env: EnvSource): ApiEnv => ({
     server: parseServerConfig(env),
+    logging: parseLoggingConfig(env, "api"),
     httpSecurity: parseHttpSecurityConfig(env),
     http: parseHttpConfig(env),
     database: parsePrimaryDatabaseConfig(env),

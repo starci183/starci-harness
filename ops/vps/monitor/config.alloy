@@ -1,6 +1,7 @@
 // Written by `starci vps monitor up` from ops/vps/monitor/config.alloy: Alloy keeps the logs of every Swarm container of this server that
 // carries `starci.monitor.logs=true` (an app environment's monitoring opt-in renders it) or belongs to a harness stack (`starci-*`), labelled
-// by stack and service, and pushes them to Loki. It reads the Docker API only through the read-only socket proxy.
+// by stack and service, and pushes them to Loki. A `logPush` service of an app pushes its own lines to Loki and carries no such label, so
+// Alloy never ships its stdout a second time. It reads the Docker API only through the read-only socket proxy.
 discovery.docker "swarm" {
   host             = "tcp://{{stack}}_socket-proxy:2375"
   refresh_interval = "30s"

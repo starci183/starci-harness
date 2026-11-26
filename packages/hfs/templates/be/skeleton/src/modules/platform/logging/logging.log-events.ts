@@ -16,4 +16,6 @@ export enum LoggingLogEvent {
     FrameworkVerbose = "platform.logging.framework.verbose",
     /** A fatal Nest framework failure. */
     FrameworkFatal = "platform.logging.framework.fatal",
+    /** A push to Loki failed; its lines stay on stdout and stderr, and the line counts those the full buffer dropped. */
+    LokiUnreachable = "platform.logging.loki.unreachable",
 }

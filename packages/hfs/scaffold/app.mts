@@ -222,7 +222,7 @@ const STARTER_DEPENDENCIES = Object.freeze({
     '@apollo/server': null, '@nestjs/apollo': null, '@nestjs/common': null, '@nestjs/core': null, '@nestjs/cqrs': null, '@nestjs/graphql': null,
     '@nestjs/platform-express': null, '@nestjs/typeorm': null, '@starci/auth': null, '@starci/common': null, '@starci/mail': null, '@starci/nest-kit': null, '@starci/object-storage': null, '@starci/seed': null,
     'class-transformer': null, 'class-validator': null, graphql: null, pg: null,
-    'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, undici: null, zod: null,
+    'reflect-metadata': null, rxjs: null, tslib: null, typeorm: null, undici: null, winston: null, 'winston-loki': null, zod: null,
   },
   devDependencies: {
     turbo: null, '@nestjs/testing': null, '@starci/eslint-canon-be': null, '@starci/eslint-canon-fe': null,

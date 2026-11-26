@@ -218,14 +218,14 @@ components:
             annotations: {summary: "{{ $labels.service }} started more than 3 new containers in 15 minutes", threshold: "3 restarts in 15m"}
   loki:
     default: true
-    purpose: "the log store: one process, filesystem storage, the compactor deleting past the retention"
+    purpose: "the log store: one process, filesystem storage, the compactor deleting past the retention; it takes Alloy's pushes on the internal network and the pushes of an app's logPush services (their Winston adapter) on the monitoring network"
     why: "the logs view and every opted-in stack's logs live here"
     image: {image: grafana/loki, pin: loki}
     resources: {memory: 512M, cpus: "0.50", reserveMemory: 192M, reserveCpus: "0.10"}
     update: *stopFirst
     rollback: *rollbackStopFirst
     retention: {hours: 168}
-    networks: [internal]
+    networks: [internal, monitor]
     volumes: {loki-data: /loki}
     configs: {loki.yaml: /etc/loki/loki.yaml}
     service:

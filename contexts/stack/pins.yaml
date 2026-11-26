@@ -152,6 +152,8 @@ pins:
   '@nestjs/passport': {version: 11.0.5, group: framework, side: be, why: "PassportStrategy inside @starci/auth; 11.0.5 is CommonJS on the Nest 11 line (12.0.0 is ESM-only and breaks Nest 11 jest under the jest-preset CommonJS transform)"}
   '@nestjs/schedule': {version: 6.1.3, group: framework, side: be, why: "the tick scheduler of platform/jobs (R335); 6.1.3 is CommonJS on the Nest 11 line (12.x is ESM-only and breaks Nest 11 jest under the jest-preset CommonJS transform)"}
   undici: {version: 6.29.1, group: framework, side: be, why: "the Agent of platform/http that adds HttpOptions.trustedCa to the bundled roots for fetch (a test world's per-run fake CA)"}
+  winston: {version: 3.19.0, group: framework, side: be, why: "the adapter of the Logger port of platform/logging, its one owner (R90, BE-LOGGING-1): JSON lines on stdout and stderr and the Loki transport behind one winston logger"}
+  winston-loki: {version: 6.1.7, group: framework, side: be, why: "the Loki push of platform/logging (loki-transport.adapter.ts, R90, BE-LOGGING-1): batched JSON pushes, bounded and never fatal"}
   cron: {version: 4.4.0, group: framework, side: be, why: "CronJob of platform/jobs' tick scheduler; the exact version @nestjs/schedule 6.1.3 depends on"}
   passport: {version: 0.7.0, group: framework, side: be, why: "the strategy runtime under @nestjs/passport"}
   passport-google-oauth20: {version: 2.0.0, group: framework, side: be, why: "Google OAuth 2.0 with state and PKCE inside @starci/auth"}

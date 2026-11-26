@@ -11,6 +11,8 @@ export const MONITORING_NETWORK = 'starci-monitor';
 /** Where the shared stack receives OTLP (Alloy, with Tempo on) and profiles (Pyroscope) on that network: `<stack>_<service>` of the harness stack `starci-monitor`. */
 export const OTLP_ENDPOINT = 'http://starci-monitor_alloy:4318';
 export const PYROSCOPE_ENDPOINT = 'http://starci-monitor_pyroscope:4040';
+/** Where a service that pushes its own logs (`logPush`) sends them: the shared stack's Loki, on the monitoring network (ops/vps/monitor/components.yaml loki). */
+export const LOKI_ENDPOINT = 'http://starci-monitor_loki:3100';
 /** How many probe URLs one environment carries (the shared Prometheus runs one probe job per slot). */
 export const PROBE_SLOTS = 10;
 
@@ -36,6 +38,11 @@ export interface ExporterSidecar { name: string; kind: 'postgres' | 'redis'; tar
 export interface MonitoringOptIn {
   network: string;
   logs: boolean;
+  /**
+   * The services that push their own lines to Loki (the Winston adapter of platform/logging, BE-LOGGING-1): each gets LOKI_URL and its labels,
+   * joins the network, and is left out of `logs`, so the collector never ships its stdout too. One way in per service, never both.
+   */
+  logPush: string[];
   /** Every scraped service (metrics and native exporters): one port and path per service. */
   metrics: MetricsTarget[];
   sidecars: ExporterSidecar[];
@@ -138,6 +145,14 @@ export function monitoringOf(environment: Parsed, context: { services: Set<strin
     return [];
   };
   const traces = telemetry('traces'), profiles = telemetry('profiles');
+  let logPush: string[] = [];
+  if (block.logPush !== undefined) {
+    if (!Array.isArray(block.logPush)) problems.push('logPush is a list of the services that push their own logs to Loki');
+    else {
+      logPush = [...new Set<string>(block.logPush.map((service: unknown) => String(service)))];
+      for (const service of logPush) if (!services.has(service)) problems.push(`logPush names the service ${service}, which the stack file does not hold`);
+    }
+  }
   let alertsMember: string | null = null;
   if (block.alerts !== undefined) {
     const member = block.alerts?.telegram?.member;
@@ -146,7 +161,7 @@ export function monitoringOf(environment: Parsed, context: { services: Set<strin
     else alertsMember = member;
   }
   if (problems.length > 0) throw refusal(DEPLOY_CONFIG_CODE, `environments.${env}.monitoring: ${problems.slice(0, 6).join('; ')}`);
-  return { network: String(network), logs: block.logs !== false, metrics, sidecars, probes, probeCarrier, traces, profiles, alertsMember };
+  return { network: String(network), logs: block.logs !== false, logPush, metrics, sidecars, probes, probeCarrier, traces, profiles, alertsMember };
 }
 
 /** The secret grants of the exporter sidecars: each password key mounted as a file (no `_FILE` pointer; the sidecar's environment names it). */
@@ -161,17 +176,28 @@ export function monitoringDeployLabels(monitoring: MonitoringOptIn, service: str
   return scrape.length + probes.length === 0 ? [] : [...scrape, ...probes, `starci.monitor.stack=${stack}`];
 }
 
-/** The environment a traced or profiled service gets: the OTLP endpoint and service name, the Pyroscope server and application name. */
+/** The environment a traced, profiled or log-pushing service gets: the OTLP endpoint and service name, the Pyroscope server and application name, the Loki URL and labels. */
 export function telemetryEnvironment(monitoring: MonitoringOptIn, service: string, stack: string, env: string): Record<string, string> {
   return {
+    ...logPushEnvironment(monitoring, service, stack, env),
     ...(monitoring.traces.includes(service) ? { OTEL_EXPORTER_OTLP_ENDPOINT: OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf', OTEL_SERVICE_NAME: `${stack}-${service}`, OTEL_RESOURCE_ATTRIBUTES: `deployment.environment=${env}` } : {}),
     ...(monitoring.profiles.includes(service) ? { PYROSCOPE_SERVER_ADDRESS: PYROSCOPE_ENDPOINT, PYROSCOPE_APPLICATION_NAME: `${stack}.${service}` } : {}),
   };
 }
 
-/** The services that send traces or profiles to the shared stack. */
+/** The environment a log-pushing service gets: the Loki URL and the labels its lines carry: the stack, the environment and the swarm service name the collector labels its own lines with. */
+export function logPushEnvironment(monitoring: MonitoringOptIn, service: string, stack: string, env: string): Record<string, string> {
+  return monitoring.logPush.includes(service) ? { LOKI_URL: LOKI_ENDPOINT, LOKI_APP: stack, LOKI_ENV: env, LOKI_SERVICE: `${stack}_${service}` } : {};
+}
+
+/** Whether the collector keeps this service's stdout: `logs` is on and the service does not push its own lines (`logPush`). */
+export function collectsLogs(monitoring: MonitoringOptIn, service: string): boolean {
+  return monitoring.logs && !monitoring.logPush.includes(service);
+}
+
+/** The services that send traces, profiles or their own logs to the shared stack, and so join its network. */
 export function telemetryServices(monitoring: MonitoringOptIn): string[] {
-  return [...new Set([...monitoring.traces, ...monitoring.profiles])];
+  return [...new Set([...monitoring.traces, ...monitoring.profiles, ...monitoring.logPush])];
 }
 
 /**
