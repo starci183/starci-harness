@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.61.2 - 2026-11-26
+
+- Fixed (h-grammar-chat-avatars-fix, dev CI of the 0.61.0 landing): the safe-URL helpers of a link (`isSafeLink`, `isSafeImage`, `isExternalUrl`) move from `frame/Markdown/urls.ts` to `core/safeUrls.ts`, so the composite `MessageMarkdown` no longer imports from a frame (`FE_GRAMMAR_TIER_DIRECTION`); no behaviour changed. The lint family packages move to 0.61.0 with Grammar 0.61.
+
 ## 0.61.1 - 2026-11-26
 
 - Removed (h-grammar-no-tests, the owner on 2026-11-26: "xóa tests grammars và ghi rules chặt vì useless"): every spec and test of the Grammar: `specs/` (the node and browser specs, `support/`, `fixtures/`), the render proof (`proof/` with its baselines and `playwright.config.ts`), the graph demo's Playwright e2e (`ext-demo/graph/e2e/`, its `playwright.config.ts`), `tsconfig.specs.json`, `tsconfig.codemods-spec.json`, the scripts `test:specs`, `test:codemods`, `prove-render*` and `ext:e2e`, and the `jsdom` dev dependencies; then (owner's decision, same day) the theme proof (`prove-theme`, `scripts/theme-proof/`, the CI job `grammar proof` and its publish hold) and the play runner: `npm run prove-plays` is `npm run shoot` (`scripts/shoot.mts`: every story at 390 and 1440, light and dark, into `shots/` for a person to look at; it never fails on a check), and every story `play` lost its assertions (`expect`, `waitFor` as a check, a hand-written `throw` on a measured value, the measuring helpers of `stories/fixtures.tsx`), a play left only where it drives a hover, an open or typing a picture needs (359 plays before, 71 after). `npm test` is typecheck, the static checks, lint and build. A Grammar change is proven by looking: its stories shot at 390 and 1440 in light and dark, and the UI audit of the app screens (contexts/ui/proof.md GRAMMAR-NO-TESTS; the harness shape slot `never.grammar-tests` refuses a new one). Nothing in `dist` changes but two CSS comments; no API change.

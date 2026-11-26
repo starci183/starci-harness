@@ -7,7 +7,7 @@ import type { List, ListItem, Paragraph, PhrasingContent, Root, RootContent } fr
 import { useMemo, type ReactNode } from "react"
 import { Code } from "../../leaf/Code/index.js"
 import { Link } from "../../leaf/Link/index.js"
-import { isExternalUrl, isSafeLink } from "../../frame/Markdown/urls.js"
+import { isExternalUrl, isSafeLink } from "../../safeUrls.js"
 import type { NoChildren } from "../../tier.js"
 
 /**

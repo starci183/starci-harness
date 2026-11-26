@@ -254,7 +254,9 @@ ruleParams:
       setTimeout: [platform/retry, platform/event-bus, platform/queue, platform/http]
       "node:timers": [platform/retry, platform/event-bus, platform/queue, platform/http]
       "node:timers/promises": [platform/retry, platform/event-bus, platform/queue, platform/http]
-      winston: [platform/logging]
+      winston: [platform/logging]           # BE-LOGGING-1: the adapter of the Logger port
+      winston-loki: [platform/logging]      # BE-LOGGING-1: its Loki transport (loki-transport.adapter.ts)
+      winston-transport: [platform/logging]
       "node:async_hooks": [platform/logging]
       nestjs-cls: []
       dayjs: [platform/clock, platform/primitives]

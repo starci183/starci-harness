@@ -52,7 +52,7 @@ The flow, in order:
 3. The app verifies the change with `starci app check` (`--env local`, the default). Each published build carries a source digest, so the
    check cache a run on it writes holds the keys of the npm build of the same source and survives step 4; the pins whose lock entry
    resolved from the registry are listed `LOCAL, REPORT ONLY` and the run ends `green for local (not pushable)`
-   ([check-cache.md](../project/check-cache.md) "The operating procedure"). The pre-push hook, CI and the release gate run `--env prod`,
+   ([check-cache.md](../project/check-cache.md) "The operating procedure"). The pre-push hook, CI and the release check (`app check --release`) run `--env prod`,
    which blocks on them.
 4. Before a commit to main or a prod cut (on `dev` and lane branches of an app declaring `deps.devAllowsLocalRegistry`, the local pins are
    committed as they are: local first, a lane never waits for npm), `starci deps install-local --restore` puts the recorded npm pins back, drops every lock entry resolved on this

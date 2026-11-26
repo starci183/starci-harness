@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { readYaml } from './config.mjs';
 import type { DeployConfig, EdgeRoute, ServiceEnvironment, SharedEdge } from './config.mjs';
-import { monitoringDeployLabels, sidecarService, telemetryEnvironment, telemetryServices } from './monitoring.mjs';
+import { collectsLogs, monitoringDeployLabels, sidecarService, telemetryEnvironment, telemetryServices } from './monitoring.mjs';
 import type { MonitoringOptIn } from './monitoring.mjs';
 import { sharedServiceEnvironment, sharedServiceNetworks } from './shared-services.mjs';
 import { tool } from './context.mjs';
@@ -192,7 +192,7 @@ function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Rec
   const networks = [...new Set([...(labels.length > 0 && edge !== null ? [edge.network] : []), ...(reaches && monitoring !== null ? [monitoring.network] : []), ...sharedServiceNetworks(shared, service)])];
   if (labels.length + monitored.length > 0) out.deploy = { labels: [...labels, ...monitored] };
   if (networks.length > 0) out.networks = joinsDefault ? ['default', ...networks] : networks;
-  if (monitoring?.logs === true && config.services.has(service)) out.labels = ['starci.monitor.logs=true'];
+  if (monitoring !== null && collectsLogs(monitoring, service) && config.services.has(service)) out.labels = ['starci.monitor.logs=true'];
   return out;
 }
 

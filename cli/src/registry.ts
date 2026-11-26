@@ -13,7 +13,7 @@ import { releaseAffectedVerb } from "./core/release/affected.js"
 import { releaseCutVerb } from "./core/release/cut.js"
 import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
-import { releaseGateVerb } from "./core/release/gate.js"
+import { checkVerb, releaseGateVerb } from "./core/release/gate.js"
 import { releaseBackMergeVerb } from "./core/release/back-merge.js"
 import { versionVerb } from "./core/version.js"
 import { appInfoVerb } from "./core/app/info.js"
@@ -167,6 +167,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     releaseCutVerb,
     releasePublishVerb,
     releaseAffectedVerb,
+    checkVerb,
     releaseGateVerb,
     releaseBackMergeVerb,
     contractNewVerb,

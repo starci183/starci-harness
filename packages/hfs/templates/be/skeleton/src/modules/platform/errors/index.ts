@@ -1,5 +1,5 @@
 export type { ErrorKind } from "./errors.contracts"
-export { DomainError } from "./domain.error"
+export { DomainError, isDomainError } from "./domain.error"
 export { ErrorsFilter } from "./errors.filter"
 export { ErrorsModule } from "./errors.module"
 export { ERRORS_MESSAGES } from "./messages/errors.messages"

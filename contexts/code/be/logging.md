@@ -9,13 +9,30 @@ a `catch` must do is BE-ERROR-4.
 ## BE-LOGGING-1 `platform/logging` owns the one Logger port
 
 `platform/logging` is required and exports `Logger` (`info(event, fields?)`, `warn(event, fields?)`,
-`error(event, cause, fields?)`), `InjectLogger()` and `createJsonLogger(clock)` for bootstrap code outside the
-container. The adapter writes one JSON line per event to stdout or stderr, stamped by the `Clock`, with secrets
-redacted. No `console.*`, framework `Logger` or second logging library elsewhere; a cli prints its output through the
-port's console client.
+`error(event, cause, fields?)`), `InjectLogger()`, `parseLoggingConfig(env, service)` and `createJsonLogger(clock, ids, options?)`
+for bootstrap code outside the container. The adapter is Winston (`winston` and `winston-loki`, imported in `platform/logging`
+only): one JSON line per event, stamped by the `Clock` and the correlation id, credential-named fields masked
+(`log-redaction.policy.ts`), the cause's name, message, code and stack kept. Its transports:
+
+- **Console, always on**: info to stdout, warn and error to stderr, so `docker logs` and the collector read every line.
+- **Loki, when `LOKI_URL` is declared** (`loki-transport.adapter.ts`): the same line, pushed in batches every 5 s, each
+  push abandoned after 5 s, a failed batch dropped rather than re-queued, at most 10 000 lines held (newer lines past that
+  are dropped and counted), the process exit never hooked (the module flushes on shutdown). A failed push never reaches the
+  caller: it is reported on stderr as `platform.logging.loki.unreachable` at most once a minute while the console lines go on.
+  Its stream labels are `stack` and `app` (`LOKI_APP`), `env` (`LOKI_ENV`), `service` (`LOKI_SERVICE`, on a server the swarm
+  service name the collector uses), `level` and `event`, a member of an owner's enum and so bounded; ids stay in the line.
+  `LOKI_BASIC_AUTH` (`user:password`, sealed, or `LOKI_BASIC_AUTH_FILE`) and `LOKI_TENANT` serve a Loki behind a door.
+
+On a server the stack render sets the `LOKI_*` keys of each `monitoring.logPush` service and stops collecting its stdout
+([project/monitoring.md](../../project/monitoring.md) PROJECT-MONITORING-2), so each line reaches Loki once; a local or docker-compose run leaves `LOKI_URL`
+unset and logs to the console only (the local monitor publishes no Loki port). The adapter logs one cause object once per process: the first owner
+that logs a failure (a handler base) writes it and a later `error` with the same cause writes nothing (BE-ERROR-4).
+
+No `console.*`, framework `Logger` or second logging library elsewhere; a cli prints its output through the port's console
+client. An app takes the adapter with `starci app codemod logging-winston-loki`.
 
 Why: a back end without a mandatory logger can pass every check and record nothing when it fails, and a second library
-is a second format for the collector.
+is a second format for the collector; a push that could block or crash the service would make logging the outage.
 
 Enforced by: `no-framework-logger`, `no-console`, and the R40 tree check `log-push` (an environment that declares
 `monitoring.logPush` with no `winston-loki` import in `platform/logging`) (R40); `infra-import-owner` (R90).

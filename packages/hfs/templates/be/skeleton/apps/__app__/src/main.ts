@@ -3,7 +3,7 @@ import { SystemClockService } from "@modules/platform/clock"
 import { EnvSource } from "@modules/platform/config"
 import { applyHttpSecurity } from "@modules/platform/http-security"
 import { SystemIds } from "@modules/platform/ids"
-import { applyCorrelation, createJsonLogger, createNestLogger, LoggingLogEvent } from "@modules/platform/logging"
+import { applyCorrelation, createJsonLogger, createNestLogger, LOGGER, LoggingLogEvent, type Logger } from "@modules/platform/logging"
 import { AppModule } from "./app.module"
 import { read{{appPascal}}Env } from "./{{app}}.env"
 
@@ -11,11 +11,14 @@ import { read{{appPascal}}Env } from "./{{app}}.env"
 const bootstrap = async (): Promise<void> => {
     const env = EnvSource.fromProcess()
     const options = read{{appPascal}}Env(env)
-    const logger = createJsonLogger(new SystemClockService(), new SystemIds())
+    // The framework's boot messages are held until the container's logger (Loki too, when configured) takes them over.
     const app = await NestFactory.create(AppModule.register(options), {
         rawBody: true,
-        logger: createNestLogger(logger),
+        bufferLogs: true,
+        logger: createNestLogger(createJsonLogger(new SystemClockService(), new SystemIds())),
     })
+    const logger = app.get<Logger>(LOGGER)
+    app.useLogger(createNestLogger(logger))
     applyCorrelation(app)
     applyHttpSecurity(app, options.httpSecurity, { trustProxy: 1 })
     app.enableShutdownHooks()
