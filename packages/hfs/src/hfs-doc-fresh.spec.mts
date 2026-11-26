@@ -110,6 +110,14 @@ for (const edition of ['lite'] as const) {
     assert.ok(CATALOG.groups['explain']!.self, 'a one-word verb is its group\'s self');
   });
 
+  test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: a group that is also a verb (starci check, starci check lint) resolves both`, (t) => {
+    assert.ok(CATALOG.groups['check']!.self, 'starci check is the check group\'s self');
+    const context = fixture(t, edition, { ...manifests, 'README.md': 'Run `starci check --release`, `starci check --level dev`, `starci check lint --base origin/dev` and `starci check missing-verb`.' });
+    const hits = docFreshFindings(context).filter((finding) => finding.code === 'HFS_DOC_COMMAND_UNKNOWN');
+    assert.equal(hits.length, 1, JSON.stringify(hits));
+    assert.match(hits[0]!.message, /missing-verb/u);
+  });
+
   test(`HFS_DOC_COMMAND_UNKNOWN@${edition}: workspace commands resolve the workspace manifests`, (t) => {
     const context = fixture(t, edition, { ...manifests,
       'package.json': { workspaces: ['fe/packages/*'], scripts: {} },

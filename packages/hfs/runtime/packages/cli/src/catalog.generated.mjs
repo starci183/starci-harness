@@ -183,6 +183,28 @@ export const CATALOG = {
           "positional": [],
           "json": "flag"
         }
+      },
+      "self": {
+        "summary": "the harness's own check (starci release gate is its deprecated spelling): --release (= --level full, the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates; --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, runs the publish checks (declarations name .js, bundles:check) and each of those packages' own npm test (CI's package jobs; not the CLI's suite); --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
+        "flags": [
+          {
+            "name": "release",
+            "type": "boolean",
+            "summary": "the release check of the train: the same as --level full"
+          },
+          {
+            "name": "level",
+            "type": "string",
+            "summary": "dev (default: the packages changed since --base and their dependents, built, typechecked and their npm test run) or full (everything, with lint, tests and CI's light gates)"
+          },
+          {
+            "name": "base",
+            "type": "string",
+            "summary": "the commit the FAST level measures from (default: where HEAD forks from origin/dev, else origin/main); the full level ignores it"
+          }
+        ],
+        "positional": [],
+        "json": "flag"
       }
     },
     "release": {
@@ -286,8 +308,13 @@ export const CATALOG = {
           "json": "flag"
         },
         "gate": {
-          "summary": "the harness's own gate: --level dev (default, the FAST level of a landing on dev) installs, builds and typechecks the packages changed since --base and their dependents, the CLI and the desktop app when affected, runs the publish checks (declarations name .js, bundles:check) and each of those packages' own npm test (CI's package jobs; not the CLI's suite); --level full (the train's dev -> main merge) every package and the CLI with lint and tests, then CI's light gates",
+          "summary": "renamed: use starci check (--level dev) or starci check --release (--level full); this deprecated spelling prints the rename and runs the same check",
           "flags": [
+            {
+              "name": "release",
+              "type": "boolean",
+              "summary": "the release check of the train: the same as --level full"
+            },
             {
               "name": "level",
               "type": "string",
@@ -614,7 +641,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "check": {
-          "summary": "run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --level full|dev (default full) is the two-level gate: dev is the FAST level of a landing on dev (a lane push, a push of dev and lane gate): the deps check (local-registry pins allowed where hfs.json deps.devAllowsLocalRegistry is declared; --push-refs <the pre-push stdin> names the target, else dev), types with its package builds and codegen, the lane's own tests (the changed and related unit specs) and db; it prints one line naming the gates it skips, which run once at the main cut, and a tree it already judged green is not judged again (one pass per push); full is every gate, run by a push of main or a release tag, release cut, release push and app release; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
+          "summary": "--release is the release check (formerly app release gate, now its deprecated alias): every row of the release on a clean HEAD, reusing the committed check cache while the newest cache verify is green and running fresh otherwise or with --fresh (--full no longer means fresh), then with --execute the L4 record and the annotated tag; without --release, run the app ESLint canons and judge the tree, managed output, contracts, formatting and architecture, and run the project checks ext/manifest.json `checks` declares as their own step wherever the hfs gate runs (a red one is HFS_PROJECT_CHECK_FAILED with its exit and output); --level full|dev (default full) is the two-level gate: dev is the FAST level of a landing on dev (a lane push, a push of dev and lane gate): the deps check (local-registry pins allowed where hfs.json deps.devAllowsLocalRegistry is declared; --push-refs <the pre-push stdin> names the target, else dev), types with its package builds and codegen, the lane's own tests (the changed and related unit specs) and db; it prints one line naming the gates it skips, which run once at the main cut, and a tree it already judged green is not judged again (one pass per push); full is every gate, run by a push of main or a release tag, release cut, release push and app release; --gate selects, --side limits the lint, --fix fixes it, --out writes the Sonar import, --staged is the pre-commit guard; --env local|prod (default local) judges the same code checks in both (prod first refuses HOST_SERVICE_MISSING when an environment's declared hostServices are hosted by none of its machines in this host's config.yaml) and only decides whether the findings a local-registry loop alone causes (a pin the lockfile resolved from the local registry, a cache written from a build with no source digest) are report-only (local) or block (prod: the pre-push hook, CI, the release gate); every run is under the branch profile of the branch it judges (`branches` of .starcistacks/application-stacks.yaml, chosen in CI from GITHUB_BASE_REF, where a pull request into main is the full gate, then GITHUB_HEAD_REF, then GITHUB_REF, else the checked-out branch): a gate the profile reports runs and records but never counts, an off gate does not run, and where lint reports the lint ratchet blocks a commit that adds lint findings to a file it touches; --profile prints the profile (with one --gate, that gate's mode), --ratchet is the pre-commit lint ratchet; an app may also declare gates off for the whole app on every branch (`gates` of .starcistacks/application-stacks.yaml: any gate but hfs, secrets and db, each `{ run: off, reason }`, contexts/project/lint.md PROJECT-LINT-4): a declared gate does not run, is listed `off (declared: <reason>)` and is never counted as passed",
           "flags": [],
           "positional": [
             {
@@ -734,7 +761,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "release": {
-          "summary": "run the app's release gates and write the L4 record and tag (or back-fill an urgent release), or push branch and tag atomically (or the urgent path)",
+          "summary": "push branch and tag atomically (or the urgent path); `release gate` is renamed `starci app check --release` and still runs it after printing the rename",
           "flags": [],
           "positional": [
             {
@@ -3570,7 +3597,7 @@ export const CATALOG = {
             {
               "name": "profile",
               "type": "string",
-              "summary": "app or harness (default: harness in the harness checkout, else app): the harness gates with release gate --level dev and pushes with git push"
+              "summary": "app or harness (default: harness in the harness checkout, else app): the harness gates with starci check --level dev and pushes with git push"
             }
           ],
           "positional": [

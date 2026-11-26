@@ -87,16 +87,19 @@ const addFlag = (command: Command, flag: string, spec: FlagSpec): void => {
     else command.option(spelling, spec.summary)
 }
 
-/** Adds one verb to the program, creating its group command on first use; its help is generated from its definition. */
+/**
+ * Adds one verb to the program, creating its group command on first use; its help is generated from its definition. A one-word verb whose word is also
+ * a group (`starci check` beside `starci check lint`) is that group's own action: the group parses only the options before its subcommand, so a
+ * subcommand's flag of the same name (`--base`) stays the subcommand's.
+ */
 const register = (program: Command, verb: AnyVerb, verbs: readonly AnyVerb[]): void => {
     const [first, second] = verb.path
-    let parent = program
-    let name = first
-    if (second !== undefined) {
-        parent = program.commands.find((command) => command.name() === first) ?? program.command(first).description(`${first} verbs`)
-        name = second
-    }
-    const command = parent.command(name).description(verb.summary)
+    const group = program.commands.find((command) => command.name() === first)
+    let command: Command
+    if (second === undefined) command = (group ?? program.command(first)).description(verb.summary)
+    else command = (group ?? program.command(first).description(`${first} verbs`)).command(second).description(verb.summary)
+    const self = verbs.find((candidate) => candidate.path.length === 1 && candidate.path[0] === first)
+    if (self !== undefined && verbs.some((candidate) => candidate.path[0] === first && candidate.path.length === 2)) program.commands.find((each) => each.name() === first)?.enablePositionalOptions()
     for (const [flag, spec] of Object.entries(verb.flags)) addFlag(command, flag, spec)
     if (verb.forward === true) command.addHelpText("after", ["", `Every argument is @starci/hfs's: starci ${spellingOf(verb)} --help prints its flags.`].join("\n"))
     command.action(async (...received: unknown[]) => {

@@ -142,7 +142,7 @@ One verb gates and lands (PROJECT-BRANCH-2):
 
 **A harness lane** (a worktree of the harness repository itself, [project/branches.md](../project/branches.md) PROJECT-BRANCH-3) runs the same verb.
 `lane gate` picks the harness profile there (or `--profile harness`): it merges `origin/dev`, installs nothing at the root, runs under the
-gate slot the harness FAST gate `starci release gate --level dev` (the install, build and typecheck of the packages the lane changed and of their
+gate slot the harness FAST gate `starci check --level dev` (the install, build and typecheck of the packages the lane changed and of their
 dependents, the CLI and the desktop app when affected, the publish checks, and the `npm test` of each of those packages that declares one, as CI's
 `package (...)` jobs run it; the typechecks of those folders run together, each `tsc` on its own heavy slot, and each package test takes a heavy `test` slot; the CLI's
 own suite runs only in the train's full gate: [project/branches.md](../project/branches.md) PROJECT-BRANCH-3 item 2). A red package test refuses the gate with

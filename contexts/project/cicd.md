@@ -178,10 +178,10 @@ that is refused or fails is written to the runner's status with its reason, and 
 
 **The harness's own dev and main.** The harness repository has the same two lines ([branches.md](branches.md) PROJECT-BRANCH-3; owner:
 "bản thân .claude cũng tách thành dev main được không? dev code xong merge nhanh để xài local"). Harness lanes land on its `dev` with
-`lane gate --push --land` under the harness profile (the FAST gate `starci release gate --level dev`: builds, typechecks, publish checks and the
+`lane gate --push --land` under the harness profile (the FAST gate `starci check --level dev`: builds, typechecks, publish checks and the
 `npm test` of each affected package, as CI's package jobs, never the CLI's suite; then the squashed commit with `git push`), and each landing that changed a published package goes to the local registry as the dev line and
 into the apps' dev checkouts by their debounced syncs. npm sees only the
-train: the dev tip passes `starci release gate --level full`, `main` moves to it, `release push` and publish.yml publish the plain versions, and
+train: the dev tip passes `starci check --release`, `main` moves to it, `release push` and publish.yml publish the plain versions, and
 `starci release back-merge --execute` brings `main` (the cli-follow commit) back into `dev`. CI runs the FAST level on `dev` and the FULL level on
 `main`. The harness checkout's branch (`D:/.claude`, on `dev` today) is the owner's choice.
 
@@ -206,7 +206,7 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 | push of `release/candidate-<version>` (apps with `release.requireCi: true`) | the release checks, diff-only against the cache at its merge-base with `main` | built and pushed under `sha-<sha>` | none; the candidate verdict is reused by the tag run |
 | push of tag `v<version>` | the release checks, diff-only against the cache at its merge-base with `main` (check-cache.md "Trust"), or reused from a green candidate run of the same sha | built once, pushed with SBOM and provenance | every environment with `deploy.auto: true`, in declared order, after every required job is green |
 | push of tag `v<version>` whose annotation carries `Starci-Urgent:` | the release checks: this run is the back-fill | built and pushed | skipped when the environment's accepted release already has this sha (the urgent deploy did it); otherwise as a normal tag |
-| schedule (nightly, `main`) and `workflow_dispatch` of `cache-verify.yml` on any branch | one job per family, each `app check --fresh --gate <family>`: the family recomputed, red when the committed records differ; red locks the release gate, a green run for the release's sha clears it | none | none |
+| schedule (nightly, `main`) and `workflow_dispatch` of `cache-verify.yml` on any branch | one job per family, each `app check --fresh --gate <family>`: the family recomputed, red when the committed records differ; red makes the release check (`app check --release`) run fresh instead of reusing the cache, a green run for the release's sha clears it | none | none |
 | `workflow_dispatch` of `stack-deploy.yml` | none; it requires a tag whose CI run is green (or an urgent annotation) | reused by digest from that run | `deploy`, `redeploy` or `rollback` of one environment |
 
 `pull_request` is a new trigger for app workflows (R251 admits only tags, candidate branches, `main` and the
@@ -498,7 +498,7 @@ running local gate (the new gate prints `superseded by <sha>`).
   app role's sealed password), the expand migrations, the seed step after convergence (PROJECT-STACKS-12), the readiness
   verify, the automatic rollback and the contract migrations after the accept. It is auditable on the server side too: the tag annotation carries `Starci-Urgent: <role>` and
   `Starci-Urgent-Reason: <text>` trailers (written by `release push --urgent`), the manager's deploy record carries the
-  same, and the back-fill runs the full gate on the same commit, as the tag's CI run or `starci app release gate --backfill
+  same, and the back-fill runs the full gate on the same commit, as the tag's CI run or `starci app check --release --backfill
   <tag>`: green promotes the record to a normal L4 with no re-release, red opens a `verify` ticket (a red CI the harness
   fixes) and changes nothing on production, and the tag run's deploy job finds the sha already current and does nothing.
   The manager lock serialises the urgent deploy with any CI deploy.

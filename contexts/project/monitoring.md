@@ -60,7 +60,8 @@ environments:
     monitoring:
       metrics:                       # services that serve Prometheus metrics (path defaults to /metrics)
         - {service: api, port: 3001, path: /metrics}
-      logs: true                     # default true: the logs of every service of this stack are kept
+      logs: true                     # default true: the collector keeps the stdout of every service but the logPush ones
+      logPush: [api]                 # services that push their own lines to Loki (BE-LOGGING-1); their stdout is not collected
       probes: [https://example.org/health]   # blackbox targets; absent: https://<host>/ of every ingress host; false: none
       exporters:                     # one per backing service
         - {kind: postgres, user: monitor, password: {member: db, key: DB_MONITOR_PASSWORD}}   # service defaults to the backing postgres
@@ -87,7 +88,14 @@ environments:
   service, else the first metrics service. At most 10 URLs;
 - the traced and profiled services get `OTEL_EXPORTER_OTLP_ENDPOINT=http://starci-monitor_alloy:4318`, `OTEL_SERVICE_NAME`,
   `PYROSCOPE_SERVER_ADDRESS` and `PYROSCOPE_APPLICATION_NAME`, and join the network;
-- with `logs`, every service of the stack gets the container label `starci.monitor.logs=true`, which Alloy keeps containers by.
+- with `logs`, every service of the stack but the `logPush` ones gets the container label `starci.monitor.logs=true`, which Alloy keeps
+  containers by;
+- a `logPush` service gets `LOKI_URL=http://starci-monitor_loki:3100`, `LOKI_APP` (the stack), `LOKI_ENV` and `LOKI_SERVICE` (its swarm
+  name, `<stack>_<service>`), and joins the network. Its Winston adapter (contexts/code/be/logging.md BE-LOGGING-1) pushes the same JSON
+  line it writes to stdout, labelled `stack`, `service`, `env`, `level` and `event`, so the logs dashboard and the bot read it like a
+  collected line. Each service reaches Loki one way, never both: a service moves to `logPush` once its back end carries the adapter
+  (R40 `log-push` refuses the declaration otherwise). Loki sits on the monitoring network as well as the stack's internal one for these
+  pushes; it keeps no auth there (`auth_enabled: false`), the network being private to the server's stacks.
 
 The labels are generic and name no app's business. The schema is `$defs.environment.monitoring` of
 `packages/hfs/runtime/modules/schemas/application-stacks.schema.yaml`. `HFS_STACKS_SHAPE` checks it against the rendered model

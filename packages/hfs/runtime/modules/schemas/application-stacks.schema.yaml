@@ -147,7 +147,7 @@ properties:
           type: string
           minLength: 1
   release:
-    description: Release gates of the app (starci app release gate and push); packages/hfs/release/gate.mjs is the authority for the fields.
+    description: Release gates of the app (the rows of starci app check --release, and starci app release push); packages/hfs/release/gate.mjs is the authority for the fields.
     type: object
   database:
     description: 'Database cutover data (starci app db migrate, adopt and post-cutover; adopt: optional mapping with only legacyHistory, a list of the legacy history tables db adopt leaves out of its schema compare); packages/hfs/db/migrate.mjs is the authority for the fields. reset: optional mapping with only backupMaxAgeHours (finite positive number; default 24 hours).'
@@ -762,7 +762,7 @@ $defs:
           Absent, the stack renders exactly as without it. Present, `starci app stack render` puts the scrape labels on each service of
           `metrics` and of a scraped exporter, adds the exporter sidecars, puts the probe labels on the ingress, sets the trace and profile
           endpoints, joins those services to the external monitoring `network`, and with `logs` (default true) labels every service of the
-          stack so the server's log collector keeps its logs.
+          stack so the server's log collector keeps its logs, except the `logPush` services, which push their own lines to Loki.
         type: object
         additionalProperties: false
         properties:
@@ -771,8 +771,15 @@ $defs:
             type: string
             pattern: '^[a-z][a-z0-9_-]*$'
           logs:
-            description: "Whether the server's collector keeps the logs of every service of this stack (default true)."
+            description: "Whether the server's collector keeps the logs of every service of this stack (default true); a logPush service is left out."
             type: boolean
+          logPush:
+            description: >-
+              The services that push their own log lines to the server's Loki through the Winston adapter of platform/logging
+              (contexts/code/be/logging.md BE-LOGGING-1): the render sets LOKI_URL, LOKI_APP, LOKI_ENV and LOKI_SERVICE on each, joins it to the
+              monitoring network and leaves it out of `logs`, so its lines reach Loki once.
+            type: array
+            items: {type: string, minLength: 1}
           metrics:
             description: "One entry per stack service that serves Prometheus metrics: the port it listens on inside the stack and the path (default /metrics)."
             type: array
