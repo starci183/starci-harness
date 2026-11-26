@@ -381,7 +381,9 @@ const TabsInner = (props: TabsProps) => {
         const later = requestAnimationFrame(reveal)
         // A web font that arrives after the first draw widens every label without resizing the strip's box: reveal again once the fonts are in.
         let live = true
-        void document.fonts.ready.then(() => { if (live) reveal() })
+        // A document without the CSS Font Loading API (jsdom in the specs, an old engine) has no `fonts`: it skips this pass, never throws.
+        const fonts = (document as Partial<Pick<Document, "fonts">>).fonts
+        if (fonts !== undefined) void fonts.ready.then(() => { if (live) reveal() })
         // The vendor mounts its tabs after our commit and moves `aria-selected` itself: reveal when the strip is resized and when its tabs or their selection change.
         const mutations = new MutationObserver(reveal)
         mutations.observe(frame, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-selected"] })
