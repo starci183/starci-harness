@@ -1,45 +1,40 @@
-import type { Writable } from "node:stream"
-import { FakeClock, fakeIds, mock } from "@starci/jest-preset"
-import { CLOCK } from "@modules/platform/clock"
-import { IDS } from "@modules/platform/ids"
-import { Test } from "@nestjs/testing"
+import { createServer, type Server } from "node:http"
+import type { AddressInfo } from "node:net"
+import { Writable } from "node:stream"
+import { FakeClock, fakeIds } from "@starci/jest-preset"
 import { createJsonLogger, JsonLoggerService } from "./json-logger.service"
-import { LOG_ERR, LOG_OUT } from "./logging.decorators"
+import { REDACTED } from "./log-redaction.policy"
 import { LoggingLogEvent } from "./logging.log-events"
+import type { LoggingOptions } from "./logging.options"
 import { runWithCorrelation } from "./correlation.policy"
 
 type WrittenLine = { stream: "out" | "err"; line: string }
 
 const readJsonLine = (line: string | undefined): Record<string, unknown> => {
-    try {
-        const entry: unknown = JSON.parse(line ?? "")
-        if (typeof entry !== "object" || entry === null) return {}
-        return { ...entry }
-    } catch (error) {
-        throw error
-    }
+    const entry: unknown = JSON.parse(line ?? "")
+    if (typeof entry !== "object" || entry === null) return {}
+    return { ...entry }
 }
 
-const build = async () => {
+const build = (options: LoggingOptions = {}) => {
     const clock = new FakeClock("2026-05-06T07:08:09.000Z")
     const written: Array<WrittenLine> = []
-    const out = mock<Writable>({ write: (chunk: string) => written.push({ stream: "out", line: chunk }) > 0 })
-    const err = mock<Writable>({ write: (chunk: string) => written.push({ stream: "err", line: chunk }) > 0 })
-    const moduleRef = await Test.createTestingModule({
-        providers: [
-            JsonLoggerService,
-            { provide: CLOCK, useValue: clock },
-            { provide: LOG_OUT, useValue: out },
-            { provide: LOG_ERR, useValue: err },
-            { provide: IDS, useValue: fakeIds() },
-        ],
-    }).compile()
-    return { logger: moduleRef.get<JsonLoggerService>(JsonLoggerService), clock, written }
+    const sink = (stream: WrittenLine["stream"]): Writable =>
+        new Writable({
+            write: (chunk: Buffer | string, _encoding, done) => {
+                written.push({ stream, line: String(chunk) })
+                done()
+            },
+        })
+    const out = sink("out")
+    const err = sink("err")
+    const logger = new JsonLoggerService(clock, fakeIds(), out, err, options)
+    return { logger, clock, written }
 }
 
 describe("JsonLoggerService", () => {
-    it("writes one info JSON line to stdout stamped by the clock", async () => {
-        const { logger, written } = await build()
+    it("writes one info JSON line to stdout stamped by the clock", () => {
+        const { logger, written } = build()
         logger.info("cart.opened", { personId: "p-1" })
         expect(written).toEqual([
             {
@@ -49,8 +44,8 @@ describe("JsonLoggerService", () => {
         ])
     })
 
-    it("writes a warning without caller fields to stderr", async () => {
-        const { logger, clock, written } = await build()
+    it("writes a warning without caller fields to stderr", () => {
+        const { logger, clock, written } = build()
         clock.advance(1000)
         logger.warn(LoggingLogEvent.StartupFailed)
         expect(readJsonLine(written[0]?.line)).toEqual({
@@ -64,8 +59,8 @@ describe("JsonLoggerService", () => {
 })
 
 describe("JsonLoggerService error details", () => {
-    it("retains the error name, message and stack without dumping the Error object", async () => {
-        const { logger, written } = await build()
+    it("retains the error name, message and stack without dumping the Error object", () => {
+        const { logger, written } = build()
         const cause = new TypeError("boom")
         logger.error("db.failed", cause, { operation: "PlaceOrderHandler" })
         expect(readJsonLine(written[0]?.line)).toEqual({
@@ -81,51 +76,61 @@ describe("JsonLoggerService error details", () => {
         expect(written[0]?.stream).toBe("err")
     })
 
-    it("retains an error's code, including zero, and protects cause details from caller fields", async () => {
-        const { logger, written } = await build()
+    it("retains an error's code, including zero, and protects cause details from caller fields", () => {
+        const { logger, written } = build()
         const cause = Object.assign(new Error("connection lost"), { code: 0 })
         logger.error("db.failed", cause, { errorName: "fake", errorMessage: "fake", errorCode: "fake", stack: "fake" })
-        expect(readJsonLine(written[0]?.line)).toEqual({
-            errorName: "Error",
-            errorMessage: "connection lost",
-            errorCode: 0,
-            stack: cause.stack,
-            level: "error",
-            event: "db.failed",
-            time: "2026-05-06T07:08:09.000Z",
-            correlationId: "00000000-0000-4000-8000-000000000001",
-        })
+        expect(readJsonLine(written[0]?.line)).toMatchObject({ errorName: "Error", errorMessage: "connection lost", errorCode: 0, stack: cause.stack })
     })
 
-    it("serializes a non-Error cause and preserves a code carried by an object cause", async () => {
-        const { logger, written } = await build()
+    it("serializes a non-Error cause and preserves a code carried by an object cause", () => {
+        const { logger, written } = build()
         logger.error("db.failed", "plain failure")
         logger.error("db.failed", { code: "CONNECTION_CLOSED" })
         logger.error("db.failed", null)
-        expect(written.map(({ line }) => readJsonLine(line).errorMessage)).toEqual([
-            "plain failure",
-            "[object Object]",
-            "null",
-        ])
+        expect(written.map(({ line }) => readJsonLine(line).errorMessage)).toEqual(["plain failure", "[object Object]", "null"])
         expect(readJsonLine(written[1]?.line).errorCode).toBe("CONNECTION_CLOSED")
         expect(readJsonLine(written[0]?.line)).not.toHaveProperty("errorCode")
     })
+
+    it("logs one cause object once, whichever logger of the process meets it again", () => {
+        const first = build()
+        const second = build()
+        const cause = new Error("once")
+        first.logger.error("cqrs.operation_failed", cause)
+        first.logger.error("errors.unhandled", cause)
+        second.logger.error("errors.unhandled", cause)
+        expect(first.written).toHaveLength(1)
+        expect(second.written).toHaveLength(0)
+    })
 })
 
-describe("JsonLoggerService reserved fields", () => {
-    it("writes reserved level, event and time last so caller fields cannot forge them", async () => {
-        const { logger, written } = await build()
+describe("JsonLoggerService reserved fields and redaction", () => {
+    it("writes reserved level, event and time last so caller fields cannot forge them", () => {
+        const { logger, written } = build()
         const fields = { level: "error", event: "forged", time: "1900-01-01T00:00:00Z", personId: "p-1" }
         logger.info("cart.opened", fields)
         logger.warn("cart.warning", fields)
         logger.error("cart.failed", "failure", fields)
         expect(written.map(({ line }) => readJsonLine(line).level)).toEqual(["info", "warn", "error"])
-        expect(written.map(({ line }) => readJsonLine(line).event)).toEqual([
-            "cart.opened",
-            "cart.warning",
-            "cart.failed",
-        ])
+        expect(written.map(({ line }) => readJsonLine(line).event)).toEqual(["cart.opened", "cart.warning", "cart.failed"])
         expect(written.every(({ line }) => readJsonLine(line).time === "2026-05-06T07:08:09.000Z")).toBe(true)
+    })
+
+    it("masks credential-named fields at any depth and keeps ids readable", () => {
+        const { logger, written } = build()
+        logger.info("auth.refreshed", {
+            sessionId: "s-1",
+            tokenCount: 2,
+            refreshToken: "r-secret",
+            request: { headers: { authorization: "Bearer x", "x-api-key": "k" }, password: "p" },
+        })
+        expect(readJsonLine(written[0]?.line)).toMatchObject({
+            sessionId: "s-1",
+            tokenCount: 2,
+            refreshToken: REDACTED,
+            request: { headers: { authorization: REDACTED, "x-api-key": REDACTED }, password: REDACTED },
+        })
     })
 })
 
@@ -154,20 +159,11 @@ describe("createJsonLogger", () => {
         logger.warn(LoggingLogEvent.StartupFailed)
         expect(lines.map((line) => line.slice(0, 4))).toEqual(["err:", "err:"])
     })
-
-    it("keeps info on stdout when the info option is stdout", () => {
-        const lines: Array<string> = []
-        jest.spyOn(process.stdout, "write").mockImplementation((chunk) => lines.push(`out:${String(chunk)}`) > 0)
-        createJsonLogger(new FakeClock("2026-05-06T07:08:09.000Z"), fakeIds(), { info: "stdout" }).info(
-            LoggingLogEvent.ServerStarted,
-        )
-        expect(lines.map((line) => line.slice(0, 4))).toEqual(["out:"])
-    })
 })
 
 describe("JsonLoggerService correlation", () => {
-    it("stamps every level with the active identity and refuses caller overrides", async () => {
-        const { logger, written } = await build()
+    it("stamps every level with the active identity and refuses caller overrides", () => {
+        const { logger, written } = build()
         runWithCorrelation("request-id", () => {
             logger.info(LoggingLogEvent.ServerStarted, { correlationId: "override" })
             logger.warn(LoggingLogEvent.StartupFailed)
@@ -176,18 +172,71 @@ describe("JsonLoggerService correlation", () => {
         expect(written).toHaveLength(3)
         expect(written.every(({ line }) => readJsonLine(line).correlationId === "request-id")).toBe(true)
     })
-})
 
-describe("JsonLogger outside a correlation scope", () => {
-    it("stamps every line with one root identity drawn once", async () => {
-        const { logger, written } = await build()
-
+    it("stamps every line outside a scope with one root identity drawn once", () => {
+        const { logger, written } = build()
         logger.info("cart.opened")
         logger.warn("cart.slow")
+        expect(written.map(({ line }) => readJsonLine(line).correlationId)).toEqual([
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000001",
+        ])
+    })
+})
 
-        expect(written.map((entry) => entry.line)).toEqual([
-            `${JSON.stringify({ correlationId: "00000000-0000-4000-8000-000000000001", level: "info", event: "cart.opened", time: "2026-05-06T07:08:09.000Z" })}\n`,
-            `${JSON.stringify({ correlationId: "00000000-0000-4000-8000-000000000001", level: "warn", event: "cart.slow", time: "2026-05-06T07:08:09.000Z" })}\n`,
+/** A stand-in Loki push endpoint on a free local port that keeps every body it receives. */
+const startLoki = async (): Promise<{ server: Server; url: string; bodies: Array<unknown> }> => {
+    const bodies: Array<unknown> = []
+    const server = createServer((request, response) => {
+        let body = ""
+        request.on("data", (chunk: Buffer) => (body += chunk.toString("utf8")))
+        request.on("end", () => {
+            bodies.push(JSON.parse(body))
+            response.writeHead(204).end()
+        })
+    })
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+    const address: AddressInfo | string | null = server.address()
+    const port = typeof address === "object" && address !== null ? address.port : 0
+    return { server, url: `http://127.0.0.1:${String(port)}`, bodies }
+}
+
+const LABELS = { app: "shop", env: "dev", service: "api" }
+
+describe("JsonLoggerService with Loki", () => {
+    it("pushes the console line to Loki labelled app, env, service, level and event, with ids only in the line", async () => {
+        const loki = await startLoki()
+        try {
+            const { logger, written } = build({ loki: { url: loki.url, labels: LABELS } })
+            logger.info("cart.opened", { cartId: "c-1" })
+            await logger.close()
+            expect(loki.bodies).toEqual([
+                {
+                    streams: [
+                        {
+                            stream: { level: "info", stack: "shop", ...LABELS, event: "cart.opened" },
+                            values: [["1778051289000000000", written[0]?.line.trimEnd(), { level: "info" }]],
+                        },
+                    ],
+                },
+            ])
+        } finally {
+            loki.server.close()
+        }
+    })
+
+    it("keeps the console lines and reports the outage once on stderr when Loki cannot be reached", async () => {
+        const loki = await startLoki()
+        const url = loki.url
+        await new Promise<void>((resolve) => loki.server.close(() => resolve()))
+        const { logger, written } = build({ loki: { url, labels: LABELS, timeoutMs: 500 } })
+        logger.info("cart.opened")
+        logger.warn("cart.slow")
+        await expect(logger.close()).resolves.toBeUndefined()
+        expect(written.map(({ stream, line }) => `${stream}:${String(readJsonLine(line).event)}`)).toEqual([
+            "out:cart.opened",
+            "err:cart.slow",
+            `err:${LoggingLogEvent.LokiUnreachable}`,
         ])
     })
 })

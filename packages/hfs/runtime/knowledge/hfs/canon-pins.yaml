@@ -45,8 +45,8 @@ pins:
     source: packages/next-data/package.json
     why: 'the SWR data helpers of every front end (fe-stack data): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
   '@starci/grammar':
-    version: 0.61.1
-    range: '~0.61.1'
+    version: 0.61.2
+    range: '~0.61.2'
     group: starci
     install: registry
     side: fe
@@ -76,16 +76,16 @@ pins:
     source: packages/eslint-canon-fe/package.json
     why: 'the front-end ESLint canon: `loadHfs(import.meta.url)` of fe/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the fe side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; the front end has no tests (FE_NO_TESTS R97 in hfs) and no-vietnamese-in-source (R91) applies.'
   '@starci/eslint-grammar-core':
-    version: 0.60.0
-    range: '~0.60.0'
+    version: 0.61.0
+    range: '~0.61.0'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-grammar-core/package.json
     why: 'the StarCi Grammar component API lint, versioned with @starci/grammar; front ends compose this family package with the universal FE canon.'
   '@starci/eslint-grammar-offset-pop':
-    version: 0.60.0
-    range: '~0.60.0'
+    version: 0.61.0
+    range: '~0.61.0'
     group: starci
     install: registry
     side: fe
@@ -753,6 +753,16 @@ pins:
     group: framework
     side: be
     why: 'the Agent of platform/http (its one owner, R90): FetchHttpClient hands fetch a pool that trusts HttpOptions.trustedCa beside the bundled roots (a test world''s per-run fake CA); the 6 line is the undici the Node 22 runtime of the app images bundles, and its Agent also serves the fetch of Node 24; 6.29.1 is the patch of 2026-11-08 that closes GHSA-2m5v-pch6-74hx and four denial-of-service advisories of 6.29.0.'
+  winston:
+    version: 3.19.0
+    group: framework
+    side: be
+    why: 'the adapter of the Logger port of platform/logging, its one owner (R90, BE-LOGGING-1): JSON lines on stdout and stderr and the Loki transport behind one winston logger; the latest registry version on 2026-11-26.'
+  winston-loki:
+    version: 6.1.7
+    group: framework
+    side: be
+    why: 'the Loki push of platform/logging (loki-transport.adapter.ts, R90, BE-LOGGING-1): batched JSON pushes, bounded and never fatal; the latest registry version on 2026-11-26.'
   # --- lite identity (integrations/passport)
   '@nestjs/passport':
     version: 11.0.5

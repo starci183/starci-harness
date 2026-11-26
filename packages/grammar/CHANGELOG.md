@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.61.2 - 2026-11-26
+
+- Fixed (h-grammar-chat-avatars-fix, dev CI of the 0.61.0 landing): the safe-URL helpers of a link (`isSafeLink`, `isSafeImage`, `isExternalUrl`) move from `frame/Markdown/urls.ts` to `core/safeUrls.ts`, so the composite `MessageMarkdown` no longer imports from a frame (`FE_GRAMMAR_TIER_DIRECTION`); no behaviour changed. The lint family packages move to 0.61.0 with Grammar 0.61.
+
 ## 0.61.1 - 2026-11-26
 
 - Fixed (h-offset-pop-seams): every Offset Pop row seam is one 2px ink line, not only a ListRow's. Common gains the token `--grammar-seam-width` (default the hairline, so Core is unchanged); the Offset Pop root binds it to `--offset-pop-outline-width`, and the seams of a disclosure item, note, schema and kv row, schedule and Markdown table row, DataTable row, header line and mobile list row, description pair, upload row, interval row and media list row read it. The family's own `[data-grammar-row]` seam rule is gone: the token carries it. `offsetPopRuleConformance` BOUNDARY-3 and BOUNDARY-5 state the rule. No API change.

@@ -68,7 +68,7 @@ PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has n
 2. Harness lanes fork from `origin/dev` and land with `starci lane gate --push --land` exactly as an app's lanes do (PROJECT-BRANCH-2: one
    squashed commit per lane, a newer push cancels the running gate, the same status files), under the **harness profile** (`cli/src/harness/land-profile.ts`), picked when the repository is the harness checkout (cli/,
    contexts/README.md and packages/, the marker `release push` reads) or by `--profile harness`:
-   - the gate is the harness FAST gate, `starci release gate --level dev --base <dev commit>`: the install, build and typecheck of the packages the
+   - the gate is the harness FAST gate, `starci check --level dev --base <dev commit>`: the install, build and typecheck of the packages the
      batch changed and of every package that needs one of them (`release affected`, CI's plan), the CLI and the desktop app when affected, and the
      cheap checks a publish needs (built declarations name `.js` only; `bundles:check` where a package has it), then the **package tests**: the
      `npm test` of each of those packages that declares one, the same packages and the same command as CI's `package (...)` jobs on the push to
@@ -89,7 +89,7 @@ PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has n
    no committed file changes, so `dev` never holds a `-dev` pin. Then `devSync.local` names exactly those versions (exact versions, since the `local`
    dist-tag moves), a dev build whose release npm now serves is dropped from it, and every app's dev checkout of `devSync.repos` is marked for its
    debounced sync, which installs them.
-4. A release train is a `dev` -> `main` move with the FULL gate: `starci release gate --level full` on the dev tip (every package and the CLI with
+4. A release train is a `dev` -> `main` move with the FULL gate: `starci check --release` (the same as `--level full`) on the dev tip (every package and the CLI with
    lint and their test suites, then CI's light gates), `main` fast-forwarded to that commit, `starci release push --execute`, and publish.yml publishes the plain versions
    (`release publish`, never a `-dev` version). Then `starci release back-merge --execute` brings `main` back into `dev`, the cli-follow commit
    included: a fast-forward when dev is behind, else a merge commit, pushed under the harness's dev lock. `release push` of main and
@@ -101,6 +101,6 @@ PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has n
    that publishes is never cancelled.
 
 **Enforced by** the harness profile of `starci lane gate` (`cli/src/harness/land-profile.ts`, proven by
-`land-profile.test.ts`), `starci release gate` (`cli/src/core/release/gate.ts`, `gate.test.ts`), `starci deps publish-dev`
+`land-profile.test.ts`), `starci check` (`cli/src/core/release/gate.ts`, `gate.test.ts`, `check-rename.test.ts`; `starci release gate` is its deprecated spelling, which prints `renamed: use starci check [--release]` and runs the same check), `starci deps publish-dev`
 (`cli/src/core/deps/publish-dev.ts`, `publish-dev.test.ts`), `starci release back-merge` (`back-merge.test.ts`) and ci.yml. That `main` moves only by
 a train is held by review: the harness has no pre-push hook.

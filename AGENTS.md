@@ -32,7 +32,8 @@ checkout's path and the project root on explicitly.
 - Integration and e2e suites run on request only (a `starci` verb or npm script the person invokes, `npm run test:e2e`), never in CI, a
   hook or a default gate row: an agent proves a change by the typecheck and the gates its contract declares, and runs a suite only
   when asked: [contexts/project/cicd.md](contexts/project/cicd.md) "Triggers and what runs" (R12).
-- Run `starci app check` (`--env local`, the default) while you work; the pre-push hook, CI and the release gate run `--env prod`
+- Run `starci app check` (`--env local`, the default) while you work; it is the one check command. The pre-push hook, CI and the release
+  (`starci app check --release`, reusing the trusted cache) run `--env prod`
   ([contexts/project/check-cache.md](contexts/project/check-cache.md) "The operating procedure").
 - An app's branches, `main` and `dev`: [contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-1; the `dev` branch profile: [contexts/project/lint.md](contexts/project/lint.md) PROJECT-LINT-2.
 - The host environment (Windows shims, Devin's `ACP_BACKEND`, `robocopy`, PowerShell encodings):

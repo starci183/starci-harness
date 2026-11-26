@@ -4,7 +4,10 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.204 - 2026-11-26
 
+- Changed (h-check-release-rename): the harness's own check is `starci check [--release]` (`--release` = `--level full`, the train's gate; `--level dev` the FAST level `lane gate` runs); `starci release gate` is its deprecated spelling, which prints `renamed: use starci check [--release]` and runs the same check. `starci app check --release` is the app release check (`app release gate` its alias, run with the roles of `app release`).
+
 - Pre-beta: the harness CLI with lanes that gate and land themselves on dev; this train releases @starci/hfs 6.17.17, @starci/grammar 0.60.3 (sideways strips fade their end; the selected tab opens clear of the strip's fade) and @starci/gallery 0.1.29.
+- Changed (h-logging-winston-loki, ops/vps/monitor/components.yaml, PROJECT-MONITORING-2): Loki joins the monitoring network beside the internal one, so an app's `logPush` services push to `http://starci-monitor_loki:3100` with their Winston adapter; Alloy no longer collects their stdout. A running server takes it on its next `starci vps monitor up`.
 
 ## 1.1.0-alpha.203 - 2026-11-26
 

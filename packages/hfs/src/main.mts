@@ -1,5 +1,7 @@
 // The @starci/hfs implementation behind `starci app`: one repository, `<app>/`, with one package.json, lockfile and node_modules
 // at its root and two sides, be/ and fe/, declared by the one hfs.json of kind app. Every verb runs at the app root.
+//   starci app check --release [--execute] [--fresh] [--sha <ref>] [--tag-prefix <prefix>] [--backfill <tag>] [--json]: the release check (release/index.mts;
+//                                            `starci app release gate` is its deprecated spelling): every release row, the L4 record and the tag, reusing the trusted cache
 //   starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|uiaudit|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--env local|prod] [--level full|dev] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 //                                            every tracked path has a slot; required files exist; nothing forbidden or
 //                                            tracked-that-must-be-ignored; pins match; every managed file equals its render
@@ -164,7 +166,7 @@ import { linterReport, mergeReports, sonarReport, sourceRootsOf, writeReport } f
 import { stylelintFindings } from '../report/stylelint-findings.mjs';
 import { UpgradeError, upgradeMain } from '../upgrade/index.mjs';
 import { ACTIONS as STACK_ACTIONS, FLAGS as STACK_FLAGS, OPERANDS as STACK_OPERANDS, READ_ONLY as STACK_READ_ONLY, REPEAT as STACK_REPEAT, VALUE as STACK_VALUE, stackMain as deployStackMain } from '../stack/cli.mjs';
-import { RELEASE_FLAGS, releaseMain } from '../release/index.mjs';
+import { RELEASE_CHECK_FLAG, RELEASE_FLAGS, releaseCheckMain, releaseMain } from '../release/index.mjs';
 import { SPEC as DB_MIGRATE_FLAGS, dbMigrateMain } from '../db/migrate.mjs';
 import { SPEC as DB_POST_CUTOVER_FLAGS, dbPostCutoverMain } from '../db/post-cutover.mjs';
 import { SPEC as DB_DUMP_FLAGS, dbDumpMain } from '../db/dump.mjs';
@@ -196,7 +198,7 @@ import type { Presets } from '../sync/index.mjs';
 type Dynamic = any;
 
 /** The flags a verb takes, by kind. */
-interface FlagTable { boolean?: readonly string[]; value?: readonly string[]; list?: readonly string[] }
+interface FlagTable { boolean?: readonly string[]; value?: readonly string[]; list?: readonly string[]; retired?: readonly string[] }
 /** The parsed arguments of a verb: the operands and each flag by name. */
 interface Opts { positional: string[]; [flag: string]: string | boolean | string[] | undefined }
 /** A value flag as parse stores it: the string given, else undefined. */
@@ -282,8 +284,8 @@ const PLACEHOLDERS: Record<string, string> = {
 const flagUsage = (flag: string, { value = false, repeat = false, placeholders = PLACEHOLDERS }: { value?: boolean; repeat?: boolean; placeholders?: Record<string, string> } = {}): string => `[${flag}${value ? ` ${placeholders[flag] ?? `<${flag.slice(2)}>`}` : ''}]${repeat ? '...' : ''}`;
 const line = (...parts: unknown[]): string => parts.flat().filter(Boolean).join(' ');
 /** The flags of a { boolean, value, list } spec as usage text. */
-const specUsage = ({ boolean = [], value = [], list = [] }: FlagTable, placeholders: Record<string, string> = PLACEHOLDERS): string[] => [
-  ...boolean.map((flag) => flagUsage(flag)),
+const specUsage = ({ boolean = [], value = [], list = [], retired = [] }: FlagTable, placeholders: Record<string, string> = PLACEHOLDERS): string[] => [
+  ...boolean.filter((flag) => !retired.includes(flag)).map((flag) => flagUsage(flag)),
   ...value.map((flag) => flagUsage(flag, { value: true, placeholders })),
   ...list.map((flag: string) => flagUsage(flag, { value: true, repeat: true, placeholders })),
 ];
@@ -309,7 +311,7 @@ const VERB_USAGE: Record<string, string[]> = {
     'starci app stack down --env <env> [--execute] [--json]',
     'starci app stack logs --env <env> --service <name> [--lines <n>] [--json]',
   ],
-  release: Object.entries(RELEASE_FLAGS).map(([action, spec]) => line(`starci app release ${action}`, specUsage(spec))),
+  release: Object.entries(RELEASE_FLAGS).map(([action, spec]) => line(`starci app release ${action}`, specUsage(spec), action === 'gate' ? '(deprecated: starci app check --release)' : '')),
   secret: SECRET_VERBS.map((verb: string) => line(`starci app secret ${verb}`, secretUsage(verb))),
   ci: [
     ...Object.entries(CI_COMMANDS).map(([command, options]) => line(`starci app ci ${command}`, command.endsWith(' set') ? '<NAME>' : '',
@@ -322,6 +324,8 @@ const VERB_USAGE: Record<string, string[]> = {
   audit: [AUDIT_USAGE.replace(/^usage: /, '').replace(' [--cwd <dir>]', '')],
   uiaudit: ['starci app uiaudit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]', 'starci app uiaudit cycle <area>/<screen> --reason <why>', 'starci app uiaudit status [--json]'],
 };
+// The release check is a form of `check` (release/index.mts releaseCheckMain); `release gate` stays as its deprecated spelling.
+VERB_USAGE.check = [...(VERB_USAGE.check ?? []), line('starci app check --release', specUsage(RELEASE_FLAGS.gate as FlagTable))];
 export const USAGE = `${VERBS.flatMap((verb) => VERB_USAGE[verb]).join('\n')}
 every verb: [--cwd <dir>] [--quiet] [--help]
 `;
@@ -1091,6 +1095,8 @@ const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<numb
 
 function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> | number {
   if (verb === 'sync') return syncMain([verb, ...argv], io);
+  // `check --release` is the release check (formerly `release gate`): its own flags, parsed by the release verb.
+  if (verb === 'check' && argv.includes(RELEASE_CHECK_FLAG)) return releaseCheckMain(argv.filter((arg) => arg !== RELEASE_CHECK_FLAG), io);
   const direct = DIRECT_VERBS.get(verb);
   if (direct) return direct(argv, io);
   return (PARSED[verb] as ParsedVerb).run(parse(verb, argv), io);

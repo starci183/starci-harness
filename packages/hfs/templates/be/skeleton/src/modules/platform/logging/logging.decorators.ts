@@ -1,4 +1,3 @@
-import type { Writable } from "node:stream"
 import { injector, type TypedParameterDecorator } from "@modules/platform/composition"
 import type { Logger } from "./logging.port"
 import type { CorrelationIds, CorrelationRunner } from "./correlation.port"
@@ -20,17 +19,5 @@ export const InjectCorrelationIds = (): TypedParameterDecorator<CorrelationIds> 
 export const InjectCorrelationRunner = (): TypedParameterDecorator<CorrelationRunner> =>
     injector<CorrelationRunner>(CORRELATION_RUNNER)
 
-/** Token of the stream info lines go to. */
-export const LOG_OUT: unique symbol = Symbol("platform.logging.out")
-
-/** Token of the stream warn and error lines go to. */
-export const LOG_ERR: unique symbol = Symbol("platform.logging.err")
-
 /** Injects the Logger port. Parameter type: Logger. */
 export const InjectLogger = (): TypedParameterDecorator<Logger> => injector<Logger>(LOGGER)
-
-/** Injects the stream info lines go to. Parameter type: Writable. */
-export const InjectLogOut = (): TypedParameterDecorator<Writable> => injector<Writable>(LOG_OUT)
-
-/** Injects the stream warn and error lines go to. Parameter type: Writable. */
-export const InjectLogErr = (): TypedParameterDecorator<Writable> => injector<Writable>(LOG_ERR)

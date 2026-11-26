@@ -15,7 +15,7 @@ export function monitoringIssues({ environment, spec, model, doc }: { environmen
   const at = `environments.${environment}.monitoring`;
   const bad = (message: string) => ({ code: 'HFS_STACKS_SHAPE', at, message });
   if (spec?.runtime !== 'docker-swarm') return [bad('only a docker-swarm environment opts in to the shared monitoring stack; remove the block from this environment')];
-  if (!plain(block)) return [bad('the monitoring opt-in is a mapping of network, logs, metrics, probes, exporters, traces and profiles')];
+  if (!plain(block)) return [bad('the monitoring opt-in is a mapping of network, logs, logPush, metrics, probes, exporters, traces and profiles')];
   const services = plain(model?.services) ? model.services : {};
   const has = (service: string) => Object.hasOwn(services, service);
   const issues = [];
@@ -39,6 +39,6 @@ export function monitoringIssues({ environment, spec, model, doc }: { environmen
     if (block.probes.length > 10) issues.push(bad(`probes holds ${block.probes.length} URLs; at most 10`));
     for (const url of block.probes) if (!URL_FORM.test(String(url))) issues.push(bad(`probes holds ${JSON.stringify(url)}, which is no http(s) URL`));
   }
-  for (const flag of ['traces', 'profiles']) for (const service of Array.isArray(block[flag]) ? block[flag].map(String) : []) if (!has(service)) issues.push(bad(`${flag} names the service ${service}, which the rendered model does not hold`));
+  for (const flag of ['traces', 'profiles', 'logPush']) for (const service of Array.isArray(block[flag]) ? block[flag].map(String) : []) if (!has(service)) issues.push(bad(`${flag} names the service ${service}, which the rendered model does not hold`));
   return issues;
 }
