@@ -149,7 +149,7 @@ export function monitoringOf(environment: Parsed, context: { services: Set<strin
   if (block.logPush !== undefined) {
     if (!Array.isArray(block.logPush)) problems.push('logPush is a list of the services that push their own logs to Loki');
     else {
-      logPush = [...new Set(block.logPush.map(String))];
+      logPush = [...new Set<string>(block.logPush.map((service: unknown) => String(service)))];
       for (const service of logPush) if (!services.has(service)) problems.push(`logPush names the service ${service}, which the stack file does not hold`);
     }
   }
