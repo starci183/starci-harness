@@ -86,13 +86,13 @@ for (const edition of ['lite'] as const) {
 
   test(`each family admits its own code, style and theme entries beside Common's, and refuses another family's (${edition})`, context => {
     const pop = grammarContractFor('offset-pop');
-    assert.equal(pop.entry, '@starci/grammar/offset-pop');
-    assert.equal(pop.styleEntry, '@starci/grammar/offset-pop/styles.css');
-    assert.deepEqual(pop.entries, ['@starci/grammar/offset-pop', '@starci/grammar/common']);
-    assert.deepEqual(pop.styleEntries, ['@starci/grammar/offset-pop/styles.css', '@starci/grammar/common.css']);
+    assert.equal(pop.entry, '@starci/grammar/common', 'the shared entry every install must export');
+    assert.equal(pop.styleEntry, '@starci/grammar/common.css');
+    assert.deepEqual(pop.entries, ['@starci/grammar/common', '@starci/grammar/offset-pop']);
+    assert.deepEqual(pop.styleEntries, ['@starci/grammar/common.css', '@starci/grammar/offset-pop/styles.css']);
     assert.deepEqual(pop.themeEntries, ['@starci/grammar/offset-pop/theme.css']);
     const core = grammarContractFor('core');
-    assert.deepEqual(core.entries, ['@starci/grammar/core', '@starci/grammar/common']);
+    assert.deepEqual(core.entries, ['@starci/grammar/common', '@starci/grammar/core']);
     assert.deepEqual(core.themeEntries, ['@starci/grammar/core/theme.css']);
     // An Offset Pop app as packages/grammar/README.md writes it: OffsetPopGrammarRoot from the family entry, its sheet and its optional palette.
     const root = fixture(context, edition, 'offset-pop', pop, {
@@ -111,6 +111,16 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId), ['ARCH_GRAMMAR_CONTRACT_INVALID'], 'a theme never replaces a base sheet');
     fs.writeFileSync(globals, css('@starci/grammar/offset-pop/styles.css', '@starci/grammar/core/theme.css'));
     assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId).sort(), ['ARCH_GRAMMAR_CONTRACT_INVALID', 'ARCH_GRAMMAR_EXPORT_BYPASS'], "another family's palette");
+    // An install that does not export the family's own entries (an older Grammar) keeps the shared contract alone.
+    const installed = path.join(path.dirname(root), 'node_modules', '@starci', 'grammar', 'package.json');
+    const manifest = JSON.parse(fs.readFileSync(installed, 'utf8'));
+    for (const key of ['./offset-pop', './offset-pop/styles.css', './offset-pop/theme.css']) delete manifest.exports[key];
+    fs.writeFileSync(installed, JSON.stringify(manifest));
+    fs.writeFileSync(globals, css('@starci/grammar/common.css'));
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding), [], 'the shared contract alone is valid');
+    assert.deepEqual(findings('@starci/grammar/offset-pop'), ['ARCH_GRAMMAR_EXPORT_BYPASS'], 'a family entry the install does not export');
+    fs.writeFileSync(globals, css('@starci/grammar/offset-pop/styles.css'));
+    assert.deepEqual(checkGrammar(config, EMPTY_CONTEXT, sourceFinding).map(finding => finding.ruleId).sort(), ['ARCH_GRAMMAR_CONTRACT_INVALID', 'ARCH_GRAMMAR_EXPORT_BYPASS'], 'a family sheet the install does not export');
   });
 
   test(`architecture uses a selected contract's package, entries and peers without family literals (${edition})`, context => {
