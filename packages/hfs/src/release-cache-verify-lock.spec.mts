@@ -1,4 +1,4 @@
-// Spec: the release gate trusts the warm committed cache and a red nightly verify locks it.
+// Spec: the release check (`app check --release`) reuses the warm committed cache by default, and a red or unreadable nightly verify makes it run fresh.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +32,7 @@ function contextOf(t: TestContext, gh: { status: number; stdout: string; stderr?
   return { ctx: { cwd: root, spawn, now: () => 1000, env: {} } as unknown as VerbContext, asked };
 }
 
-const gate = (ctx: VerbContext, options: { full?: boolean } = {}) => {
+const gate = (ctx: VerbContext, options: { full?: boolean; fresh?: boolean } = {}) => {
   const { config } = normalizeRelease({ gates: [{ name: 'unit', command: ['unit-probe'] }] });
   return releaseGate(ctx, { ...config!, version: '1.0.0' }, { platform: 'linux', ...options });
 };
@@ -70,21 +70,40 @@ test('a cache-verify.yml the default branch does not hold yet (HTTP 404, the fir
   assert.equal(readVerifyLock(contextOf(t, { status: 1, stdout: '', stderr: 'HTTP 401: Bad credentials' }).ctx, 'main').state, 'unread');
 });
 
-test('a red nightly verify refuses the release gate before any row runs; the full gate (--full) never reads the cache and passes the lock', async (t) => {
-  const red = contextOf(t, { status: 0, stdout: JSON.stringify([run(1, 'failure', '2026-11-02T00:00:00Z')]) });
-  const locked = await gate(red.ctx);
-  assert.equal(locked.ok, false);
-  assert.equal(locked.data!.locked, true);
-  assert.match((locked.lines ?? []).join('\n'), new RegExp(`RED: ${VERIFY_LOCKED}`, 'u'));
-  const full = await gate(contextOf(t, { status: 0, stdout: JSON.stringify([run(1, 'failure', '2026-11-02T00:00:00Z')]) }).ctx, { full: true });
-  assert.equal(full.ok, true);
-  assert.match((full.lines ?? []).join('\n'), /full gate \(--full\): the app-check row runs `app check --env prod --fresh`/u);
+test('a red or unreadable nightly verify never refuses the release check: it runs fresh; a green one reuses the cache diff-only', async (t) => {
+  const redRun = run(1, 'failure', '2026-11-02T00:00:00Z');
+  const locked = await gate(contextOf(t, { status: 0, stdout: JSON.stringify([redRun]) }).ctx);
+  assert.equal(locked.ok, true, 'a red verify is no refusal');
+  assert.equal(locked.data!.locked, undefined);
+  assert.deepEqual(locked.data!.cache, { use: 'fresh', because: 'verify-locked', verify: lockOf([redRun]).line });
+  const text = (locked.lines ?? []).join('\n');
+  assert.ok(text.includes(`fresh, the committed cache is not trusted: ${VERIFY_LOCKED}: `), text);
+  assert.match(text, /the app-check row runs `app check --env prod --fresh`/u);
+  assert.doesNotMatch(text, /RED:/u);
+  const unread = await gate(contextOf(t, 'throw').ctx);
+  assert.equal(unread.ok, true);
+  assert.equal((unread.data!.cache as { because: string }).because, 'verify-unread');
   const green = await gate(contextOf(t, { status: 0, stdout: JSON.stringify([run(2, 'success', '2026-11-03T00:00:00Z')]) }).ctx);
   assert.equal(green.ok, true);
+  assert.equal((green.data!.cache as { use: string }).use, 'diff');
   assert.match((green.lines ?? []).join('\n'), /diff-only against the committed cache; cache verify {3}green/u);
 });
 
-test('every gate row reads the warm cache by default, and only the full gate runs the app-check row as --fresh', () => {
+test('--fresh reads no verify and runs fresh; --full no longer means fresh: it changes nothing and says so', async (t) => {
+  const greenRuns = { status: 0, stdout: JSON.stringify([run(2, 'success', '2026-11-03T00:00:00Z')]) };
+  const asked = contextOf(t, greenRuns);
+  const fresh = await gate(asked.ctx, { fresh: true });
+  assert.equal(fresh.ok, true);
+  assert.deepEqual(asked.asked, [], 'an explicit --fresh asks gh nothing');
+  assert.deepEqual(fresh.data!.cache, { use: 'fresh', because: 'asked', verify: null });
+  assert.match((fresh.lines ?? []).join('\n'), /fresh \(--fresh\): the app-check row runs `app check --env prod --fresh`/u);
+  const full = await gate(contextOf(t, greenRuns).ctx, { full: true });
+  assert.equal(full.ok, true);
+  assert.equal((full.data!.cache as { use: string }).use, 'diff', '--full alone reuses the trusted cache');
+  assert.match((full.lines ?? []).join('\n'), /--full changes nothing: the release check always runs every row, and it no longer means --fresh/u);
+});
+
+test('every gate row reads the warm cache by default, and only a fresh run gives the app-check row --fresh', () => {
   const check = [...APP_CHECK_COMMAND];
   assert.deepEqual(check.slice(-2), ['--env', 'prod'], 'the release gate judges as prod');
   assert.deepEqual(rowCommand(check, false), check);

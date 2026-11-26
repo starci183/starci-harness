@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 6.17.17 - 2026-11-26
 
+- Changed (h-check-release-rename): the release check is `starci app check --release` (the rows `app release gate` ran); `starci app release gate` is its deprecated spelling, which prints `renamed: use starci app check --release` and runs the same check. The release reuses the committed check cache by default, trusted while the newest `cache-verify.yml` of the default branch or of the release sha is green (or none has run); a red or unreadable verify (`HFS_CHECK_CACHE_VERIFY_LOCKED`) now runs the `app-check` row `--fresh` instead of refusing. `--fresh` is the explicit fresh run; `--full` no longer means fresh (accepted, it changes nothing and says so). The L4 record keeps the cache use (`cache: { use, because, verify }`).
 - Added (h-logging-enforce, R40 `BE_LOGGER_REQUIRED`, `rules/log-push.mts`): an app whose `.starcistacks/application-stacks.yaml` declares `monitoring.logPush` in any environment and whose `be/src/modules/platform/logging` imports no `winston-loki` is refused, since those services no longer have their stdout collected.
 - The canon pins name @starci/grammar 0.60.3 and @starci/gallery 0.1.29.
 - Fixed (h-starciwork-prompts, `templates/app/starciwork.gitignore`): the managed `.starciwork/.gitignore` admits `prompts/`, the slot h-work-prompts declared for an app's own authoring prompts (`.starciwork/prompts/**/*.md`). It still refused the folder, so the commit hook rejected every prompt file with HFS_WORK_AGENT_DATA while `app check` admitted it.
