@@ -1,4 +1,4 @@
-// scaffold-template-canon-fe.spec.mts - every front-end file `starci app scaffold` writes passes the universal front-end canon.
+// scaffold-template-canon-fe.spec.mts - every front-end file `starci app scaffold` writes passes the universal front-end canon and the starter's Grammar family lint.
 // The fe skeleton is not sync-managed, so a new app keeps whatever the templates render: a template the canon refuses is a
 // defect every new app inherits. Each edition is scaffolded into a temp folder and its fe sources are linted, typed, with the
 // config of @starci/eslint-canon-fe as the rendered fe/eslint.config.mjs builds it (shippedCanon) (the sibling package's source): its starci-fe laws and
@@ -29,6 +29,14 @@ const lockedOk = (root: string): LockResult => {
  */
 const TYPE_GRAPH_RULES = new Set(['@typescript-eslint/no-unsafe-assignment', '@typescript-eslint/no-unsafe-member-access', '@typescript-eslint/no-unsafe-call', '@typescript-eslint/no-unsafe-return', '@typescript-eslint/no-unsafe-argument']);
 
+/**
+ * The core family's lint factory, loaded from the sibling package's source at run time: a static import would pull that package's sources into
+ * this package's typecheck, against this package's own vendor types.
+ */
+type GrammarFactory = (input: { readonly hfs: unknown }) => Linter.Config[];
+const coreGrammarConfig = async (): Promise<GrammarFactory> =>
+  ((await import(pathToFileURL(path.resolve(import.meta.dirname, '..', '..', 'eslint-grammar-core', 'src', 'index.ts')).href)) as { coreGrammarConfig: GrammarFactory }).coreGrammarConfig;
+
 /** The canon's flat config as the rendered fe/eslint.config.mjs builds it, all of it but TYPE_GRAPH_RULES. */
 const shippedCanon = (config: Linter.Config[]): Linter.Config[] => config.map((block) => (block.rules === undefined ? block : {
   ...block, rules: Object.fromEntries(Object.entries(block.rules).filter(([id]) => !TYPE_GRAPH_RULES.has(id))),
@@ -40,7 +48,12 @@ for (const edition of ['lite'] as const) {
       presets: bundledPresets(), lock: lockedOk, initGit: init });
     gitAdd(installTypeScript(root));
     const fe = path.join(root, 'fe');
-    const config = shippedCanon(starciFeConfig({ hfs: loadHfs(pathToFileURL(path.join(fe, 'eslint.config.mjs'))) }));
+    const hfs = loadHfs(pathToFileURL(path.join(fe, 'eslint.config.mjs')));
+    // The rendered fe/eslint.config.mjs composes the canon AND the selected family's Grammar lint (the starter selects core): a template the
+    // family refuses (a Page header with no breadcrumbs, a Form inside a Section) is as red in a new app as a canon finding.
+    assert.equal(hfs.grammar, 'core');
+    const config = shippedCanon([...starciFeConfig({ hfs }), ...(await coreGrammarConfig())({ hfs })]);
+    assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-grammar/page-breadcrumbs')), 'the Grammar family rules are on');
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).includes('starci-fe/base-props-atom')), 'the canon rules are on');
     assert.ok(config.some((block) => Object.keys(block.rules ?? {}).some((id) => id.startsWith('@typescript-eslint/'))), 'the borrowed rules are on');
     const eslint = new ESLint({ cwd: fe, overrideConfigFile: true, overrideConfig: config, errorOnUnmatchedPattern: false });

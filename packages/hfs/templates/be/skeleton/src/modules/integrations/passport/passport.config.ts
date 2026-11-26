@@ -38,7 +38,10 @@ export const parsePassportConfig = (env: EnvSource): PassportOptions => ({
     bcryptCost: env.int("AUTH_BCRYPT_COST", BCRYPT_COST),
     returnOrigin: new URL(env.url("AUTH_WEB_ORIGIN")).origin,
     google: readGoogle(env),
-    cookie: { name: env.optionalCookieName("AUTH_COOKIE_NAME") ?? REFRESH_COOKIE_NAME, domain: env.optionalDomain("AUTH_COOKIE_DOMAIN") },
+    cookie: {
+        name: env.optionalCookieName("AUTH_COOKIE_NAME") ?? REFRESH_COOKIE_NAME,
+        domain: env.optionalDomain("AUTH_COOKIE_DOMAIN"),
+    },
     budget: {
         loginAttempts: env.int("AUTH_LOGIN_ATTEMPTS", LOGIN_ATTEMPTS),
         resetAttempts: env.int("AUTH_RESET_ATTEMPTS", RESET_ATTEMPTS),

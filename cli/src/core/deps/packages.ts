@@ -6,7 +6,8 @@ import { installSatisfies } from "../../harness/install-cache.js"
 import { inOrder } from "../../harness/sequential.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
-import type { RunOptions } from "../../shared/exec.js"
+import type { RunOptions, ToolRun } from "../../shared/exec.js"
+import { redactSecrets } from "../../shared/secrets.js"
 import { withHeavySlot } from "../../harness/heavy.js"
 import { installHazard } from "../../harness/install-guard.js"
 import { git, nulPaths } from "../../shared/git.js"
@@ -301,9 +302,51 @@ export const buildPackage = async (pkg: LocalPackage): Promise<void> => {
     if (build.exitCode !== 0) throw new Refusal("DEPS_BUILD_FAILED", `npm run build in ${pkg.folder} failed:\n${tail(build.stdout, build.stderr)}`)
 }
 
-/** An npm run in the app root under the heavy governor, refusing DEPS_INSTALL_FAILED with its output when npm fails;. */
+/** An npm run in the app root under the heavy governor, refusing DEPS_INSTALL_FAILED with how it ended and why (`npmFailure`) when npm fails. */
 export const appNpm = async (root: string, args: readonly string[], label: string): Promise<void> => {
     unlinkedInstallOptions(root)
     const run = await withHeavySlot("install", label, root, {}, (held) => captureNpm(args, root, unlinkedInstallOptions(root, held.options)))
-    if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", `${label} in ${root} failed:\n${tail(run.stdout, run.stderr)}`)
+    if (run.exitCode !== 0) throw new Refusal("DEPS_INSTALL_FAILED", npmFailure(label, root, run))
+}
+
+/** The line npm prints with the path of its debug log. */
+const NPM_LOG = /complete log of this run can be found in:?\s*(\S.*?)\s*$/mu
+
+/** A line that says why an npm run failed: npm's own error lines (`npm error code ENOSPC`, `npm ERR! errno -4048`) or a thrown error's first line. */
+const NPM_CAUSE = /^npm (?:error|ERR!) (?!A complete log)\S|^\s*(?:\w*Error|Error \[ERR_\w+\])[:\s]|\b(?:ENOSPC|ENOMEM|EPERM|EBUSY|ENOTEMPTY|EACCES|ETIMEDOUT|ECONNREFUSED|ECONNRESET|E404|E401|E403)\b/u
+
+/** The last lines of npm's debug log named in its output that say an error, else its last lines; empty when none is named or it cannot be read. */
+const npmLogTail = (output: string, read: (file: string) => string | undefined): { readonly file: string; readonly lines: readonly string[] } | undefined => {
+    const file = NPM_LOG.exec(output)?.[1]
+    if (file === undefined) return undefined
+    const text = read(file)
+    if (text === undefined) return undefined
+    const lines = text.split(/\r?\n/u).filter((line) => line.trim() !== "")
+    const errors = lines.filter((line) => /\b(?:error|ERR!)\b/u.test(line))
+    return { file, lines: (errors.length > 0 ? errors : lines).slice(-12) }
+}
+
+const readIfThere = (file: string): string | undefined => {
+    try {
+        return readFileSync(file, "utf8")
+    } catch {
+        return undefined
+    }
+}
+
+/**
+ * The refusal text of a failed npm run. Its first line says how it ended and why, since a status or a runner log keeps only that line: the exit code, a kill
+ * past its time budget (heavy.timeoutMinutes of ops/liveness.yaml), the first line of its output that names a cause, or that it printed nothing (killed from
+ * outside, out of memory). Then the tail of its output and of npm's debug log when its output names one. Every value a secret rule recognises is redacted.
+ */
+export const npmFailure = (label: string, root: string, run: Pick<ToolRun, "exitCode" | "stdout" | "stderr" | "timedOut">, read: (file: string) => string | undefined = readIfThere): string => {
+    const output = `${run.stdout}\n${run.stderr}`
+    const shown = tail(run.stdout, run.stderr).trim()
+    const cause = output.split(/\r?\n/u).map((line) => line.trim()).find((line) => NPM_CAUSE.test(line))
+    const why = run.timedOut
+        ? "killed past its time budget (heavy.timeoutMinutes of ops/liveness.yaml), its process tree ended"
+        : (cause ?? (shown === "" ? "npm printed nothing (ended from outside, or out of memory)" : (shown.split("\n").at(-1) ?? "")))
+    const log = npmLogTail(output, read)
+    const lines = [`${label} in ${root} exited ${String(run.exitCode)}: ${why.slice(0, 300)}`, ...(shown === "" ? [] : [shown]), ...(log === undefined ? [] : [`npm's log ${log.file}:`, ...log.lines])]
+    return redactSecrets(lines.join("\n"))
 }

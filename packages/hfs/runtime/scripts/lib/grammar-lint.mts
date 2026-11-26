@@ -4,8 +4,25 @@ import { parseYamlCached } from './yaml-cached.mjs';
 
 const CATALOG_FILE = new URL('../../knowledge/grammars/index.yaml', import.meta.url);
 
-/** The component/export contract of a Grammar family. */
-export interface GrammarComponentContract { package: string; entry: string; styleEntry: string; peers: readonly string[]; semanticRoles?: unknown }
+/**
+ * The component/export contract of a Grammar family. `entry` and `styleEntry` are the shared contract's (`@starci/grammar/common`,
+ * `common.css`): every install must export them. `entries` are every code entry the family admits, the shared one first, then the family's own
+ * (`familyEntries` of its catalog entry: `@starci/grammar/offset-pop`, which re-exports Common); `styleEntries` every base stylesheet (each family
+ * sheet imports the shared anatomy first, so one of them is enough); `themeEntries` the optional default palettes a stylesheet may import beside
+ * a base one. A family's own entry is admitted only where the install a source resolves exports it.
+ */
+export interface GrammarComponentContract {
+  package: string;
+  entry: string;
+  styleEntry: string;
+  entries: readonly string[];
+  styleEntries: readonly string[];
+  themeEntries: readonly string[];
+  peers: readonly string[];
+  semanticRoles?: unknown;
+}
+/** A family's own public entries over the shared contract (`familyEntries` in knowledge/grammars/index.yaml). */
+export interface GrammarFamilyEntries { entry?: unknown; styleEntry?: unknown; themeEntries?: unknown }
 /** The lint contract a family declares; a null package means the family has no rules. */
 export interface GrammarLintDeclaration { package?: string | null; factory?: unknown; prefix?: unknown }
 /** One family entry of knowledge/grammars/index.yaml. */
@@ -14,6 +31,7 @@ export interface GrammarFamilyEntry {
   contractRef?: string;
   lint?: GrammarLintDeclaration;
   componentContract?: Partial<GrammarComponentContract> | null;
+  familyEntries?: GrammarFamilyEntries | null;
   [key: string]: unknown;
 }
 /** The family catalog document. */
@@ -61,7 +79,13 @@ export function grammarLintFor(family: unknown): Readonly<{ family: string; pack
   return Object.freeze({ family: selected.id, package: lint.package, factory: lint.factory, prefix: lint.prefix });
 }
 
-/** The selected family's shared component/export contract, resolved through its catalog reference. */
+/** The lint package of every catalog family that declares one, sorted: the packages one family's selection swaps between. */
+export function grammarLintPackages(): readonly string[] {
+  const names = (readCatalog().families ?? []).map(entry => entry.lint?.package).filter((name): name is string => typeof name === 'string' && name.startsWith('@starci/eslint-grammar-'));
+  return Object.freeze([...new Set(names)].sort());
+}
+
+/** The selected family's component/export contract: the shared contract it references, with the family's own entries over it. */
 export function grammarContractFor(family: unknown): Readonly<GrammarComponentContract> {
   const { catalog, selected } = selectedFamily(family);
   const owners = (catalog.families ?? []).filter(entry => entry.id === selected.contractRef);
@@ -72,5 +96,24 @@ export function grammarContractFor(family: unknown): Readonly<GrammarComponentCo
     || !Array.isArray(contract.peers) || !contract.peers.every(peer => typeof peer === 'string' && peer.trim())) {
     throw new Error(`Grammar family ${family} has no valid component contract in knowledge/grammars/index.yaml`);
   }
-  return Object.freeze({ ...(contract as GrammarComponentContract), peers: Object.freeze([...contract.peers]) });
+  const own = familyEntriesOf(selected, contract.package, family);
+  return Object.freeze({
+    ...(contract as GrammarComponentContract),
+    entries: Object.freeze([...new Set([contract.entry, ...(own ? [own.entry] : [])])]),
+    styleEntries: Object.freeze([...new Set([contract.styleEntry, ...(own ? [own.styleEntry] : [])])]),
+    themeEntries: Object.freeze([...(own?.themeEntries ?? [])]),
+    peers: Object.freeze([...contract.peers]),
+  });
+}
+
+/** The family's own entries, each a subpath of the shared package; undefined when the family declares none (it uses the shared entries alone). */
+function familyEntriesOf(selected: GrammarFamilyEntry, packageName: string, family: unknown): { entry: string; styleEntry: string; themeEntries: string[] } | undefined {
+  const own = selected.familyEntries;
+  if (own === undefined || own === null) return undefined;
+  const subpath = (value: unknown): value is string => typeof value === 'string' && value.startsWith(`${packageName}/`);
+  const themes = own.themeEntries ?? [];
+  if (!subpath(own.entry) || !subpath(own.styleEntry) || !Array.isArray(themes) || !themes.every(subpath)) {
+    throw new Error(`Grammar family ${family} has invalid familyEntries in knowledge/grammars/index.yaml`);
+  }
+  return { entry: own.entry, styleEntry: own.styleEntry, themeEntries: [...themes] };
 }

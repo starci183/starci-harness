@@ -1,4 +1,4 @@
-import { existsSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureTool } from "../../shared/exec.js"
@@ -15,7 +15,7 @@ import type { InstallRecord } from "../deps/install-local.js"
 import { PORT } from "../deps/local-registry.js"
 import { appNpm, assertNpm, tail } from "../deps/packages.js"
 import { syncLockFile, withSyncLock } from "./sync-lock.js"
-import { smokeInstall, smokeLine } from "./smoke.js"
+import { lockfileGaps, repairable, smokeInstall, smokeLine } from "./smoke.js"
 import type { SmokeFailure } from "./smoke.js"
 import { installPlaces, installWithCopyAside, leftAside, realInstallFs, restoreLeftAside } from "./safe-install.js"
 import type { InstallFs } from "./safe-install.js"
@@ -204,7 +204,8 @@ export const overlayLine = (overlay: readonly string[]): string =>
  * migrate step and its receipt; a failure refuses DEV_SYNC_MIGRATE and restarts nothing new); and restart the changed side of the running dev stack (`app stack restart`, which
  * builds and serves the built artifact). Before anything writes node_modules, the dev stack processes the checkout's local state records
  * are ended and seen gone (a process that loaded a file of node_modules makes npm fail halfway on Windows); a stop that fails refuses
- * DEV_SYNC_STOP before anything moved. The install runs with the old node_modules moved aside and put back on failure (safe-install.ts),
+ * DEV_SYNC_STOP before anything moved. The install runs with the old node_modules moved aside and put back on failure (safe-install.ts), and a
+ * failed install (or a refused swap) keeps the checkout on its previous commit with its previous overlay, so the pins always name what node_modules holds,
  * and the stopped processes are restarted after it with the changed ones, or alone when the install or the build failed. Dry until `execute`: the dry run fetches and prints the plan.
  */
 export const devSync = async (request: DevSyncRequest, deps: DevSyncDeps = realDevSyncDeps): Promise<{ readonly data: DevSyncData; readonly message: string; readonly exitCode?: number }> => {
@@ -242,17 +243,18 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     const files = from === to ? [] : (await git(root, ["diff", "--name-only", from, to])).split("\n").filter((file) => file !== "")
     const named = request.local.map(parseRequested)
     const aside = leftAside(root, deps.fs)
+    const unswappedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNSWAPPED])).out
+    const unswapped = unswappedMark !== "" && existsSync(unswappedMark)
     // The overlay this sync asks for is the one already installed (same name@version each, no committed pin or lockfile moved, a whole
-    // node_modules in place): nothing is restored, reinstalled or restarted for it, so the web the owner has open keeps running.
-    const keepsOverlay = overlayBefore.length > 0 && sameOverlay(named, overlayBefore) && !files.some((file) => ownFiles.includes(file)) && aside.length === 0 && existsSync(join(root, "node_modules"))
+    // node_modules in place that no failed swap left behind): nothing is restored, reinstalled or restarted for it, so the web the owner has open keeps
+    // running. Any sync that installs node_modules again installs the overlay with it, so the pins never name versions node_modules does not hold.
+    const keepsOverlay = overlayBefore.length > 0 && sameOverlay(named, overlayBefore) && !files.some((file) => ownFiles.includes(file)) && aside.length === 0 && !unswapped && existsSync(join(root, "node_modules"))
     const requested = keepsOverlay ? [] : named
     const overlayChanged = !keepsOverlay && (overlayBefore.length > 0 || requested.length > 0)
     // A tree the last sync could not build or migrate is built and restarted again whole, though the checkout has not moved since.
     const unprepared = existsSync(join(root, UNPREPARED))
     const unmigratedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNMIGRATED])).out
     const unmigrated = unmigratedMark !== "" && existsSync(unmigratedMark)
-    const unswappedMark = (await gitOk(root, ["rev-parse", "--path-format=absolute", "--git-path", UNSWAPPED])).out
-    const unswapped = unswappedMark !== "" && existsSync(unswappedMark)
     const sides = changedSides([...files, ...(overlayChanged || unprepared || unmigrated || unswapped ? [LOCKFILE] : [])])
     // The processes the app declares for this environment (core/dev/declared.ts), not names the settings assumed.
     const processes = processesFor(sides, processesOfApp(request.processes, declaredProcesses(root, request.env)))
@@ -301,10 +303,22 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
         }
         const failed = await deps.prepare(staging)
         if (failed !== undefined) throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in the staged tree of ${to.slice(0, 9)} (${staging}): nothing was stopped and nothing moved, the stack keeps serving the previous build; fix it on a lane and sync again:\n${failed.output}`)
-        staged = { staging, outputs: await stage.outputs(staging), tracked: await stage.tracked(staging) }
+        // The staged install is smoke-checked where it was made, before anything stops: a miss npm ci can repair is not swapped in. A miss the lockfile itself
+        // makes (a gap) is the same in every install of that lockfile, staged or in place, so it is said once and judged no install's fault.
+        const stagedSmoke = deps.smoke?.(staging) ?? []
+        sayGaps(lockfileGaps(stagedSmoke), say)
+        const stagedMiss = repairable(stagedSmoke)
+        if (stagedMiss.length > 0) throw new Refusal("DEV_SYNC_SMOKE", `the staged install of ${to.slice(0, 9)} does not resolve (${smokeLine(stagedMiss)}) in ${staging}: nothing was stopped and nothing moved, the stack keeps serving the previous build on ${from.slice(0, 9)}; the next sync stages it again from a clean npm ci`)
+        // The manifests and lockfiles swapped in are the staging tree's: every one its install changed and every one the previous overlay had changed, so the
+        // checkout's pins and lockfiles name exactly what the swapped node_modules holds, with the overlay or without it.
+        const tracked = await stage.tracked(staging)
+        staged = { staging, outputs: await stage.outputs(staging), tracked: [...new Set([...tracked, ...ownFiles.filter((file) => existsSync(join(staging, file)))])].toSorted((left, right) => (left < right ? -1 : left > right ? 1 : 0)) }
         say(`staged build ready: ${String(staged.outputs.length)} built path(s) to swap in`)
     }
     const stopped = writesModules ? await stopBeforeInstall(root, request.env, deps, say) : []
+    // The previous overlay as it stands (its manifests, its lockfiles and its record), taken before the committed pins come back for the fast-forward: an
+    // install that fails before the new node_modules is in place puts the checkout back on its commit with these, so they match the install put back.
+    const previous = record === undefined || keepsOverlay ? undefined : { record, files: ownFiles.map((file) => ({ file, text: readText(join(root, file)) })) }
     if (keepsOverlay) say(`the local overlay is already installed (${overlayBefore.join(", ")}): nothing restored, reinstalled or restarted for it`)
     else if (record !== undefined) {
         const restored = await gitOk(root, ["checkout", "--", ...ownFiles])
@@ -328,15 +342,40 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
         for (const line of `${run.stdout}\n${run.stderr}`.split("\n").map((one) => one.trimEnd()).filter((one) => one !== "")) say(`  ${line}`)
         return run.exitCode === 0
     }
+    /**
+     * An install that failed with the previous node_modules put back whole keeps the previous commit: the checkout goes back to `from` and the previous
+     * overlay's manifests, lockfiles and record come back, so the stopped processes restart on the code, pins and install that belong together and nothing
+     * runs new code on an old install. Returns the refusal to throw; when the checkout cannot go back, it marks the checkout so the next sync installs whole.
+     */
+    const keepPrevious = async (error: unknown): Promise<Refusal> => {
+        const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "DEV_SYNC_INSTALL"
+        const text = error instanceof Error ? error.message : String(error)
+        const head = await resolveSha(root, "HEAD")
+        const back = head === from ? { ok: true, err: "" } : await gitOk(root, detached ? ["checkout", "--quiet", "--detach", from] : ["reset", "--quiet", "--keep", from])
+        if (!back.ok) {
+            if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}\n`)
+            say(`the checkout could not go back to ${from.slice(0, 9)} (${back.err}): it stays on ${to.slice(0, 9)} with the previous install, marked so the next sync installs whole`)
+            return new Refusal(code, text)
+        }
+        if (previous !== undefined) {
+            for (const { file, text: content } of previous.files) {
+                if (content === undefined) rmSync(join(root, file), { force: true })
+                else writeFileSync(join(root, file), content)
+            }
+            writeInstallRecord(root, previous.record)
+        }
+        const kept = `the install failed, so ${root} stays on ${from.slice(0, 9)} with the install it had${previous === undefined ? "" : ` and its overlay ${overlayBefore.join(", ")}`} (nothing runs new code on an old install; the next sync tries ${to.slice(0, 9)} again)`
+        say(kept)
+        return new Refusal(code, `${kept}: ${text}`)
+    }
     try {
         if (stage !== undefined && staged !== undefined) {
             let swapped: Swapped
             try {
                 swapped = await stage.swap(staged.staging, root, staged.outputs, staged.tracked)
             } catch (error) {
-                // Every move was put back, but the checkout is on the new commit with the old install: the next sync redoes it whole.
-                if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}\n`)
-                throw error
+                // Every move was put back: the checkout keeps its previous commit with that install.
+                throw await keepPrevious(error)
             }
             if (requested.length > 0) {
                 const record = readInstallRecord(staged.staging)
@@ -349,11 +388,18 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
         if (stage !== undefined && staged !== undefined) {
             // The swapped install must load: a package that does not resolve (a nested `picocolors` of `postcss`, say) is not left for the web's first
             // request. A clean `npm ci` in place, with the overlay and the prepare scripts, replaces it, and the restart below runs on that.
-            const broken = deps.smoke?.(root) ?? []
+            const broken = repairable(deps.smoke?.(root) ?? [])
             if (broken.length > 0) {
-                say(`the swapped install does not resolve (${smokeLine(broken)}): a clean npm ci in place replaces it`)
+                say(`the swapped install does not resolve (${smokeLine(broken)}) though the staged one did: a clean npm ci in place replaces it`)
                 if (unswappedMark !== "") writeFileSync(unswappedMark, `${to}\n`)
-                await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
+                try {
+                    await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
+                } catch (error) {
+                    // The install put back is the staged one of this very commit (its pins and lockfiles were swapped in with it), not an older one; the
+                    // mark makes the next sync install whole.
+                    say(`the clean install failed: the swapped install of ${to.slice(0, 9)} is back in place with its own pins, and the stopped processes restart on it`)
+                    throw error
+                }
                 say("npm ci: done in place")
                 if (requested.length > 0) {
                     const installed = await installLocal(root, requested, PORT, true)
@@ -364,7 +410,7 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
                     writeFileSync(join(root, UNPREPARED), `${to}\n`)
                     throw new Refusal("DEV_SYNC_BUILD", `${failed.command} exited ${String(failed.exitCode)} in ${root} after the clean install of ${to.slice(0, 9)}: the workspace packages are not built; fix it on a lane and sync again`)
                 }
-                const still = deps.smoke?.(root) ?? []
+                const still = repairable(deps.smoke?.(root) ?? [])
                 say(still.length === 0 ? "the clean install resolves" : `the clean install still lacks ${smokeLine(still)}: continuing on what npm ci made`)
             }
         }
@@ -372,7 +418,13 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
         if (restored.length > 0) say(`moved back the copy an earlier sync left aside: ${restored.join(", ")}`)
         if (stage !== undefined) say("npm ci: done in the staged tree")
         else if (needInstall) {
-            await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
+            try {
+                await installWithCopyAside(root, () => deps.npmCi(root), say, deps.fs, deps.pause)
+            } catch (error) {
+                // A copy that could not be moved back (DEV_SYNC_INSTALL) leaves no whole install to go back to; any other failure put the previous one back.
+                if (typeof error === "object" && error !== null && "code" in error && error.code === "DEV_SYNC_INSTALL") throw error
+                throw await keepPrevious(error)
+            }
             say("npm ci: done")
         } else say("npm ci: the lockfile did not change, skipped")
         if (requested.length > 0 && stage === undefined) {
@@ -423,6 +475,14 @@ const devSyncLocked = async (request: DevSyncRequest, deps: DevSyncDeps, root: s
     say(overlayLine(overlay))
     if (!ok) return { data: { ...done, restarted: [], restart: "failed" }, message: lines.join("\n"), exitCode: 1 }
     return { data: { ...done, restarted: restart, restart: "done" }, message: lines.join("\n") }
+}
+
+/** A file's text; undefined when it does not exist. */
+const readText = (file: string): string | undefined => (existsSync(file) ? readFileSync(file, "utf8") : undefined)
+
+/** Says the misses the lockfile itself makes, once: every npm ci of it reproduces them, so they are the lockfile's to fix on a lane, not the install's. */
+const sayGaps = (gaps: readonly SmokeFailure[], say: (line: string) => void): void => {
+    if (gaps.length > 0) say(`package-lock.json itself installs no ${smokeLine(gaps)}: every npm ci of it, staged or in place, reproduces that, so no reinstall is tried for it; fix the lockfile on a lane`)
 }
 
 /**

@@ -184,20 +184,38 @@ function extStylesheetAllowed(grammar: GrammarContext, consumers: GrammarConsume
   return judged.length > 0 && judged.every(install => grammarExport(install.packageManifest, grammar.package, specifier));
 }
 
+/**
+ * A stylesheet of the selected family's own (its base sheet `<package>/<family>/styles.css` or its optional palette `theme.css`) that the
+ * Grammar install the source resolves declares as a safe package export; judged like a core-ext stylesheet. `themes` admits the palettes too.
+ */
+function familyStylesheetAllowed(grammar: GrammarContext, consumers: GrammarConsumer[], installs: GrammarConsumer[], sourceFile: string, specifier: string, themes: boolean): boolean {
+  if (specifier === grammar.styleEntry || !(grammar.styleEntries.includes(specifier) || (themes && grammar.themeEntries.includes(specifier)))) return false;
+  const owner = grammarOwner(consumers, sourceFile);
+  const judged = owner ? [owner] : installs;
+  return judged.length > 0 && judged.every(install => grammarExport(install.packageManifest, grammar.package, specifier));
+}
+
 function addGrammarStyleProblems(config: ArchitectureConfig, grammar: GrammarContext, consumers: GrammarConsumer[], installs: GrammarConsumer[], problems: string[], styleBypasses: ArchitectureViolation[]): void {
   for (const source of grammar.styleSources) {
     const sourceFile = path.join(config.root, ...source.split('/'));
     const content = fs.readFileSync(sourceFile, 'utf8');
     const grammarStyles = cssImports(content).filter(item => item.specifier === grammar.package || item.specifier.startsWith(`${grammar.package}/`));
-    if (!grammarStyles.some(item => item.specifier === grammar.styleEntry)) problems.push(`${source} does not import ${grammar.styleEntry}`);
+    const base = (specifier: string): boolean => specifier === grammar.styleEntry || familyStylesheetAllowed(grammar, consumers, installs, sourceFile, specifier, false);
+    if (!grammarStyles.some(item => base(item.specifier))) problems.push(`${source} does not import ${grammar.styleEntries.join(' or ')}`);
     for (const imported of grammarStyles) {
-      if (imported.specifier === grammar.styleEntry || extStylesheetAllowed(grammar, consumers, installs, sourceFile, imported.specifier)) continue;
-      problems.push(`${source} imports Grammar style ${imported.specifier} outside the selected style entry and the declared core-ext stylesheets`);
+      if (imported.specifier === grammar.styleEntry || familyStylesheetAllowed(grammar, consumers, installs, sourceFile, imported.specifier, true)
+        || extStylesheetAllowed(grammar, consumers, installs, sourceFile, imported.specifier)) continue;
+      problems.push(`${source} imports Grammar style ${imported.specifier} outside the selected style entries, the family theme and the declared core-ext stylesheets`);
       styleBypasses.push({ ruleId: 'ARCH_GRAMMAR_EXPORT_BYPASS', path: source,
         line: content.slice(0, imported.index).split(/\r?\n/u).length, column: 1, package: grammar.package, specifier: imported.specifier,
-        message: `Style source must use the selected Grammar style entry ${grammar.styleEntry}, beside which only a core-ext stylesheet (${grammar.package}/core/ext/<name>.css) the installed Grammar exports may be imported; ${imported.specifier} is outside that contract.` });
+        message: `Style source must use a selected Grammar style entry (${styleContract(grammar)}), beside which only a core-ext stylesheet (${grammar.package}/core/ext/<name>.css) the installed Grammar exports may be imported; ${imported.specifier} is outside that contract.` });
     }
   }
+}
+
+/** The style entries a message names: the base sheets, then the optional family theme. */
+function styleContract(grammar: GrammarContext): string {
+  return [...grammar.styleEntries, ...grammar.themeEntries.map(entry => `${entry} (optional)`)].join(', ');
 }
 
 function grammarOwner(consumers: GrammarConsumer[], fileName: string): GrammarConsumer | null {
@@ -211,8 +229,11 @@ function sourceEdges(context: TypeContext, sourceFile: SourceFile): Map<number, 
 
 function grammarReferenceAllowed(reference: LiteralModule, sourceFile: SourceFile, owner: GrammarConsumer, edgesByStart: Map<number, ImportEdge>, grammar: GrammarContext, allowed: Set<string>): boolean {
   // Beside the selected entries, a core-ext code entry the install this source resolves declares as a safe export.
-  const extEntry = coreExtEntry(grammar.package, reference.specifier) && grammarExport(owner.packageManifest, grammar.package, reference.specifier);
-  if (!allowed.has(reference.specifier) && !extEntry) return false;
+  // Beside them, the family's own code entry (`@starci/grammar/<family>`) where that install exports it.
+  const exported = grammarExport(owner.packageManifest, grammar.package, reference.specifier);
+  const extEntry = coreExtEntry(grammar.package, reference.specifier) && exported;
+  const familyEntry = grammar.entries.includes(reference.specifier) && exported;
+  if (!allowed.has(reference.specifier) && !extEntry && !familyEntry) return false;
   const edge = edgesByStart.get(reference.node.getStart(sourceFile));
   const expected = grammarExportTargets(owner.packageManifest, owner.packageRoot, grammar.package, reference.specifier);
   return !edge || expected.includes(canonical(edge.to));
@@ -223,7 +244,7 @@ function reportGrammarReference(scan: GrammarScan, sourceFile: SourceFile, refer
   if (!sameOrUnder(reference.specifier, grammar.package)) return;
   if (grammarReferenceAllowed(reference, sourceFile, owner, edgesByStart, grammar, allowed)) return;
   violations.push(makeViolation(config, sourceFile, reference.node, 'ARCH_GRAMMAR_EXPORT_BYPASS',
-    `Product source must import the selected Grammar code entry ${grammar.entry}, its style entry ${grammar.styleEntry} or a core-ext entry (${grammar.package}/core/ext/<name>) the installed Grammar exports; ${reference.specifier} is outside that contract.`,
+    `Product source must import a selected Grammar code entry (${grammar.entries.join(', ')}), its style entries (${styleContract(grammar)}) or a core-ext entry (${grammar.package}/core/ext/<name>) the installed Grammar exports; ${reference.specifier} is outside that contract.`,
     { specifier: reference.specifier, package: grammar.package }));
 }
 

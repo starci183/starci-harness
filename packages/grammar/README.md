@@ -140,6 +140,24 @@ offset shadow and a pink decision accent. Text that uses the accent is drawn in 
 `critical`). It also exports `OFFSET_POP_SPACING_SCALE`, `OFFSET_POP_BAND_TOKEN_NAMES`,
 `offsetPopGrammar` and `offsetPopRuleConformance`.
 
+Every Common renderer works under the Offset Pop root. Most take the family look from four Common
+tokens the family root sets once, so no renderer needs a rule of its own:
+
+| token | Offset Pop value | what follows it |
+|---|---|---|
+| `--grammar-border-edge` | the 2px ink outline | a code block, a GradedChoice answer and its key, the other party's message |
+| `--grammar-shadow-popover` | the hard offset | a popover, the reaction picker, a lifted Board card |
+| `--grammar-shadow-lift` | the small hard offset | the pane drawer trigger |
+| `--starci-core-surface-radius` | the family card radius | SurfaceCard, Board columns and cards, a framed EmptyNotice |
+
+`components-content.css` covers the renderers that draw their own edge. Board cards wear the outline
+and the small offset, and the press collapses it. Progress, ProportionBar, SegmentBar and FunnelChart
+tracks get the ink ring, and Meter keeps its own track. Open GradedChoice answers are pressable
+stickers. SchemaForm marks, the agent's proposal and ConflictCard sides are outlined. A
+`SurfaceCard emphasis="accent"` throws its offset in pink, because it is the chosen card. List seams
+stay Common's hairline. An app sets the `--starci-core-card-radius` hook to change the card radius;
+it never restyles a renderer.
+
 ## Client-side navigation
 
 Every Grammar root (`GrammarRoot`, `CoreGrammarRoot`, `OffsetPopGrammarRoot`) accepts `navigate(path)` and `useHref(href)` and

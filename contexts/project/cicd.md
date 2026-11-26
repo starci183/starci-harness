@@ -38,32 +38,49 @@ to `origin/dev` and its running dev stack onto that code:
 2. A recorded overlay (`deps install-local`) is put back to the committed pins first, so the overlay never survives a sync
    that does not name it again; then the checkout fast-forwards to `origin/dev` and `npm ci` runs (skipped when the lockfile did
    not change and no overlay was dropped). A sync that names exactly the overlay already installed (each package at the same
-   version), whose commits move no pinned manifest and no lockfile, keeps it: nothing is restored, installed, stopped or restarted
-   for it, so the web the owner has open keeps running and only the side a commit changed restarts.
+   version), whose commits move no pinned manifest and no lockfile and which no failed swap marked, keeps it: nothing is restored, installed,
+   stopped or restarted for it, so the web the owner has open keeps running and only the side a commit changed restarts. Every sync that
+   installs `node_modules` again installs the overlay `devSync.local` names with it, so the overlay stays in effect while the setting names it.
+   **The pins always match the install.** The manifests and lockfiles in the checkout name exactly what its `node_modules` holds, with the overlay
+   or without it: a swapped install brings its own (below), and an install that fails before the new `node_modules` is in place keeps the
+   previous commit with the previous overlay's manifests, lockfiles and record.
 3. Each `--local <pkg>` is installed from the local registry through the `deps install-local` machinery.
    **Build first.** When the sync installs, the new tree is installed and built before anything stops (`core/dev/stage.ts`): a staging
    worktree of the checkout's repository at the new commit, `<parent>/.<checkout>.starci-next`, gets the `npm ci`, the `--local` packages and the
    app's `codegen` and `build:modules`, each under the heavy governor, while the running api and web keep serving the old tree. A failure there is
-   `DEV_SYNC_BUILD` with nothing stopped or moved. Then the processes stop, the checkout fast-forwards, and the staged outputs (git's ignored
+   `DEV_SYNC_BUILD` with nothing stopped or moved. The staged install is then smoke-checked where it was made (`cli/src/core/dev/smoke.ts`): from the
+   root and each workspace, a few declared packages and `next`, `postcss`, `picocolors`, and the dependencies of each down three levels, resolved
+   by file the way Node does. A miss is `DEV_SYNC_SMOKE` with nothing stopped or moved. A miss counts only when `package-lock.json` installs that
+   package where Node looks for it; a dependency the lockfile itself places nowhere on that chain (npm left a peer cycle's package out of it) is a
+   lockfile gap, the same in every `npm ci` of that lockfile, staged or in place: it is said once, with "fix the lockfile on a lane", and never
+   reinstalled for. Then the processes stop, the checkout fast-forwards, and the staged outputs (git's ignored
    entries of the staging tree, each folder whole and nothing inside a listed folder: every `node_modules`, every `dist`, generated files such as husky's `.husky/_`) are moved in by rename on the same volume, the workspace
-   links npm made into the staging tree (absolute junctions on Windows) are re-pointed at the checkout, the tracked files the staged install changed
-   (an overlay's pins and lockfiles) are copied, and what they replaced is removed, retrying a file an antivirus holds for a moment. A move that
-   fails puts every move back (`DEV_SYNC_SWAP`) and marks the checkout (`<git dir>/starci-dev-sync-unswapped`): it is already on the new commit with the old
-   install, so the next sync, though dev has nothing new, installs, builds, migrates and restarts whole, and the runner retries a refused swap once after 20 s. A swap that passed is smoke-checked (`cli/src/core/dev/smoke.ts`): from the root and each workspace, a few declared packages and `next`, `postcss`, `picocolors`, and the dependencies of each down three levels, resolved by file the way Node does; a miss replaces the swapped install with a clean `npm ci` in place (the overlay and the prepare scripts again) before anything restarts. After any failed sync the runner checks every declared process and runs `app stack up` for those nothing listens for. So the downtime of a sync is the swap and the restart. The in-place install below is the fallback
-   for a copy an interrupted in-place sync left aside.
+   links npm made into the staging tree (absolute junctions on Windows) are re-pointed at the checkout, the staging tree's manifests and lockfiles
+   are copied (each one its install changed and each one the previous overlay had changed), and what they replaced is removed, retrying a file an
+   antivirus holds for a moment. A move that fails puts every move back (`DEV_SYNC_SWAP`), and the checkout goes back to the commit it was on with
+   the previous overlay, so the stopped processes restart on the code and the install that belong together; only when git cannot move it back is
+   it marked (`<git dir>/starci-dev-sync-unswapped`) so the next sync installs, builds, migrates and restarts whole. The runner retries a refused
+   swap once after 20 s. The swapped install is smoke-checked again; a repairable miss there, though the staged one resolved, replaces it with a clean
+   `npm ci` in place (the overlay and the prepare scripts again) before anything restarts, under the mark; when that install fails, the swapped
+   install of the new commit, which came with its own pins, is put back and runs. After any failed sync the runner checks every declared process
+   and runs `app stack up` for those nothing listens for. So the downtime of a sync is the swap and the restart. The in-place install below is the
+   fallback for a copy an interrupted in-place sync left aside.
    Before anything writes `node_modules` (steps 2 and 3), before the checkout moves, the dev stack processes the environment's
    local state records (read through the app's pinned CLI, `starci --json app stack status --env <env>`) are ended with their
    children and seen gone: on Windows a running process that loaded a `.node` file makes `npm ci` die halfway with EPERM. A
    stop that fails, or a record that cannot be read, is `DEV_SYNC_STOP`, and nothing installs or moves. `npm ci` runs with every
    `node_modules` it replaces (the root's and each workspace's) renamed aside first, on the same volume: a folder a process still
    holds refuses the rename at once, one retry follows a short pause, then `DEV_SYNC_BUSY` with nothing deleted. A failed
-   install puts every copy back; the copies are removed only once it passed, and a copy left aside by a sync that died is moved
-   back by the next sync, which installs again. Then the tree is prepared as the lane gate and the
+   install puts every copy back and keeps the previous commit, as a refused swap does: new code never runs on an old install. The
+   copies are removed only once it passed, and a copy left aside by a sync that died is moved back by the next sync, which installs again.
+   A failed `npm ci` says on the first line of its refusal how it ended and why (`DEPS_INSTALL_FAILED`: the exit code, a kill past
+   the install budget of `heavy.timeoutMinutes`, npm's first error line, or that it printed nothing), then the tail of its output and
+   the error lines of npm's debug log, secrets redacted; the runner's status keeps that line and its log the whole refusal. Then the tree is prepared as the lane gate and the
    lane gate prepares its own (`harness/prepare-tree.ts`): the app's `codegen` and `build:modules` (its workspace packages, whose `main`
    is their `dist`), each it declares, whenever the sync installed or a running process reads a changed file. A step that fails is
    `DEV_SYNC_BUILD` with its output; the next sync builds again and restarts both sides though the checkout has not moved. The
    stopped processes restart after the install and the build, with the changed ones, even under `--no-restart`, and alone when the
-   install or the build failed.
+   install or the build failed (after a failed install, on the previous commit).
 4. When the fast-forward brought files under `db/migrations/` (`MIGRATIONS_FOLDER`), the database is migrated before anything restarts
    on that code, by the stack's own migrate step and its receipt: `starci app stack up --env <env> --execute` with the app's pinned
    CLI (idempotent: what runs is kept, and the processes stopped for the install start again on the new code). A migration that

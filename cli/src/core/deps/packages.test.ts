@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import { captureGitSync } from "../../shared/git.js"
-import { copiesStale, fileCopies, installStale, isManifest, tail } from "./packages.js"
+import { copiesStale, fileCopies, installStale, isManifest, npmFailure, tail } from "./packages.js"
 
 void test("the root and workspace package.json files are manifests", () => {
     assert.equal(isManifest("package.json"), true)
@@ -92,4 +92,23 @@ void test("the output of a failed npm run leads with the lines that name a cause
     assert.match(text.split("\n")[0] ?? "", /✖ src\/config\.spec\.ts/u)
     assert.match(text, /ERR_MODULE_NOT_FOUND/u)
     assert.match(text, /npm error command failed$/u)
+})
+
+void test("a failed npm run says on its first line how it ended and why: its exit code, a kill past its budget, its first cause, or that it printed nothing", () => {
+    const killed = npmFailure("dev sync: npm ci", "D:/app", { exitCode: 124, stdout: "", stderr: "timed out after 900s; the process tree was killed", timedOut: true })
+    assert.match(killed.split("\n")[0] ?? "", /^dev sync: npm ci in D:\/app exited 124: killed past its time budget \(heavy\.timeoutMinutes/u)
+    const silent = npmFailure("dev sync: npm ci", "D:/app", { exitCode: 3_221_225_477, stdout: "", stderr: "", timedOut: false })
+    assert.equal(silent, "dev sync: npm ci in D:/app exited 3221225477: npm printed nothing (ended from outside, or out of memory)")
+    const full = npmFailure("dev sync: npm ci", "D:/app", { exitCode: 228, stdout: "", stderr: "npm error code ENOSPC\nnpm error syscall write\nnpm error A complete log of this run can be found in: C:/npm/_logs/debug-0.log", timedOut: false }, (file) => (file === "C:/npm/_logs/debug-0.log" ? "1 verbose cli\n2 error code ENOSPC\n3 error errno -28\n" : undefined))
+    const lines = full.split("\n")
+    assert.equal(lines[0], "dev sync: npm ci in D:/app exited 228: npm error code ENOSPC")
+    assert.ok(lines.includes("npm's log C:/npm/_logs/debug-0.log:"), full)
+    assert.ok(lines.includes("3 error errno -28"), "the debug log's error lines follow")
+})
+
+void test("a failed npm run's text never carries a secret its output printed", () => {
+    const token = `ghp_${"a".repeat(36)}`
+    const text = npmFailure("dev sync: npm ci", "D:/app", { exitCode: 1, stdout: "", stderr: `npm error 401 Unauthorized: token ${token} rejected`, timedOut: false })
+    assert.equal(text.includes(token), false, text)
+    assert.match(text, /\[redacted:github-token\]/u)
 })

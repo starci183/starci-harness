@@ -82,6 +82,7 @@ test("one text-sized rule sizes every caret, separator and status glyph at 1em",
     for (const part of ['.starci-core-icon[data-usage="text"]', ".starci-core-disclosure-indicator", ".starci-core-generic-accordion-indicator", ".starci-core-select-indicator", '[data-slot="submenu-indicator"]', ".starci-core-tabs-more-caret", ".starci-core-alert-chevron", ".starci-core-schedule-group-chevron", '[data-slot="breadcrumbs-separator"]', ".starci-core-inline-status .starci-core-inline-status-glyph"]) {
         assert.ok(rule[1]?.includes(part), `the text-sized rule names ${part}`)
     }
+    assert.match(read("core/frame/Section/FigureCells.tsx"), /glyphSource\("chevron-end"\)\} usage="text"/)
     assert.match(read("core/composite/ListRow/index.tsx"), /glyphSource\("chevron-end"\)\} usage="text"/)
     assert.match(read("core/branch/Select/index.tsx"), /inlineGlyph\("chevron-down", \{\}, "text"\)/)
 })

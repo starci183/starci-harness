@@ -363,21 +363,32 @@ const TabsInner = (props: TabsProps) => {
             if (scroller === null || tab === null) return
             // The scroller narrows when a page control's gutter opens beside it (the frame keeps its width): watch the scroller too, so the tab is revealed clear of the control.
             if (watched !== scroller) { if (watched !== null) resizes?.unobserve(watched); resizes?.observe(scroller); watched = scroller }
+            // The clear box is the scroller less its fading edges: the vendor ScrollShadow masks its last `--scroll-shadow-size` px on a side where more tabs
+            // wait, so a tab brought only to the scroller's bare edge lay under that fade, its label dissolving beside the next control (Next audit round 6, 390px:
+            // "Khi có sự cố" faded out under the arrow). The fade shrinks to 0 as the scroll reaches its end, so a tab clear of a full fade stays clear; a tab wider
+            // than the clear box is centred.
+            const fade = Number.parseFloat(getComputedStyle(scroller).getPropertyValue("--scroll-shadow-size")) || 0
             const box = scroller.getBoundingClientRect()
+            const inset = Math.max(0, Math.min(fade, (box.width - tab.getBoundingClientRect().width) / 2))
+            const start = box.left + inset
+            const end = box.right - inset
             const at = tab.getBoundingClientRect()
-            const delta = at.left < box.left ? at.left - box.left : at.right > box.right ? at.right - box.right : 0
+            const delta = at.left < start ? at.left - start : at.right > end ? at.right - end : 0
             if (Math.abs(delta) >= 1) scroller.scrollBy({ left: delta, behavior: "instant" })
         }
         reveal()
         // A second pass a frame later: the selected tab's weight and the fit settle after the commit that selected it.
         const later = requestAnimationFrame(reveal)
+        // A web font that arrives after the first draw widens every label without resizing the strip's box: reveal again once the fonts are in.
+        let live = true
+        void document.fonts.ready.then(() => { if (live) reveal() })
         // The vendor mounts its tabs after our commit and moves `aria-selected` itself: reveal when the strip is resized and when its tabs or their selection change.
         const mutations = new MutationObserver(reveal)
         mutations.observe(frame, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-selected"] })
         resizes?.observe(frame)
         // A viewport that changes and settles back to the strip's old width reports no resize to the observer, yet clamped the scroll: the window event does.
         window.addEventListener("resize", reveal)
-        return () => { window.removeEventListener("resize", reveal); cancelAnimationFrame(later); mutations.disconnect(); resizes?.disconnect() }
+        return () => { live = false; window.removeEventListener("resize", reveal); cancelAnimationFrame(later); mutations.disconnect(); resizes?.disconnect() }
     }, [isClientReady, awaitsPath, selectedKey, labelSignature, folds])
 
     if (!isClientReady || awaitsPath) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="pending" />

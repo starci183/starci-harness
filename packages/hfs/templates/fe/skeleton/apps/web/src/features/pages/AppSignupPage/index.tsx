@@ -14,7 +14,7 @@ export const appSignupMetadata = async (): Promise<Metadata> => {
 export const AppSignupPage = async (_props: Record<string, never>): Promise<ReactElement> => {
     const t = await getTranslations("app.emailAuth.signup")
     return (
-        <Page header={{ title: t("title") }} measure="reading">
+        <Page header={{ title: t("title"), breadcrumbs: "root" }} measure="reading">
             <EmailDoorForm door="signup" />
         </Page>
     )

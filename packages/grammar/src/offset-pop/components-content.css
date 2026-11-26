@@ -1,0 +1,167 @@
+/*
+ * Offset Pop treatment for the Common content, data and learning renderers that draw their own material: the Board, the
+ * measure tracks (Progress, ProportionBar, SegmentBar, FunnelChart), GradedChoice, the SchemaForm family (SchemaForm,
+ * ConflictCard) and an emphasised SurfaceCard.
+ *
+ * The family's root block in ./styles.css already re-binds the four Common tokens these renderers read (the outlined part's
+ * edge, the popover and lift shadows, the card radius), so most of them turn into stickers without a rule here. What
+ * follows is only where a renderer paints a literal Common edge, or where a family rule of the other sheets would hide
+ * a Common state. Pink stays on a decision or a measurement; a list seam stays Common's hairline.
+ */
+@layer starci-grammar-offset-pop {
+    /* ---------------------------------------------------------------- Board */
+    /* A card on a board is an object, so it wears the ink outline and the small hard offset; the column stays its tinted ground. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-cards > .starci-core-list-row {
+        border: var(--offset-pop-outline-width) solid var(--border);
+        box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
+        transition:
+            transform var(--offset-pop-transition),
+            box-shadow var(--offset-pop-transition);
+    }
+
+    /* Common draws a second top edge between two adjacent cards; each card already has its own outline. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-cards > .starci-core-list-row + .starci-core-list-row {
+        border-top-width: var(--offset-pop-outline-width);
+    }
+
+    /* Pressing a card to drag it is the family's press travel: the shadow collapses into the move. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-cards > .starci-core-list-row[data-grammar-row-draggable]:active {
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
+        transform: translate(var(--offset-pop-shadow-sm-x), var(--offset-pop-shadow-sm-y));
+    }
+
+    /* The origin slot is an emptied card: the same outline, dashed, and no shadow. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-cards > .starci-core-list-row[data-grammar-row-origin="true"] {
+        border-style: dashed;
+        box-shadow: none;
+    }
+
+    /* The lifted card travels with the full hard offset (the popover shadow the root re-binds). */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-list-row[data-grammar-row-lifted="true"] {
+        border: var(--offset-pop-outline-width) solid var(--border);
+        box-shadow: var(--grammar-shadow-popover);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-count {
+        border: var(--offset-pop-outline-width) solid var(--border);
+        color: var(--foreground);
+    }
+
+    /* The drop slot and the end band keep their dashed line at the family's outline width; their colours stay Common's (accent for a drop, danger for a refusal). */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-slot,
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-band {
+        border-width: var(--offset-pop-outline-width);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-refusal {
+        border-radius: var(--offset-pop-control-radius);
+    }
+
+    /* ---------------------------------------------------------------- measure tracks */
+    /*
+     * Every bar is drawn on the family's outlined track, as the Meter is: Common's empty-track tint inside a ring of ink at the
+     * outline width. The ring is a spread shadow, so the track keeps Common's height and the fill keeps its whole thickness.
+     */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-progress .progress-bar__track:not(.starci-core-progress-steps),
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-progress-step,
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-proportion-track,
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-segment-track,
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-funnel-track {
+        box-shadow: 0 0 0 var(--offset-pop-outline-width) var(--border);
+    }
+
+    /* ---------------------------------------------------------------- GradedChoice */
+    /*
+     * An answer is a pressable object: the outlined edge (the root binds Common's edge to the outline width), the control radius and
+     * the small hard offset while it can still be picked; the press collapses it. Correct and wrong keep Common's tone edges and soft fills.
+     */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-graded-option {
+        border-radius: var(--offset-pop-control-radius);
+        transition:
+            transform var(--offset-pop-transition),
+            box-shadow var(--offset-pop-transition),
+            background-color var(--offset-pop-transition);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-graded-option[data-grammar-graded-state="open"] {
+        box-shadow: var(--offset-pop-shadow-sm-x) var(--offset-pop-shadow-sm-y) 0 var(--offset-pop-shadow-ink, var(--foreground));
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-graded-option[data-grammar-graded-state="open"]:active {
+        box-shadow: 0 0 0 var(--offset-pop-shadow-ink, var(--foreground));
+        transform: translate(var(--offset-pop-shadow-sm-x), var(--offset-pop-shadow-sm-y));
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-graded-option-key {
+        color: var(--foreground);
+    }
+
+    /* ---------------------------------------------------------------- SchemaForm and ConflictCard */
+    /*
+     * The family's field box paints its own ink edge and surface over every field; a SchemaForm field marks its state on that box, so
+     * the two states are restated here after the family's box: a required field left empty keeps the warning edge, a field the agent
+     * is writing keeps the secondary paint.
+     */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-schema-field[data-grammar-schema-state="missing"] [data-grammar-field-control="true"],
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-schema-field[data-grammar-schema-state="missing"] .starci-core-input-field {
+        border-color: var(--warning);
+    }
+
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-schema-field[data-grammar-schema-state="writing"] [data-grammar-field-control="true"],
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-schema-field[data-grammar-schema-state="writing"] .starci-core-input-field {
+        background: var(--surface-secondary);
+    }
+
+    /* A field mark is a small chip, as a Badge is: the ink outline at the pill radius, ink words. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-schema-mark {
+        border: var(--offset-pop-outline-width) solid var(--border);
+        color: var(--foreground);
+    }
+
+    /* The agent's proposal and each side of a conflict are nested panels inside a card: the outline, the control radius, no shadow (SURFACE-3). */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-schema-proposal,
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-conflict-side {
+        border: var(--offset-pop-outline-width) solid var(--border);
+        border-radius: var(--offset-pop-control-radius);
+    }
+
+    /* ---------------------------------------------------------------- an emphasised SurfaceCard */
+    /*
+     * `emphasis="accent"` (the card peers recommend, or the reader chose) keeps the ink outline and throws its hard offset in the pink: the
+     * selection is marked by the one accent, and the outline stays the family's. The family's card rule would otherwise hide Common's accent edge.
+     */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-emphasis="accent"] {
+        box-shadow: var(--offset-pop-shadow-x) var(--offset-pop-shadow-y) 0 var(--accent);
+    }
+
+    /* ---------------------------------------------------------------- motion and contrast */
+    @media (prefers-reduced-motion: reduce) {
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-cards > .starci-core-list-row,
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-graded-option {
+            transform: none;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-board-cards > .starci-core-list-row,
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-graded-option,
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-schema-proposal,
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-conflict-side {
+            border-color: CanvasText;
+            box-shadow: none;
+        }
+
+        .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-emphasis="accent"] {
+            border-color: Highlight;
+            box-shadow: none;
+        }
+
+        /* The ring of a track is a shadow, which forced colours drop; Common's own forced-colour edge on each track stands. */
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-progress .progress-bar__track:not(.starci-core-progress-steps),
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-proportion-track,
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-segment-track,
+        .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-funnel-track {
+            box-shadow: none;
+        }
+    }
+}

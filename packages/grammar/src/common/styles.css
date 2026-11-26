@@ -189,6 +189,10 @@
      * keeps wheel, touch and keyboard scrolling; the edge says where content continues, as HeroUI's ScrollShadow draws it.
      * ScrollShadow hosts draw their own fade; the scrollers listed in the second rule take the same fade from the scroll
      * position (CSS scroll-driven animation: no fade where nothing overflows, none on the edge already reached).
+     * The timeline names the axis the scroller scrolls: `scroll(self)` is the BLOCK axis, so a strip that scrolls only sideways
+     * (breadcrumbs, a table, a code block, the top bar's links) keeps `scroll(self inline)`, or its timeline stays inactive and
+     * its end never fades (StarCi Next audit round 5: a long last crumb cut mid-word at 390px). A browser without scroll-driven
+     * animations skips the whole block: no fade, nothing masked, the strip still scrolls.
      */
     .grammar-common-root,
     .grammar-common-root * {
@@ -236,6 +240,7 @@
         .starci-core-breadcrumbs,
         .starci-core-top-bar-navigation,
         .starci-core-nav-landmark[data-grammar-nav-layout="scrolling"] {
+            animation-timeline: scroll(self inline);
             mask-image: linear-gradient(to right, transparent, var(--foreground) var(--grammar-fade-start), var(--foreground) calc(100% - var(--grammar-fade-end)), transparent);
         }
 

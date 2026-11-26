@@ -203,6 +203,17 @@ export const realRunnerDeps: RunnerDeps = {
     ensureUp: realEnsureUp,
 }
 
+/**
+ * The one line of a refusal a status keeps: its first line, joined with the next line that says something when the first only opens a list (it ends with a
+ * colon, as `... npm ci in <checkout> failed:` did and lost its reason). At most 600 characters. Pure.
+ */
+export const reasonLine = (message: string): string => {
+    const lines = message.split("\n").map((line) => line.trim()).filter((line) => line !== "")
+    const first = lines[0] ?? ""
+    const line = first.endsWith(":") && lines.length > 1 ? `${first} ${lines[1] ?? ""}` : first
+    return line.length > 600 ? `${line.slice(0, 597)}...` : line
+}
+
 /** How long the runner waits before its one retry of a refused swap. */
 const SWAP_RETRY_MS = 20_000
 /** How long a waiting runner sleeps before it reads the mark again, at most. */
@@ -253,7 +264,10 @@ export const runDevSyncRunner = async (checkout: string, paths: RunnerPaths, dep
                 failed = true
                 swapRefused = typeof error === "object" && error !== null && "code" in error && error.code === "DEV_SYNC_SWAP"
                 const code = typeof error === "object" && error !== null && "code" in error ? `${String(error.code)}: ` : ""
-                write({ state: "failed", reason: `${wanted.reason}; dev sync refused: ${code}${(error instanceof Error ? error.message : String(error)).split("\n")[0] ?? ""}` })
+                const message = error instanceof Error ? error.message : String(error)
+                write({ state: "failed", reason: `${wanted.reason}; dev sync refused: ${code}${reasonLine(message)}` })
+                // The status keeps one line; the log keeps the whole refusal (npm's exit, its output's tail, its log's error lines), redacted where it was made.
+                for (const line of message.split("\n").slice(1).filter((one) => one.trim() !== "")) say(`  ${line}`)
             }
             // After ANY failed sync every declared process must listen again: a swap put back, a stop that never came back is not left for the next landing. `stack up` starts only what does not run.
             if (failed) {

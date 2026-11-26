@@ -431,7 +431,7 @@ One owner per axis; two nested scrollers on one axis trap the reader.
 | OVERFLOW-3 | scrolls one axis | content always exceeds it (a scroll region, a rail body) |
 | OVERFLOW-4 | scrolls when needed | content sometimes exceeds it (wide tables, long code, chip rows with edge carets) |
 | OVERFLOW-5 | contained | panels, drawers and overlays stop scroll chaining; never the page's own scroller |
-| OVERFLOW-6 | no scrollbar | Grammar never shows scrollbars: every scroll area (pane, `PaneSection scroll`, drawer and modal body, ListBox, chat thread, tab strip, DataTable overflow) hides the bar and fades its edge where content continues (HeroUI ScrollShadow); wheel, touch and keyboard still scroll; an app element with `overflow-y-auto` / `overflow-auto` is refused (lint `no-raw-scroll`) |
+| OVERFLOW-6 | no scrollbar | Grammar never shows scrollbars: every scroll area (pane, `PaneSection scroll`, drawer and modal body, ListBox, chat thread, tab strip, DataTable overflow) hides the bar and fades its edge where content continues (HeroUI ScrollShadow; a strip that scrolls only sideways takes its fade from its inline scroll); wheel, touch and keyboard still scroll; an app element with `overflow-y-auto` / `overflow-auto` is refused (lint `no-raw-scroll`) |
 
 ### Controls and headers on a phone
 A phone header that is hand-built wraps a label onto two lines and draws buttons under 40px, so the floor is a law, measured on the rendered stories at the phone widths, and the header is a Grammar component.

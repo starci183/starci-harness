@@ -25,6 +25,9 @@ const lane = (): string => {
     put(root, "contexts/code/fe/.gitkeep", "")
     put(root, "contexts/project/anatomy.md", `# Anatomy\n\n${BEGIN_MARKER}\nstale\n${END_MARKER}\n`)
     git(root, "init", "-q")
+    // commitGenerated commits with the repository's own identity, as a lane worktree has one; a CI runner has no global identity, so the fixture sets a local one.
+    git(root, "config", "user.name", "t")
+    git(root, "config", "user.email", "t@example.test")
     git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "init")
     return root

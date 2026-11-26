@@ -7,7 +7,14 @@ const staticsPatterns = (): NonNullable<NonNullable<NextConfig["images"]>["remot
     const base = process.env.NEXT_PUBLIC_STATICS_URL
     if (base === undefined || base === "") return []
     const url = new URL(base)
-    return [{ protocol: url.protocol === "https:" ? "https" : "http", hostname: url.hostname, port: url.port, pathname: `${url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname}/**` }]
+    return [
+        {
+            protocol: url.protocol === "https:" ? "https" : "http",
+            hostname: url.hostname,
+            port: url.port,
+            pathname: `${url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname}/**`,
+        },
+    ]
 }
 import createNextIntlPlugin from "next-intl/plugin"
 
