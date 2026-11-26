@@ -1,0 +1,60 @@
+# One capability, one owner (contexts/project/lint.md PROJECT-LINT-7). Each capability of the harness names the module that owns it and the
+# text that marks an implementation of it (`marks`, one regular expression per line of source). The dry run of `starci contexts anatomy` reads
+# every file under `scope` (specs, tests, node_modules and build output aside) and is red when a file outside `owners` and `known` holds a mark:
+# that file reimplements the capability instead of calling its owner. `known` lists the reimplementations that remain, each with the owner call
+# that replaces it; it only shrinks: an entry whose file no longer holds the mark is red until it is deleted. A new capability, or a second
+# legitimate home of one, is a change of this file reviewed like any rule (CONTRIB-10).
+schema: starci/capabilities@1
+capabilities:
+  - id: git-outcome
+    summary: a git run read as {ok, out, err}
+    scope: [cli/src]
+    marks: ['ok: run\.exitCode === 0, out: run\.stdout\.trim\(\)']
+    owners: [cli/src/shared/git.ts]
+  - id: git-merge-or-abort
+    summary: merge a ref, and on a conflict collect the files and abort the merge
+    scope: [cli/src]
+    marks: ['"merge", "--abort"']
+    owners: [cli/src/shared/git.ts]
+    known:
+      cli/src/core/release/back-merge.ts: its merge commit carries a message through the spec seam BackMergeGit; mergeOrAbort takes no message yet
+  - id: git-worktree-remove
+    summary: remove a worktree, its links unlinked first and under the removal lock
+    scope: [cli/src]
+    marks: ['"worktree", "remove"']
+    owners: [cli/src/harness/worktree-remove.ts, cli/src/harness/land.ts]
+    known:
+      cli/src/core/release/back-merge.ts: removes its scratch worktree raw; call land.ts removeWorktreeFolder
+      cli/src/core/release/cut.ts: removes its scratch worktree raw; call land.ts removeWorktreeFolder
+      cli/src/harness/clean-verify.ts: removes its scratch worktree raw; call land.ts removeWorktreeFolder
+  - id: local-registry-publish
+    summary: npm publish of a packed tarball to the local registry, read back before it counts
+    scope: [cli/src]
+    marks: ['"--tag", LOCAL_TAG']
+    owners: [cli/src/core/deps/publish-local.ts]
+  - id: check-cache-folder
+    summary: the path of an app's committed check cache
+    scope: [cli/src]
+    marks: ['"\.starcistacks/cache/?"']
+    owners: [cli/src/shared/git.ts]
+  - id: npm-ci
+    summary: a clean install of a checkout's dependencies
+    scope: [cli/src]
+    marks: ['\["ci", ']
+    owners: [cli/src/harness/install-cache.ts, cli/src/harness/install-guard.ts, cli/src/core/deps/packages.ts]
+    known:
+      cli/src/core/lane/gate.ts: installs with its own npm ci after a shared-install miss; call install-cache.ts cachedInstall
+      cli/src/core/hotfix/cli-copy.ts: installs and builds the CLI copy itself; call cachedInstall and packages.ts buildPackage
+      cli/src/core/dev/sync.ts: installs in place beside the old node_modules (safe-install); move the in-place mode into install-cache.ts
+  - id: app-typecheck
+    summary: typechecking an app, which only its own `starci app check` (the types family) does
+    scope: [cli/src]
+    marks: ['\["run", "typecheck", "--silent"']
+    owners: []
+  - id: app-lint
+    summary: linting an app, which only its own `starci app check` (the lint family) does
+    scope: [packages/hfs/templates, packages/hfs/sync, packages/hfs/stack, packages/hfs/release]
+    marks: ['npx (?:--no-install )?eslint\b']
+    owners: []
+    known:
+      packages/hfs/templates/app/hooks/husky/pre-commit: lints the staged files with raw eslint per side; run app check --staged --gate lint once it lints a file list

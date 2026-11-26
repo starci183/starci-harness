@@ -329,11 +329,6 @@ export const why = {
     en: "A props type of a component in `<file>` has a field or collection that is not `readonly`, so the component could write into what it is passed.",
     fix: "Mark every field and index signature `readonly`, and write collections as `readonly T[]`, `readonly [A, B]` or `ReadonlyArray<T>`.",
   },
-  "no-native-img": {
-    code: "FE_NATIVE_IMAGE",
-    en: "Raw `<img>` in `<file>`: it loads the original image and holds no space, so the page jumps when the image arrives.",
-    fix: "Use `Image` of `next/image` with `width` and `height` (or `fill` and `sizes`) and an `alt` from the catalog.",
-  },
   "image-has-size": {
     code: "FE_NATIVE_IMAGE",
     en: "`Image` in `<file>` lacks `width` and `height` (or has `fill` without `sizes`): the browser cannot hold the space.",

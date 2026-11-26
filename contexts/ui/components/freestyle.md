@@ -36,5 +36,5 @@ None of its own.
 ## Rules
 Lint R341 (`starci-grammar/freestyle-has-reason`). The rules that judge hand-written
 elements, classes, styles and generated art (`starci-fe/no-arbitrary-value`, `no-app-surface-paint`,
-`no-raw-brand-value`, `no-inline-class-name`, `no-native-img`,
-`starci-grammar/no-raw-structural-element`, `no-fractional-step`, `no-inline-svg-outside-brand-mark-leaf`) do not report the raw elements inside a `Freestyle` subtree of the same file.
+`no-raw-brand-value`, `no-inline-class-name`,
+`starci-grammar/no-raw-structural-element`, `no-raw-media`, `no-fractional-step`, `no-inline-svg-outside-brand-mark-leaf`) do not report the raw elements inside a `Freestyle` subtree of the same file.

@@ -40,13 +40,6 @@ test("no-arbitrary-value: anything inside Fragment, Grammar components included;
   }))
 })
 
-test("no-native-img: a raw img inside Fragment is allowed", () => {
-  assert.doesNotThrow(() => tester.run("no-native-img", rule("no-native-img"), {
-    valid: [{ filename: BLOCK, code: GRAMMAR + "export const A = () => <Fragment reason=\"art\"><img src=\"/images/a.webp\" alt=\"\" /></Fragment>" }],
-    invalid: [{ filename: BLOCK, code: GRAMMAR + "export const A = () => <img src=\"/images/a.webp\" alt=\"\" />", errors: [{ messageId: "img" }] }],
-  }))
-})
-
 test("fragment-only-library: a motion or graph library is imported only for use inside Fragment", () => {
   assert.doesNotThrow(() => tester.run("fragment-only-library", rule("fragment-only-library"), {
     valid: [

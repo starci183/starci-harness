@@ -3,6 +3,14 @@
 # (contexts/code/<side>/*.md), the value in its owner (hfs/slots.yaml ruleParams or budgets, stack/pins.yaml,
 # the grammar package). An enforcer marked `status: planned` is not built yet: `starci contexts anatomy` lists the rules judged only
 # by planned enforcers. A rule held by review is complete; nothing is owed, and a check is added only under CONTRIB-10.
+#
+# One condition, one rule, one engine (contexts/project/lint.md PROJECT-LINT-7). Every rule declares `covers: <engine>/<condition>`:
+# `code` when only the lint engines judge it (eslint-*, stylelint, the Grammar lint), `repo` when only hfs or the machine do, `quality`
+# for Sonar, `review` when nothing does, and `split` when both a lint engine and hfs or the machine judge it, which then states in `split`
+# what each one reads so no finding is reported twice. The dry run of `starci contexts anatomy` is red when a rule lacks `covers`, two
+# rules declare one `covers` or carry one failure code, a declared engine does not match the enforcers, a `split` rule says nothing of its
+# split, an enforcer serves two rules without a `sharedEnforcers` entry saying why, or this catalog and the runtime's
+# (packages/hfs/runtime/knowledge/hfs/rules.yaml) disagree on a rule, its codes or its lint enforcers.
 schema: starci/hfs-rules@4
 enforcerKinds:
   eslint-be: a rule of @starci/eslint-canon-be (id without the plugin prefix)
@@ -13,6 +21,15 @@ enforcerKinds:
   machine: a check of the architecture machine over the import graph
   hfs: a check of the app CLI over the tree, configuration, contracts or catalogs
   sonar: a condition of the Sonar quality gate
+sharedEnforcers:
+  "eslint-be:infra-import-owner": "one rule over the ruleParams.be.infraOwners table: each library row reports its own rule's code (R90 the infrastructure libraries, R328 the identity libraries, R331 the S3 libraries)"
+  "hfs:monorepo": "one module of the monorepo shape that reports each rule's own code"
+  "hfs:cli": "one module of the cli feature that reports each rule's own code"
+  "hfs:docker": "one module of the Docker files that reports each rule's own code"
+  "hfs:supply-chain": "one module of the supply chain that reports each rule's own code"
+  "hfs:stacks-release": "one module of the release declaration that reports each rule's own code"
+  "hfs:ci-custody": "one module of CI custody that reports each rule's own code"
+  "hfs:stacks-local": "one module of the local stack declaration that reports each rule's own code"
 rules:
   - id: R01
     code: HFS_SLOT_UNDECLARED
@@ -35,6 +52,8 @@ rules:
       - {kind: eslint-be, id: slot-undeclared}
       - {kind: eslint-fe, id: slot-undeclared}
       - {kind: machine, id: repository-tree-layout}
+    covers: split/hfs-slot-undeclared
+    split: "hfs judges every tracked path against the slots; on a TypeScript source file the finding is the lint's slot-undeclared and app check drops its own copy (architecture/surface.mts LINT_ENFORCERS)."
   - id: R02
     code: HFS_SLOT_REQUIRED_MISSING
     law: Every slot holds its required files, and the root README keeps its standard shape.
@@ -50,6 +69,7 @@ rules:
       - {kind: hfs, id: slot-required-missing}
       - {kind: machine, id: required-files}
       - {kind: machine, id: repository-tree-required}
+    covers: repo/hfs-slot-required-missing
   - id: R03
     code: HFS_UNTRACKED_ROOT_ENTRY
     law: No untracked or ignored entry exists outside an `ignored` slot.
@@ -59,6 +79,7 @@ rules:
       - HFS_GHOST_TREE
     enforcers:
       - {kind: hfs, id: untracked-root-entry}
+    covers: repo/hfs-untracked-root-entry
   - id: R04
     code: HFS_GITIGNORE_BLOCK_DRIFT
     law: The managed `.gitignore` block equals its render.
@@ -66,6 +87,7 @@ rules:
       - HFS_GITIGNORE_BLOCK_DRIFT
     enforcers:
       - {kind: hfs, id: gitignore-block-drift}
+    covers: repo/hfs-gitignore-block-drift
   - id: R05
     code: HFS_MANAGED_FILE_DRIFT
     law: A managed file equals its template render.
@@ -73,6 +95,7 @@ rules:
       - HFS_MANAGED_FILE_DRIFT
     enforcers:
       - {kind: hfs, id: managed-file-drift}
+    covers: repo/hfs-managed-file-drift
   - id: R06
     code: HFS_PLAINTEXT_SECRET
     law: Secrets exist only as sealed `.starcistacks/<env>/secrets/<slug>.enc` members, and the committed check cache holds codes, paths, positions and digests, never a message that could carry one.
@@ -81,6 +104,7 @@ rules:
     enforcers:
       - {kind: hfs, id: plaintext-secret}
       - {kind: hfs, id: plaintext-secret-staged}
+    covers: repo/hfs-plaintext-secret
   - id: R10
     code: HFS_STACKS_SHAPE
     law: "`.starcistacks` has the edition-aware standard shape: dependencies run in Docker in development and the app runs on hardened Swarm stacks in production, with recurring work app-owned."
@@ -92,6 +116,7 @@ rules:
       - {kind: hfs, id: stacks-evidence-runtime}
       - {kind: hfs, id: starcistacks-runtime}
       - {kind: hfs, id: starcistacks-runtime-gate}
+    covers: repo/hfs-stacks-shape
   - id: R11
     code: HFS_SONAR_CONFIG
     law: The Sonar configuration is generated, names no host URL and imports the back-end lcov over the slot-derived coverage scope only.
@@ -99,6 +124,7 @@ rules:
       - HFS_SONAR_CONFIG
     enforcers:
       - {kind: hfs, id: sonar-config}
+    covers: repo/hfs-sonar-config
   - id: R12
     code: HFS_E2E_IN_AUTOMATIC_GATE
     law: The integration, e2e and contract specs (the world layers) run only when a person asks for them, on a local machine (`npm run test:e2e`); no hook, coverage run, CI workflow, release gate row or lane runs them by default, whatever its trigger, and they are no part of CI.
@@ -106,6 +132,7 @@ rules:
       - HFS_E2E_IN_AUTOMATIC_GATE
     enforcers:
       - {kind: machine, id: e2e-in-automatic-gate}
+    covers: repo/hfs-e2e-in-automatic-gate
   - id: R13
     code: HFS_CI_MISSING_CANON
     law: CI runs the pinned `starci app check --gate lint` (unless the app's stack declaration switches lint off, PROJECT-LINT-4, whose render has no lint step), and every checkout keeps the installed pre-commit hooks active, so no commit lands without the pre-commit gate.
@@ -116,6 +143,7 @@ rules:
     enforcers:
       - {kind: machine, id: hooks-path-not-redirected}
       - {kind: hfs, id: ci-missing-canon}
+    covers: repo/hfs-ci-missing-canon
   - id: R14
     code: HFS_DEP_VERSION_SKEW
     law: Each dependency has one version in the workspace, root overrides included, and npm is the only package manager.
@@ -125,6 +153,7 @@ rules:
     enforcers:
       - {kind: hfs, id: dep-version-skew}
       - {kind: machine, id: package-manager}
+    covers: repo/hfs-dep-version-skew
   - id: R15
     code: HFS_CANON_PIN_DRIFT
     law: "Canon packages and frameworks match their pins (stack/pins.yaml): exactly, or, for the Grammar family and the two canons, an exact version inside their same-minor `range` (@starci/hfs stays exact); a pre-release meets a range only when the range names one."
@@ -132,6 +161,7 @@ rules:
       - HFS_CANON_PIN_DRIFT
     enforcers:
       - {kind: hfs, id: canon-pin-drift}
+    covers: repo/hfs-canon-pin-drift
   - id: R16
     code: HFS_TOOL_CONFIG_LOCAL
     law: "Tool configurations only call the canon factories and define no local rules; a project's own lint rules come only through its `ext/lint/` folder, declared in `ext/manifest.json`, which the canon factories load (R381, PROJECT-LINT-3)."
@@ -140,6 +170,7 @@ rules:
     enforcers:
       - {kind: hfs, id: tool-config-local}
       - {kind: hfs, id: tool-config-forbidden}
+    covers: repo/hfs-tool-config-local
   - id: R17
     code: HFS_RULE_OFF_WITHOUT_REPLACEMENT
     law: The lint configurations are the rendered one-liners, so no rule is turned off, warned or redefined in a repository; the one declared exception is the canon's own counting cohort (`COUNTING` of eslint-canon-fe), a rule that ships at warn for one release while a codemod moves apps onto its API, and its entry ends when the count is 0.
@@ -147,6 +178,7 @@ rules:
       - HFS_RULE_OFF_WITHOUT_REPLACEMENT
     enforcers:
       - {kind: hfs, id: rule-off-without-replacement}
+    covers: repo/hfs-rule-off-without-replacement
   - id: R18
     code: HFS_INLINE_SUPPRESSION
     law: No inline suppression of any kind exists.
@@ -156,6 +188,7 @@ rules:
       - {kind: eslint-be, id: no-inline-suppression}
       - {kind: eslint-fe, id: no-inline-lint-config}
       - {kind: stylelint, id: no-inline-lint-config}
+    covers: code/hfs-inline-suppression
   - id: R19
     code: HFS_FORMAT
     law: Prettier is the only formatter.
@@ -163,6 +196,7 @@ rules:
       - HFS_FORMAT
     enforcers:
       - {kind: hfs, id: format}
+    covers: repo/hfs-format
   - id: R20
     code: HFS_SIZE_GROWTH
     law: An over-budget file does not grow, and a new file stays within its budget (hfs/slots.yaml).
@@ -172,6 +206,7 @@ rules:
       - {kind: eslint-be, id: file-size-growth}
       - {kind: eslint-fe, id: file-size-growth}
       - {kind: sonar, id: cognitive-complexity}
+    covers: code+quality/hfs-size-growth
   - id: R21
     code: HFS_DUPLICATE_CODE
     law: No block of code is duplicated and no helper is defined twice.
@@ -186,6 +221,7 @@ rules:
       - {kind: eslint-fe, id: duplicate-symbol}
       - {kind: eslint-fe, id: cross-app-duplicate}
       - {kind: sonar, id: duplicated-lines-density}
+    covers: code+quality/hfs-duplicate-code
   - id: R22
     code: HFS_TS_STRICT
     law: tsconfig extends the canon tsconfig and lowers no flag; product source holds no type assertion, non-null assertion or `any`.
@@ -198,6 +234,8 @@ rules:
       - {kind: eslint-fe, id: no-explicit-any}
       - {kind: hfs, id: ts-strict}
       - {kind: eslint-fe, id: no-double-cast}
+    covers: split/hfs-ts-strict
+    split: "eslint-fe refuses a type escape inside front-end source; hfs ts-strict judges the compiler options of a side's tsconfig.json."
   - id: R23
     code: HFS_CONTRACT_SNAPSHOT_DRIFT
     law: The back end commits its contract snapshot under `be/contracts/` equal to the emit, and the front end reads it in place.
@@ -205,6 +243,7 @@ rules:
       - HFS_CONTRACT_SNAPSHOT_DRIFT
     enforcers:
       - {kind: hfs, id: contract-snapshot-drift}
+    covers: repo/hfs-contract-snapshot-drift
   - id: R24
     code: HFS_ARCH_CONFIG_UNREAD
     law: The architecture machine reads `hfs.json`, and analysing zero files is red.
@@ -212,6 +251,7 @@ rules:
       - HFS_ARCH_CONFIG_UNREAD
     enforcers:
       - {kind: machine, id: arch-config-unread}
+    covers: repo/hfs-arch-config-unread
   - id: R25
     code: HFS_UNUSED_EXPORT
     law: Every public export has a consumer and every source file is reachable.
@@ -221,6 +261,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: dead-exports}
       - {kind: eslint-fe, id: dead-exports}
+    covers: code/hfs-unused-export
   - id: R26
     code: BE_TIER_DIRECTION
     law: "Imports follow the tier direction matrix: no shared package imports an app, only page and layout owners import overlays, no other cross-owner feature edge exists, and the one platform-to-domain edge is the lite entity registry (be.platform.database.entities) importing a capability's `<c>Entities` alone from its `index.ts`. A component library's tiers (`tiers.grammar`: leaf, branch, composite, frame) import nothing above themselves, and its `data-tier` stamp is its folder."
@@ -235,6 +276,7 @@ rules:
       - {kind: eslint-fe, id: tier-direction}
       - {kind: eslint-be, id: package-imports-app}
       - {kind: eslint-fe, id: package-imports-app}
+    covers: code/be-tier-direction
   - id: R27
     code: ARCH_OWNER_CYCLE
     law: No owner import cycle exists, type-only imports included.
@@ -243,6 +285,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: owner-cycle}
       - {kind: eslint-fe, id: owner-cycle}
+    covers: code/arch-owner-cycle
   - id: R28
     code: BE_FEATURE_IMPORTS_FEATURE
     law: A feature never imports another feature.
@@ -250,6 +293,7 @@ rules:
       - BE_FEATURE_IMPORTS_FEATURE
     enforcers:
       - {kind: eslint-be, id: feature-imports-feature}
+    covers: code/be-feature-imports-feature
   - id: R29
     code: BE_FEATURE_SHAPE
     law: A back-end feature is `index.ts`, its module, `application/` and `transport/<protocol>/`, and `application/` never imports transport or a protocol framework.
@@ -262,6 +306,8 @@ rules:
       - {kind: machine, id: feature-shape}
       - {kind: eslint-be, id: feature-layout}
       - {kind: eslint-be, id: application-never-imports-transport}
+    covers: split/be-feature-shape
+    split: "the machine judges the feature's folder shape across files; on a source file the lint's feature-layout and application-never-imports-transport report and app check drops its own copy (LINT_ENFORCERS)."
   - id: R30
     code: BE_PUBLIC_SURFACE
     law: Every owner exposes one `index.ts` of named re-exports within its slot's export budget; cross-owner imports go through it, except the lite entity registry, reached by deep path only from the files its slot's `importedBy` names; same-owner imports stay relative, and no alias re-export exists.
@@ -282,6 +328,7 @@ rules:
       - {kind: eslint-be, id: no-self-module-alias}
       - {kind: eslint-be, id: package-export-bypass}
       - {kind: eslint-fe, id: package-export-bypass}
+    covers: code/be-public-surface
   - id: R31
     code: BE_FEATURE_NOT_COMPOSED
     law: Every feature, transport module and capability module is composed by an app.
@@ -289,6 +336,7 @@ rules:
       - BE_FEATURE_NOT_COMPOSED
     enforcers:
       - {kind: eslint-be, id: feature-not-composed}
+    covers: code/be-feature-not-composed
   - id: R32
     code: BE_APP_COMPOSITION_ONLY
     law: An app only composes, and it is proven by the e2e test world, never by a unit spec.
@@ -297,6 +345,7 @@ rules:
       - BE_APP_BUSINESS_ROLE
     enforcers:
       - {kind: eslint-be, id: app-composition-only}
+    covers: code/be-app-composition-only
   - id: R33
     code: BE_ENTRYPOINT_ONLY_IN_APPS
     law: Entrypoints exist only in `be/apps/*/src`.
@@ -304,6 +353,7 @@ rules:
       - BE_ENTRYPOINT_ONLY_IN_APPS
     enforcers:
       - {kind: eslint-be, id: entrypoint-only-in-apps}
+    covers: code/be-entrypoint-only-in-apps
   - id: R34
     code: BE_SCHEMA_AUTHORITY
     law: "Migrations own the application schema and run only through the cli migrate command or the test world, and `synchronize` is false. One declared exception: a root-package file hfs.json `sides.be.ddlRenderers` lists (the renderer `cli entities plan --write` uses to write NEW migration files) may hold DDL text only to build and return it; it never imports a database client or calls `.query/.execute`, and no file outside the cli and the root packages imports a symbol it declares."
@@ -311,6 +361,7 @@ rules:
       - BE_SCHEMA_AUTHORITY
     enforcers:
       - {kind: eslint-be, id: no-runtime-schema}
+    covers: code/be-schema-authority
   - id: R35
     code: BE_SCHEMA_OWNER
     law: Entities and migrations live in the owning capability's `persistence/` and register under exactly one declared connection, except platform capabilities the manifest lists as `perConnection`; in lite a capability's `persistence/entities/index.ts` declares its `<c>Entities` and `platform/database/entities.ts` names it in `PRIMARY_ENTITIES`. The engine-owned objects of hfs.json sides.be.engineOwned (the base tables, the partitions of one of them and its views, built by generated migrations) need no entity per table and are mapped by the declared capability alone.
@@ -318,6 +369,7 @@ rules:
       - BE_SCHEMA_OWNER
     enforcers:
       - {kind: eslint-be, id: schema-owner}
+    covers: code/be-schema-owner
   - id: R37
     code: BE_ENTITY_IN_CONTRACT
     law: No ORM entity appears in a contract or transport type.
@@ -325,6 +377,7 @@ rules:
       - BE_ENTITY_IN_CONTRACT
     enforcers:
       - {kind: eslint-be, id: no-entity-in-contract}
+    covers: code/be-entity-in-contract
   - id: R38
     code: BE_ERROR_HOME
     law: Errors live in the owning capability's `errors/` and extend `DomainError`.
@@ -335,6 +388,7 @@ rules:
       - {kind: eslint-be, id: throw-domain-error}
       - {kind: eslint-be, id: error-family-shape}
       - {kind: eslint-be, id: error-code-unique}
+    covers: code/be-error-home
   - id: R39
     code: BE_ERROR_MASKED
     law: Each app has one exception filter, and undeclared errors are masked.
@@ -342,6 +396,7 @@ rules:
       - BE_ERROR_MASKED
     enforcers:
       - {kind: eslint-be, id: error-masked}
+    covers: code/be-error-masked
   - id: R40
     code: BE_LOGGER_REQUIRED
     law: The `Logger` port of `platform/logging` is the only logger; every `catch` logs, rethrows or returns a reasoned outcome and logs a failure once (outside `platform/errors`, `platform/logging` and the `platform/cqrs` and `platform/jobs` handler bases a catch never both logs and throws, and no `Logger.error` takes a cause typed as a `DomainError`); every log call names an event from an owner's log-events enum; and an app whose environment declares `monitoring.logPush` carries the Loki transport (`winston-loki`) in `platform/logging`.
@@ -354,6 +409,8 @@ rules:
       - {kind: eslint-be, id: no-framework-logger}
       - {kind: eslint-be, id: no-domain-error-logged}
       - {kind: hfs, id: log-push}
+    covers: split/be-logger-required
+    split: "eslint-be judges logging inside back-end source; hfs log-push judges the stack declaration's monitoring.logPush against the logging module's dependency."
   - id: R41
     code: BE_DEFAULT_DENY
     law: Access is denied by default through the app guard, every public door declares `@Public` with a `PublicReason`, `@UseGuards` is not used, bodies are typed and secrets compare in constant time.
@@ -366,6 +423,7 @@ rules:
       - {kind: eslint-be, id: no-auth-use-guards}
       - {kind: eslint-be, id: no-guard-injects-guard}
       - {kind: eslint-be, id: default-deny-app-guard}
+    covers: code/be-default-deny
   - id: R42
     code: BE_INPUT_BOUNDED
     law: "Input is bounded: cursor-only pagination, depth and rate limits, `class-validator` decorators on every input property, and the strict rate tier on auth-handshake and signed-webhook doors."
@@ -375,6 +433,7 @@ rules:
       - {kind: eslint-be, id: input-bounded}
       - {kind: eslint-be, id: no-offset-pagination}
       - {kind: eslint-be, id: auth-door-strict-rate-tier}
+    covers: code/be-input-bounded
   - id: R43
     code: BE_CONFIG_OWNER
     law: Only the `EnvSource` of `platform/config`, an app's `main.ts` and `<app>.env.ts`, and the test world read `process.env`; everything else receives typed options.
@@ -383,6 +442,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: no-direct-env-read}
       - {kind: eslint-be, id: config-parsed-in-main}
+    covers: code/be-config-owner
   - id: R44
     code: BE_SECRET_DEFAULT
     law: No secret key or infrastructure URL has a default value.
@@ -390,6 +450,7 @@ rules:
       - BE_SECRET_DEFAULT
     enforcers:
       - {kind: eslint-be, id: no-secret-default}
+    covers: code/be-secret-default
   - id: R45
     code: BE_MODULE_SHAPE
     law: "Modules are never `@Global`, `isGlobal: true` appears only at app roots, no module imports across owners, each transport has one module with its own module definition, and every handler and provider registers exactly once."
@@ -410,6 +471,7 @@ rules:
       - {kind: eslint-be, id: register-once}
       - {kind: eslint-be, id: module-per-transport}
       - {kind: eslint-be, id: module-registration}
+    covers: code/be-module-shape
   - id: R46
     code: BE_BACKGROUND_UNOWNED
     law: Every sweep, outbox or retry has a job or consumer composed by an app, either its owning api app or a separately scaled worker app.
@@ -417,6 +479,7 @@ rules:
       - BE_BACKGROUND_UNOWNED
     enforcers:
       - {kind: eslint-be, id: background-unowned}
+    covers: code/be-background-unowned
   - id: R47
     code: BE_TEST_TOPOLOGY
     law: The back end has one jest config with the unit, integration, e2e and contract projects, unit specs beside their subjects (a logic-role file, or a logic file its slot declares) at full per-file coverage, and `be/src/tests/world/` as the only test infrastructure, running the real stack.
@@ -424,6 +487,7 @@ rules:
       - BE_TEST_TOPOLOGY
       - BE_CONTRACT_UNGUARDED
       - BE_UNIT_SPEC_NOT_STAGED
+      - BE_SPEC_WORLD_MISSING
     enforcers:
       - {kind: hfs, id: test-topology}
       - {kind: hfs, id: staged-spec-presence}
@@ -434,6 +498,8 @@ rules:
       - {kind: eslint-be, id: tests-infra-only-in-world}
       - {kind: eslint-be, id: tests-no-override}
       - {kind: eslint-be, id: test-world-shape}
+    covers: split/be-test-topology
+    split: "eslint-be judges the spec and world files' contents; hfs and the machine judge the jest config, the test tree, staged unit specs and contract fixtures; test-world-files on a source file is the lint's and app check drops its own copy (LINT_ENFORCERS)."
   - id: R48
     code: BE_SPEC_QUALITY
     law: A spec asserts exact results or state without type escapes, ambient time or environment, builds unit subjects through a compiled testing module with the canon doubles, enters e2e through transport, and never skips, focuses or marks a test todo.
@@ -449,15 +515,10 @@ rules:
       - {kind: eslint-be, id: no-call-only-spec}
       - {kind: eslint-be, id: no-model-call-in-e2e}
       - {kind: eslint-be, id: spec-typed-entity-manager}
-      - {kind: eslint-be, id: spec-builds-with-testing-module}
-      - {kind: eslint-be, id: spec-no-new-subject}
-      - {kind: eslint-be, id: spec-module-definition-only-providers}
-      - {kind: eslint-be, id: spec-no-module-mock}
       - {kind: eslint-be, id: no-return-only-generic}
-      - {kind: eslint-be, id: spec-infra-double-from-kit}
-      - {kind: eslint-be, id: spec-exact-values}
       - {kind: eslint-be, id: spec-no-skip}
       - {kind: eslint-be, id: unit-spec-providers}
+    covers: code/be-spec-quality
   - id: R49
     code: FE_ENV_OWNER
     law: Only `modules/config` reads the front-end environment, with no localhost fallback.
@@ -466,6 +527,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-env-outside-config}
       - {kind: eslint-fe, id: no-hardcoded-endpoint-fallback}
+    covers: code/fe-env-owner
   - id: R50
     code: FE_TRANSPORT_OWNER
     law: "A front end has one transport: the auth and no-auth Apollo clients with their link chain plus one axios instance for uploads and auth endpoints, read by components only through SWR hooks."
@@ -483,6 +545,7 @@ rules:
       - {kind: eslint-fe, id: api-client-attaches-the-locale}
       - {kind: eslint-fe, id: locale-header-belongs-to-the-link}
       - {kind: eslint-fe, id: swr-data-lifecycle}
+    covers: code/fe-transport-owner
   - id: R51
     code: FE_HTTP_STATUS_COLLAPSE
     law: A front end declares one `GraphQLResponse<T>` envelope, never collapses a failure into empty data, and turns an unauthenticated or forbidden answer into `refused` after one token refresh.
@@ -494,6 +557,7 @@ rules:
       - {kind: eslint-fe, id: no-failure-collapse}
       - {kind: eslint-fe, id: outcome-kinds-exhaustive}
       - {kind: eslint-fe, id: one-outcome-union}
+    covers: code/fe-http-status-collapse
   - id: R52
     code: FE_WIRE_GENERATED
     law: Wire types are generated by graphql-codegen from the back-end contract snapshot read in place, and operation types re-export them rather than being typed by hand.
@@ -502,6 +566,8 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-hand-typed-wire}
       - {kind: hfs, id: wire-generated}
+    covers: split/fe-wire-generated
+    split: "eslint-fe refuses a hand-typed wire type in source; hfs wire-generated judges that the generated contract files are current."
   - id: R53
     code: FE_ERROR_BOUNDARY_MISSING
     law: Global, locale error, not-found and loading boundaries exist.
@@ -511,6 +577,8 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-null-suspense-fallback}
       - {kind: machine, id: error-boundary-missing}
+    covers: split/fe-error-boundary-missing
+    split: "eslint-fe judges a Suspense fallback inside one file; the machine error-boundary-missing judges the route tree for a missing error boundary."
   - id: R54
     code: FE_ROUTE_FILES_THIN
     law: Route files mount one owner and follow the Next file conventions.
@@ -527,6 +595,7 @@ rules:
       - {kind: eslint-fe, id: page-exports-metadata}
       - {kind: eslint-fe, id: route-files-thin}
       - {kind: eslint-fe, id: route-adapter}
+    covers: code/fe-route-files-thin
   - id: R55
     code: FE_CLIENT_BOUNDARY
     law: Components render on the server first, and `"use client"` appears only where a slot allows it.
@@ -544,6 +613,7 @@ rules:
       - {kind: eslint-fe, id: web-storage-only-in-modules}
       - {kind: eslint-fe, id: no-dangerous-html}
       - {kind: eslint-fe, id: client-reaches-server}
+    covers: code/fe-client-boundary
   - id: R56
     code: FE_HOOKS_ARE_HOOKS
     law: "`hooks/` holds hooks only, in its declared sub-folders, and a product hook is defined only there and imported through its index."
@@ -556,6 +626,7 @@ rules:
       - {kind: eslint-fe, id: hooks-folder-holds-hooks-only}
       - {kind: eslint-fe, id: hooks-are-hooks}
       - {kind: eslint-fe, id: hook-location}
+    covers: code/fe-hooks-are-hooks
   - id: R57
     code: FE_OWNER_REACHABLE
     law: Every owner is mounted and every href resolves to a route.
@@ -566,6 +637,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-hardcoded-route}
       - {kind: eslint-fe, id: owner-reachable}
+    covers: code/fe-owner-reachable
   - id: R58
     code: FE_I18N_LITERAL
     law: No display text is written in source at any tier, and no escape comment exempts one.
@@ -575,6 +647,7 @@ rules:
       - {kind: eslint-fe, id: no-hardcoded-copy}
       - {kind: eslint-fe, id: html-lang-from-locale}
       - {kind: eslint-fe, id: no-copy-resolution-below-block}
+    covers: code/fe-i18n-literal
   - id: R59
     code: FE_I18N_PLACEMENT
     law: Front-end i18n uses `next-intl` with a `[locale]` segment; its stack (routing, proxy, navigation, request config, the layout's locale read) is built by `@starci/next-i18n` over the app's `defineI18n` description, kept in `modules/i18n` or in the shared i18n package, and no product source builds a layer of it; the proxy never evaluates navigation runtime.
@@ -589,6 +662,8 @@ rules:
       - {kind: eslint-fe, id: no-native-anchor}
       - {kind: eslint-fe, id: use-intl-formatter}
       - {kind: hfs, id: i18n-placement}
+    covers: split/fe-i18n-placement
+    split: "eslint-fe judges the use of the i18n stack inside source; hfs i18n-placement judges where the catalogs and the i18n module sit in the tree."
   - id: R60
     code: FE_I18N_CATALOG
     law: Every locale the app's `defineI18n` declares has its catalog and every catalog is a declared locale, every catalog has the same keys, and client components receive only the keys they `pick`.
@@ -598,6 +673,7 @@ rules:
     enforcers:
       - {kind: hfs, id: i18n-catalog}
       - {kind: hfs, id: i18n-locale-catalog}
+    covers: repo/fe-i18n-catalog
   - id: R61
     code: FE_STYLE_TOKEN_ONLY
     law: Application CSS uses the selected Grammar tokens and the declared brand owner, which sets HeroUI's tokens, and every declaration resolves.
@@ -621,6 +697,7 @@ rules:
       - {kind: eslint-grammar-core, id: no-fractional-step}
       - {kind: eslint-fe, id: no-arbitrary-value}
       - {kind: eslint-grammar-core, id: no-unresolved-token-class}
+    covers: code/fe-style-token-only
   - id: R62
     code: FE_NATIVE_FORM_CONTROL
     law: Product tiers compose the selected Grammar renderers for form controls, images and structural elements and never reproduce them with raw HTML.
@@ -629,9 +706,9 @@ rules:
       - FE_NATIVE_IMAGE
     enforcers:
       - {kind: eslint-fe, id: no-native-form-control}
-      - {kind: eslint-fe, id: no-native-img}
       - {kind: eslint-grammar-core, id: no-raw-structural-element}
       - {kind: eslint-fe, id: image-has-size}
+    covers: code/fe-native-form-control
   - id: R63
     code: FE_PACKAGE_SHAPE
     law: Front-end packages build to `dist` with explicit exports and no dead unit.
@@ -639,6 +716,7 @@ rules:
       - FE_PACKAGE_SHAPE
     enforcers:
       - {kind: machine, id: package-shape}
+    covers: repo/fe-package-shape
   - id: R64
     code: FE_APP_ISOLATION
     law: Apps never import other apps, and every screen declares its `app`.
@@ -646,6 +724,7 @@ rules:
       - FE_APP_ISOLATION
     enforcers:
       - {kind: eslint-fe, id: app-isolation}
+    covers: code/fe-app-isolation
   - id: R65
     code: FE_SIZE_AND_STATE_BUDGET
     law: Front-end code stays within the hook and state budgets, takes live time from the Grammar's shared clock, writes no poll loop, keys its lists, releases every effect in cleanup and swallows no error.
@@ -666,6 +745,7 @@ rules:
       - {kind: eslint-fe, id: effect-subscription-needs-cleanup}
       - {kind: eslint-fe, id: no-empty-catch}
       - {kind: eslint-fe, id: no-console}
+    covers: code/fe-size-and-state-budget
   - id: R68
     code: BE_SQL_INTERPOLATED
     law: "SQL text carries no runtime substitution; values are numbered parameters. The one exception is R334's call and LISTEN statements in `platform/database/database.client.ts`, which splice only the name parts and parameter list its own validator checked."
@@ -673,6 +753,7 @@ rules:
       - BE_SQL_INTERPOLATED
     enforcers:
       - {kind: eslint-be, id: no-interpolated-sql}
+    covers: code/be-sql-interpolated
   - id: R69
     code: BE_QUERY_UNBOUNDED
     law: A read that can return many rows is bounded by `take`, `limit`, `LIMIT` or a cursor.
@@ -680,6 +761,7 @@ rules:
       - BE_QUERY_UNBOUNDED
     enforcers:
       - {kind: eslint-be, id: query-needs-limit}
+    covers: code/be-query-unbounded
   - id: R70
     code: BE_HTTP_TIMEOUT
     law: Every outbound `fetch`, axios or HttpService call states a timeout or an abort signal.
@@ -687,6 +769,7 @@ rules:
       - BE_HTTP_TIMEOUT
     enforcers:
       - {kind: eslint-be, id: http-needs-timeout}
+    covers: code/be-http-timeout
   - id: R71
     code: BE_LOG_SECRET
     law: No log call or constructed error carries a `Secret`, `Pii` or credential-named value; it logs an id or a masked form.
@@ -695,6 +778,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: no-secret-in-log}
       - {kind: eslint-be, id: no-secret-in-error}
+    covers: code/be-log-secret
   - id: R72
     code: BE_TYPE_ESCAPE
     law: No file, specs included, holds a type assertion other than `as const`, a non-null assertion, `any`, the `Function` type or `eval`.
@@ -702,6 +786,7 @@ rules:
       - BE_TYPE_ESCAPE
     enforcers:
       - {kind: eslint-be, id: no-function-or-eval}
+    covers: code/be-type-escape
   - id: R73
     code: BE_ASYNC_NO_AWAIT
     law: An `async` function contains an `await`.
@@ -709,6 +794,7 @@ rules:
       - BE_ASYNC_NO_AWAIT
     enforcers:
       - {kind: eslint-be, id: async-needs-await}
+    covers: code/be-async-no-await
   - id: R74
     code: BE_MIGRATION_REVERSIBLE
     law: Every migration declares a `down()` that reverses its `up()`.
@@ -716,6 +802,7 @@ rules:
       - BE_MIGRATION_REVERSIBLE
     enforcers:
       - {kind: eslint-be, id: migration-down-reversible}
+    covers: code/be-migration-reversible
   - id: R75
     code: BE_RETURN_TYPE
     law: Handlers and public methods of an Injectable, Resolver or Controller declare their return type.
@@ -723,6 +810,7 @@ rules:
       - BE_RETURN_TYPE
     enforcers:
       - {kind: eslint-be, id: explicit-handler-return-type}
+    covers: code/be-return-type
   - id: R76
     code: BE_JSON_PARSE_UNGUARDED
     law: "`JSON.parse` sits inside a `try` in its own function and fails as a typed outcome."
@@ -730,6 +818,7 @@ rules:
       - BE_JSON_PARSE_UNGUARDED
     enforcers:
       - {kind: eslint-be, id: json-parse-needs-guard}
+    covers: code/be-json-parse-unguarded
   - id: R77
     code: BE_QUERY_IN_LOOP
     law: No read through the shared EntityManager runs once per loop element; it reads once by key list before the loop.
@@ -737,6 +826,7 @@ rules:
       - BE_QUERY_IN_LOOP
     enforcers:
       - {kind: eslint-be, id: no-query-in-loop}
+    covers: code/be-query-in-loop
   - id: R78
     code: BE_USER_COPY_LITERAL
     law: Exception messages, notification texts and response copy come from the capability's messages catalog through the `MessageCatalog` port; the operation and field documentation a REST door hands to an `@nestjs/swagger` export is contract text, judged with the emitted document (R396).
@@ -744,6 +834,7 @@ rules:
       - BE_USER_COPY_LITERAL
     enforcers:
       - {kind: eslint-be, id: user-copy-through-catalog}
+    covers: code/be-user-copy-literal
   - id: R79
     code: BE_AMBIENT_CLOCK
     law: Ambient clock APIs are referenced only inside `platform/clock`; code uses the injected `Clock` port and specs use `FakeClock`.
@@ -751,6 +842,7 @@ rules:
       - BE_AMBIENT_CLOCK
     enforcers:
       - {kind: eslint-be, id: no-ambient-clock}
+    covers: code/be-ambient-clock
   - id: R80
     code: BE_INBOX_DEDUPE_MISSING
     law: Every service method that takes a delivery first claims its `eventId` on the `Inbox` port (`claim`, or `claimRow` on its `EntityInbox` extension, which inserts the receipt row only for the winning claim) and returns early on a duplicate (`false`, or no receipt id); consumers stay thin doors.
@@ -758,6 +850,7 @@ rules:
       - BE_INBOX_DEDUPE_MISSING
     enforcers:
       - {kind: eslint-be, id: inbox-dedupe-required}
+    covers: code/be-inbox-dedupe-missing
   - id: R81
     code: BE_HAND_ROLLED_RETRY
     law: Retry-with-wait goes through the shared `platform/retry` helper, never a hand-written loop.
@@ -765,6 +858,7 @@ rules:
       - BE_HAND_ROLLED_RETRY
     enforcers:
       - {kind: eslint-be, id: no-hand-rolled-retry}
+    covers: code/be-hand-rolled-retry
   - id: R82
     code: BE_TRANSACTION_EXTERNAL_CALL
     law: No transaction spans an external call; it commits first or writes an outbox message inside the transaction.
@@ -772,6 +866,7 @@ rules:
       - BE_TRANSACTION_EXTERNAL_CALL
     enforcers:
       - {kind: eslint-be, id: no-external-call-in-transaction}
+    covers: code/be-transaction-external-call
   - id: R83
     code: BE_UNNAMED_DATA_ACCESS
     law: The database is reached only through the shared EntityManager injected by a declared connection's injector, and no repository, wrapper or other class hands out a connection object.
@@ -785,6 +880,7 @@ rules:
       - {kind: eslint-be, id: no-eager-relation}
       - {kind: eslint-be, id: no-outer-manager-in-transaction}
       - {kind: eslint-be, id: require-entity-table-name}
+    covers: code/be-unnamed-data-access
   - id: R84
     code: BE_CONNECTION_DUPLICATE
     law: One physical database is one connection with one injector declared once in `platform/database`, matching `hfs.json` connections one to one.
@@ -793,6 +889,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: one-connection-per-database}
       - {kind: eslint-be, id: connection-map}
+    covers: code/be-connection-duplicate
   - id: R85
     code: BE_RAW_INJECT
     law: Every injected infrastructure dependency arrives through a zero-argument `Inject<Thing>()` over an exported `unique symbol` token, with port parameters named as `ruleParams.be.paramNames` gives.
@@ -809,6 +906,7 @@ rules:
       - {kind: eslint-be, id: no-forward-ref}
       - {kind: eslint-be, id: no-string-token}
       - {kind: eslint-be, id: injection-token-exported}
+    covers: code/be-raw-inject
   - id: R86
     code: BE_SQL_TABLE_OWNER
     law: SQL writes only its own capability's tables, reads only tables of its own context, and bounds every multi-row SELECT. The engine-owned objects of hfs.json sides.be.engineOwned belong to the declared engine capability alone.
@@ -816,6 +914,7 @@ rules:
       - BE_SQL_TABLE_OWNER
     enforcers:
       - {kind: eslint-be, id: sql-owner}
+    covers: code/be-sql-table-owner
   - id: R87
     code: BE_CQRS_SHAPE
     law: "The application layer is CQRS: readonly typed commands and queries whose handlers make exactly one delegating service call, with no use-case classes, forwarder services or in-process events."
@@ -831,6 +930,7 @@ rules:
       - {kind: eslint-be, id: no-event-bus}
       - {kind: eslint-be, id: execute-params-shape}
       - {kind: eslint-be, id: readonly-boundary}
+    covers: code/be-cqrs-shape
   - id: R88
     code: BE_TRANSPORT_SHAPE
     law: A transport handler maps its input, dispatches exactly one command or query through the injected bus and maps the result, with no other dependency, branch, loop or envelope.
@@ -839,11 +939,11 @@ rules:
     enforcers:
       - {kind: eslint-be, id: door-lives-in-features}
       - {kind: eslint-be, id: no-capability-imports-features}
-      - {kind: eslint-be, id: rest-door-needs-a-reason}
       - {kind: eslint-be, id: transport-is-thin}
       - {kind: eslint-be, id: no-response-envelope}
       - {kind: eslint-be, id: no-graphql-json}
       - {kind: eslint-be, id: em-injection-slots}
+    covers: code/be-transport-shape
   - id: R89
     code: BE_SOURCE_FORM
     law: Back-end files use the role-suffix vocabulary `ruleParams.be.suffixes`, named exports with English JSDoc, English-only text outside catalogs and fixtures, named public contracts and no test doubles in production source.
@@ -865,6 +965,8 @@ rules:
       - {kind: eslint-be, id: source-suffix}
       - {kind: eslint-be, id: source-names}
       - {kind: eslint-be, id: public-contract-form}
+    covers: split/be-source-form
+    split: "eslint-be judges names and forms inside a source file; hfs source-suffix judges file names over the tree, and on a TypeScript file the lint's source-suffix reports and app check drops its own copy (LINT_ENFORCERS)."
   - id: R90
     code: BE_INFRA_OWNER
     law: Each raw infrastructure library, model SDKs included, is imported only by its one owning platform or integration capability, and only integrations call the `HttpClient` port. The socket decorators `@nestjs/websockets` are owned by `platform/realtime` and by the slot of the websocket door (`slot:be.feature.realtime.websocket`), so the mandatory `<channel>.gateway.ts` is legal and no other file imports them.
@@ -873,6 +975,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: infra-import-owner}
       - {kind: eslint-be, id: http-client-only-in-integrations}
+    covers: code/be-infra-owner
   - id: R91
     code: FE_SOURCE_FORM
     law: Front-end files sit in their tier folder with fixed names, export arrow functions named after the folder, carry English JSDoc and hold English-only text outside the i18n catalogs and fixtures.
@@ -895,6 +998,7 @@ rules:
       - {kind: eslint-fe, id: handler-on-prefix}
       - {kind: eslint-fe, id: no-direct-const-alias}
       - {kind: eslint-fe, id: frontend-source-layout}
+    covers: code/fe-source-form
   - id: R92
     code: FE_COMPONENT_API
     law: A component exposes the canon surface of typed props and slots, a presentational twin for every connected block, status through the Grammar state renderer (a `DataSlot` drawn by `SlotView`, never a string union of a shape or a view type) and no styling doors, and a pure component reaches no hook, router, locale or API.
@@ -928,6 +1032,7 @@ rules:
       - {kind: eslint-fe, id: class-names-in-colocated-file}
       - {kind: eslint-fe, id: cn-arguments-are-single-tokens}
       - {kind: eslint-fe, id: component-purity}
+    covers: code/fe-component-api
   - id: R93
     code: FE_VENDOR_BOUNDARY
     law: Vendor primitives and icons reach components only through their named owners with one icon size per region from the Grammar scale, and the Grammar package is imported only through its public entries (beside them, a core-ext code entry or, in a style source, a core-ext stylesheet the installed Grammar exports) and its required, non-optional peers are exactly the selected peers.
@@ -943,6 +1048,8 @@ rules:
       - {kind: eslint-grammar-core, id: vendor-primitive-has-named-owner}
       - {kind: eslint-fe, id: grammar-entry}
       - {kind: machine, id: grammar}
+    covers: split/fe-vendor-boundary
+    split: "the Grammar lint and eslint-fe judge vendor use inside one file; the machine grammar judges the Grammar package contract of the app (package.json, peers, entries), and an import bypass on a source file is the lint's grammar-entry (LINT_ENFORCERS)."
   - id: R94
     code: FE_SLOT_FILE_ROLE
     law: A front-end file is owned and named by a slot, and a directory-owning slot holds only the files its `allows` list names inside a folder of its own.
@@ -950,6 +1057,7 @@ rules:
       - FE_SLOT_FILE_ROLE
     enforcers:
       - {kind: machine, id: fe-slot-allows}
+    covers: repo/fe-slot-file-role
   - id: R95
     code: BE_OPERATION_CONTRACT
     law: A versioned operation is declared once by `defineOperations` with bounded zod schemas and a closed refusal union, validated by the operation pipe before dispatch, and its OpenAPI is derived by the app emit.
@@ -959,6 +1067,7 @@ rules:
       - {kind: eslint-be, id: operation-contract-decidable}
       - {kind: eslint-be, id: operation-route-driven-by-table}
       - {kind: eslint-be, id: operation-table-schemas}
+    covers: code/be-operation-contract
   - id: R96
     code: HFS_DOC_NOT_ENGLISH
     law: Every Markdown and YAML document under a side's docs, source and apps, and under the runtime's knowledge and docs, is English, except data in message-catalog or i18n-fixtures slots.
@@ -966,6 +1075,7 @@ rules:
       - HFS_DOC_NOT_ENGLISH
     enforcers:
       - {kind: machine, id: doc-language}
+    covers: repo/hfs-doc-not-english
   - id: R97
     code: FE_NO_TESTS
     law: "The front end has no tests: no spec files, test folders, runner configurations, test scripts or test dependencies."
@@ -973,6 +1083,7 @@ rules:
       - FE_NO_TESTS
     enforcers:
       - {kind: hfs, id: fe-no-tests}
+    covers: repo/fe-no-tests
   - id: R98
     code: BE_TEST_BUILDER_HOME
     law: Test data builders live only in `be/src/tests/fixtures/builders/<area>.builder.ts`, and no other test module creates persisted rows.
@@ -980,6 +1091,7 @@ rules:
       - BE_TEST_BUILDER_HOME
     enforcers:
       - {kind: eslint-be, id: persisting-builder-in-builders-slot}
+    covers: code/be-test-builder-home
   - id: R99
     code: BE_TEST_ROW_BY_BUILDER
     law: A spec never hand-builds rows through SQL or EntityManager writes; rows come from the area's builder.
@@ -988,6 +1100,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: spec-no-raw-insert}
       - {kind: eslint-be, id: spec-no-repeated-row-literal}
+    covers: code/be-test-row-by-builder
   - id: R100
     code: BE_TEST_CONSTRAINTS_ON
     law: Nothing under `be/src/tests` disables, defers or drops a database constraint; a builder creates the parent chain instead.
@@ -995,6 +1108,7 @@ rules:
       - BE_TEST_CONSTRAINTS_ON
     enforcers:
       - {kind: eslint-be, id: tests-keep-constraints}
+    covers: code/be-test-constraints-on
   - id: R101
     code: BE_TEST_BUILDER_ARRANGES
     law: A test data builder only arranges data, imports no assertion or test framework, and has deterministic defaults.
@@ -1002,6 +1116,7 @@ rules:
       - BE_TEST_BUILDER_ARRANGES
     enforcers:
       - {kind: eslint-be, id: builder-arranges-only}
+    covers: code/be-test-builder-arranges
   - id: R102
     code: BE_SPEC_PLACEMENT
     law: "A back-end spec lives only in one of the four test layers: a unit spec beside its unit-tested subject, or an integration, e2e or contract spec under `be/src/tests`."
@@ -1010,6 +1125,8 @@ rules:
     enforcers:
       - {kind: hfs, id: spec-placement}
       - {kind: eslint-be, id: spec-placement}
+    covers: split/be-spec-placement
+    split: "hfs judges spec placement over the tree; on a TypeScript file the lint's spec-placement reports and app check drops its own copy (LINT_ENFORCERS)."
   - id: R103
     code: HFS_REPO_LOCAL_CHECK
     law: "A repository keeps no check, lint rule or lint plugin of its own outside its extension folder (PROJECT-LINT-3): no `eslint-local-rules*` or local eslint plugin; no check-named runnable file in `scripts/` or `tools/` (or one folder below), a check-named file being one whose name holds the word check, checks or checker split on `-`, `_` and `.` (`check-schema.mjs`, `tool-names-check.mjs`, `flow_check.cjs`, `ids.check.mjs`, never `checkout.mjs`); no file of `ext/checks/` that ext/manifest.json `checks` does not declare; and no package script that runs such a file (one that runs a declared check stays). A generic check lives in the harness runtime and the canons."
@@ -1017,6 +1134,7 @@ rules:
       - HFS_REPO_LOCAL_CHECK
     enforcers:
       - {kind: hfs, id: repo-local-check}
+    covers: repo/hfs-repo-local-check
   - id: R104
     code: HFS_LINT_SUPPRESSION_FILE
     law: A repository keeps no lint-suppression file, script or option; a finding is fixed in the code.
@@ -1024,6 +1142,7 @@ rules:
       - HFS_LINT_SUPPRESSION_FILE
     enforcers:
       - {kind: hfs, id: lint-suppression}
+    covers: repo/hfs-lint-suppression-file
   - id: R106
     code: FE_I18N_KEYS
     law: "Front-end catalogs and source agree both ways: every literal key read through `next-intl` exists in every locale, and no catalog key is unread."
@@ -1031,6 +1150,7 @@ rules:
       - FE_I18N_KEYS
     enforcers:
       - {kind: eslint-fe, id: i18n-keys}
+    covers: code/fe-i18n-keys
   - id: R107
     code: FE_COOKIE_ATTRIBUTES
     law: A cookie the front end writes states `httpOnly` literally, carries `secure` and has `sameSite` `lax` or `strict`.
@@ -1038,6 +1158,7 @@ rules:
       - FE_COOKIE_ATTRIBUTES
     enforcers:
       - {kind: eslint-fe, id: response-cookie-attributes}
+    covers: code/fe-cookie-attributes
   - id: R108
     code: BE_ERROR_CAUSE_DROPPED
     law: A `throw` escaping a `catch` rethrows the caught value or carries it as the new error's `cause`.
@@ -1045,6 +1166,7 @@ rules:
       - BE_ERROR_CAUSE_DROPPED
     enforcers:
       - {kind: eslint-be, id: replacement-throw-carries-cause}
+    covers: code/be-error-cause-dropped
   - id: R109
     code: BE_MEMBER_DOC_MISSING
     law: Every public member of an exported class, interface or object type in product source opens with English JSDoc.
@@ -1052,6 +1174,7 @@ rules:
       - BE_MEMBER_DOC_MISSING
     enforcers:
       - {kind: eslint-be, id: require-public-member-jsdoc}
+    covers: code/be-member-doc-missing
   - id: R110
     code: FE_PROPS_MUTABLE
     law: The props type of an exported rendering function is readonly all the way down.
@@ -1059,6 +1182,7 @@ rules:
       - FE_PROPS_MUTABLE
     enforcers:
       - {kind: eslint-fe, id: props-fields-readonly}
+    covers: code/fe-props-mutable
   - id: R113
     code: FE_GRAPHQL_CONTRACT
     law: Every GraphQL operation a front end keeps in a `.graphql` file validates against the back-end contract snapshot that declares its root field.
@@ -1066,6 +1190,7 @@ rules:
       - FE_GRAPHQL_CONTRACT
     enforcers:
       - {kind: hfs, id: fe-contract-documents}
+    covers: repo/fe-graphql-contract
   - id: R141
     code: BE_COOKIE_ATTRIBUTES
     law: A cookie a back-end door writes sets `httpOnly`, `secure` and a `lax` or `strict` `sameSite` as typed literals, and `Set-Cookie` is never written as a raw header.
@@ -1073,6 +1198,7 @@ rules:
       - BE_COOKIE_ATTRIBUTES
     enforcers:
       - {kind: eslint-be, id: response-cookie-attributes}
+    covers: code/be-cookie-attributes
   - id: R142
     code: BE_AMBIENT_ID
     law: Random id generators are used only inside `platform/ids`; code uses the injected `Ids` port and specs use `fakeIds()`.
@@ -1080,6 +1206,7 @@ rules:
       - BE_AMBIENT_ID
     enforcers:
       - {kind: eslint-be, id: no-ambient-id}
+    covers: code/be-ambient-id
   - id: R143
     code: HFS_MONO_WORKSPACES
     law: Every app is an npm monorepo with the declared workspaces, an exact `packageManager`, the pinned turbo, one root lockfile and the managed `turbo.json`.
@@ -1087,6 +1214,7 @@ rules:
       - HFS_MONO_WORKSPACES
     enforcers:
       - {kind: hfs, id: monorepo}
+    covers: repo/hfs-mono-workspaces
   - id: R144
     code: HFS_MONO_FE_WORKSPACE
     law: Every front-end app and package is a private npm workspace with its declared name and exactly the standard scripts.
@@ -1094,6 +1222,7 @@ rules:
       - HFS_MONO_FE_WORKSPACE
     enforcers:
       - {kind: hfs, id: monorepo}
+    covers: repo/hfs-mono-fe-workspace
   - id: R145
     code: HFS_MONO_NEST_PROJECTS
     law: The back end is a Nest monorepo of `be/apps/<app>` whose `nest-cli.json` projects are exactly the apps `hfs.json` declares, defaulting to an api app.
@@ -1101,6 +1230,7 @@ rules:
       - HFS_MONO_NEST_PROJECTS
     enforcers:
       - {kind: hfs, id: monorepo}
+    covers: repo/hfs-mono-nest-projects
   - id: R146
     code: HFS_MONO_WORKSPACE_DEP
     law: A front-end workspace declares every package its files import in its own `package.json`, and the app root declares no workspace package.
@@ -1108,6 +1238,7 @@ rules:
       - HFS_MONO_WORKSPACE_DEP
     enforcers:
       - {kind: hfs, id: monorepo}
+    covers: repo/hfs-mono-workspace-dep
   - id: R147
     code: BE_CLI_REQUIRED
     law: Every one-off back-end action lives in the one ops cli app `be/apps/cli` (the only app of kind `cli`) with its own image, required whenever the back end declares a connection or an ops command.
@@ -1115,6 +1246,7 @@ rules:
       - BE_CLI_REQUIRED
     enforcers:
       - {kind: hfs, id: cli}
+    covers: repo/be-cli-required
   - id: R148
     code: BE_CLI_BOOTSTRAP
     law: A cli app, the ops cli or a client cli, boots through nest-commander's `CommandFactory.run` and never serves.
@@ -1122,6 +1254,7 @@ rules:
       - BE_CLI_BOOTSTRAP
     enforcers:
       - {kind: eslint-be, id: cli-bootstrap}
+    covers: code/be-cli-bootstrap
   - id: R149
     code: BE_CLI_COMMAND_SHAPE
     law: A nest-commander command is declared only in the feature root of its cli app (`src/features/cli/` of the ops cli, `src/features/client-cli/<app>/` of a client cli), one per file in its group or `subs/` folder, each sub-command with its unit spec beside it, and no two command classes of one feature root share a class name.
@@ -1129,7 +1262,7 @@ rules:
       - BE_CLI_COMMAND_SHAPE
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
-      - {kind: eslint-be, id: unit-test-colocated}
+    covers: code/be-cli-command-shape
   - id: R150
     code: BE_CLI_OWNER
     law: "`nest-commander` is imported only by the cli apps and their feature roots, and no back-end source parses command-line arguments itself."
@@ -1137,6 +1270,7 @@ rules:
       - BE_CLI_OWNER
     enforcers:
       - {kind: eslint-be, id: cli-owner}
+    covers: code/be-cli-owner
   - id: R151
     code: BE_EVENT_CLASS_CONTRACT
     law: Every typed event class under `be/src/modules/events/<service>/` matches an entry of the vendored `events.json` contract by name and version, and every contract entry has its class.
@@ -1144,6 +1278,7 @@ rules:
       - BE_EVENT_CLASS_CONTRACT
     enforcers:
       - {kind: hfs, id: event-class-contract}
+    covers: repo/be-event-class-contract
   - id: R152
     code: BE_OUTBOX_WRITE_TX
     law: Only a domain service writes the outbox (an event publish, a queue producer call or a direct `QueueOutbox.write`), passing the manager of its own transaction, so a job starts, and enqueues its next job, only with the change that calls for it.
@@ -1151,6 +1286,7 @@ rules:
       - BE_OUTBOX_WRITE_TX
     enforcers:
       - {kind: eslint-be, id: outbox-write-tx}
+    covers: code/be-outbox-write-tx
   - id: R153
     code: BE_EVENT_CONSUMER_SHAPE
     law: An `EventConsumer` is `transport/message/<event>.consumer.ts` named after its event and passes `delivery.eventId` on to the command it dispatches.
@@ -1158,6 +1294,7 @@ rules:
       - BE_EVENT_CONSUMER_SHAPE
     enforcers:
       - {kind: eslint-be, id: event-consumer-shape}
+    covers: code/be-event-consumer-shape
   - id: R154
     code: BE_QUEUE_PRODUCER_SHAPE
     law: "Every queue producer write takes a `tx: EntityManager` parameter and passes it as the write's first argument."
@@ -1165,14 +1302,16 @@ rules:
       - BE_QUEUE_PRODUCER_SHAPE
     enforcers:
       - {kind: eslint-be, id: queue-producer-shape}
+    covers: code/be-queue-producer-shape
   - id: R155
     code: BE_PATTERN_SPEC_MISSING
-    law: Every pattern a back end declares has a test titled `<pattern>/<scenario>` for each scenario of `ruleParams.be.patternScenarios`.
+    law: Every pattern a back end declares has an integration test titled `<pattern>/<scenario>` for each scenario of `ruleParams.be.patternScenarios`; a declared pattern with no scenario to name still needs an integration spec to exist.
     failureCodes:
       - BE_PATTERN_SPEC_MISSING
+      - BE_LITE_PROOF_LANE_MISSING
     enforcers:
-      - {kind: hfs, id: pattern-spec-missing}
       - {kind: hfs, id: proof-lane}
+    covers: repo/be-pattern-spec-missing
   - id: R156
     code: BE_KIND_ISOLATION
     law: A feature of one trigger kind never imports a feature of another kind; kinds meet only through the event bus.
@@ -1181,6 +1320,8 @@ rules:
     enforcers:
       - {kind: eslint-be, id: kind-isolation}
       - {kind: machine, id: tiers}
+    covers: split/be-kind-isolation
+    split: "the machine judges kind isolation over the import graph; on a source file the lint's kind-isolation reports and app check drops its own copy (LINT_ENFORCERS)."
   - id: R157
     code: BE_JOB_WRITE_OUTSIDE_OWNER
     law: The job entity is written only by `platform/jobs`.
@@ -1188,6 +1329,7 @@ rules:
       - BE_JOB_WRITE_OUTSIDE_OWNER
     enforcers:
       - {kind: eslint-be, id: job-write-owner}
+    covers: code/be-job-write-outside-owner
   - id: R158
     code: BE_JOB_FENCE_REQUIRED
     law: Every `JobClaims` method that takes a job requires an expected fencing token, no caller casts around it, and a catch around a claims write rethrows.
@@ -1195,6 +1337,7 @@ rules:
       - BE_JOB_FENCE_REQUIRED
     enforcers:
       - {kind: eslint-be, id: job-fence-required}
+    covers: code/be-job-fence-required
   - id: R159
     code: BE_JOB_EFFECT_PIECE
     law: "In a job step, and in a function that takes a `ClaimedJob`, every call on an integration port that its port does not declare an outside read (`OutsideReads<'member'>` of `platform/effects`, extended by the port's interface, by an interface merged with a client class, or held by the contract a class implements) is the `act` or the `confirm` read of an `Effects.once` call of `platform/effects`, which commits the intent row before the act and the result after; a declared read needs no intent, an undeclared member is an act."
@@ -1202,6 +1345,7 @@ rules:
       - BE_JOB_EFFECT_PIECE
     enforcers:
       - {kind: eslint-be, id: job-effect-piece}
+    covers: code/be-job-effect-piece
   - id: R160
     code: BE_JOB_SHAPE
     law: Job processors and steps exist only in their job folder, a processor extending `FencedProcessor` and a step implementing `JobStep`.
@@ -1209,6 +1353,7 @@ rules:
       - BE_JOB_SHAPE
     enforcers:
       - {kind: eslint-be, id: job-shape}
+    covers: code/be-job-shape
   - id: R161
     code: BE_PROJECTION_WRITE_OWNER
     law: A projection's entity is written only by the `<name>.projection.ts` of its folder.
@@ -1216,6 +1361,7 @@ rules:
       - BE_PROJECTION_WRITE_OWNER
     enforcers:
       - {kind: eslint-be, id: projection-write-owner}
+    covers: code/be-projection-write-owner
   - id: R162
     code: BE_PROJECTION_SHAPE
     law: A projection exposes only `recompute*` and `get*` methods, exports no entity from its index, and is never recomputed by an api feature.
@@ -1223,6 +1369,7 @@ rules:
       - BE_PROJECTION_SHAPE
     enforcers:
       - {kind: eslint-be, id: projection-shape}
+    covers: code/be-projection-shape
   - id: R163
     code: HFS_SERVICE_PLACEMENT
     law: A back-end service lives only at `be/apps/<service>/`, sharing the `be/src` libraries and the one package.json; any other service root is refused, and a workspace package's manifest (`fe/apps/<app>`, `fe/packages/<pkg>`, a root `packages/<name>`) is none. The package.json of a client cli (`be/apps/<name>/package.json` of an app declared with kind `client-cli`, R397) is none either.
@@ -1230,6 +1377,7 @@ rules:
       - HFS_SERVICE_PLACEMENT
     enforcers:
       - {kind: hfs, id: services-placement}
+    covers: repo/hfs-service-placement
   - id: R164
     code: HFS_IMAGE_UNPINNED
     law: In a multi-service product every stack component image is pinned by digest or exact version.
@@ -1237,6 +1385,7 @@ rules:
       - HFS_IMAGE_UNPINNED
     enforcers:
       - {kind: hfs, id: services-image-pins}
+    covers: repo/hfs-image-unpinned
   - id: R165
     code: HFS_SERVICE_STACK_DECLARATION
     law: "In a multi-service product every api or worker app is a `role: service` component of the application stacks."
@@ -1244,6 +1393,7 @@ rules:
       - HFS_SERVICE_STACK_DECLARATION
     enforcers:
       - {kind: hfs, id: services-stack-declaration}
+    covers: repo/hfs-service-stack-declaration
   - id: R166
     code: HFS_EVENT_CONTRACT
     law: The async contract between services is emitted into `be/contracts/<service>/events.json`, compensations name an existing event, and every consumed entry exists in the provider's snapshot at its version.
@@ -1251,6 +1401,7 @@ rules:
       - HFS_EVENT_CONTRACT
     enforcers:
       - {kind: hfs, id: services-event-contract}
+    covers: repo/hfs-event-contract
   - id: R168
     code: BE_SERVICE_ISOLATION
     law: A service app imports no file of a sibling service app; services meet only through the `be/src` libraries and the wire.
@@ -1258,6 +1409,7 @@ rules:
       - BE_SERVICE_ISOLATION
     enforcers:
       - {kind: eslint-be, id: service-isolation}
+    covers: code/be-service-isolation
   - id: R174
     code: BE_CONTEXT_OWNER
     law: Each `hfs.json` connection is a bounded context owned by one api or worker app; an app composes only its own contexts, and the migrate and cli apps compose all.
@@ -1265,6 +1417,7 @@ rules:
       - BE_CONTEXT_OWNER
     enforcers:
       - {kind: eslint-be, id: context-owner}
+    covers: code/be-context-owner
   - id: R175
     code: BE_CONTEXT_COUPLING
     law: "Contexts couple only through events: no entity relation, foreign key or import crosses a context."
@@ -1272,6 +1425,7 @@ rules:
       - BE_CONTEXT_COUPLING
     enforcers:
       - {kind: eslint-be, id: context-coupling}
+    covers: code/be-context-coupling
   - id: R176
     code: BE_CONTEXT_TRANSACTION
     law: One transaction touches one context's connection; work across contexts is a saga.
@@ -1279,6 +1433,7 @@ rules:
       - BE_CONTEXT_TRANSACTION
     enforcers:
       - {kind: eslint-be, id: context-transaction}
+    covers: code/be-context-transaction
   - id: R177
     code: BE_CONTRACT_BREAKING
     law: A published contract evolves only additively against its pinned previous copy; a breaking event change is a new versioned event key, and a breaking REST change raises the major of the document's info.version.
@@ -1287,6 +1442,7 @@ rules:
     enforcers:
       - {kind: hfs, id: contract-compat}
       - {kind: hfs, id: rest-contract-breaking}
+    covers: repo/be-contract-breaking
   - id: R178
     code: BE_CONTEXT_PLATFORM_TABLES
     law: A `perConnection` platform capability registers its entities and migrations on every connection it serves.
@@ -1294,6 +1450,7 @@ rules:
       - BE_CONTEXT_PLATFORM_TABLES
     enforcers:
       - {kind: eslint-be, id: context-platform-tables}
+    covers: code/be-context-platform-tables
   - id: R179
     code: BE_KIND_DECLARATION
     law: "`hfs.json` `sides.be.kinds` lists exactly the trigger kinds in use, with their required patterns and platform capabilities."
@@ -1301,6 +1458,7 @@ rules:
       - BE_KIND_DECLARATION
     enforcers:
       - {kind: hfs, id: kind-declaration}
+    covers: repo/be-kind-declaration
   - id: R180
     code: BE_KIND_EMPTY
     law: A kind folder holds only instance folders, each with TypeScript source.
@@ -1308,6 +1466,7 @@ rules:
       - BE_KIND_EMPTY
     enforcers:
       - {kind: hfs, id: kind-empty}
+    covers: repo/be-kind-empty
   - id: R181
     code: BE_SQL_RETURNING_SHAPE
     law: A `sql` UPDATE or DELETE with RETURNING is wrapped as a CTE that SELECTs from the changed rows.
@@ -1315,6 +1474,7 @@ rules:
       - BE_SQL_RETURNING_SHAPE
     enforcers:
       - {kind: eslint-be, id: sql-returning}
+    covers: code/be-sql-returning-shape
   - id: R182
     code: BE_WEBHOOK_SHAPE
     law: A webhook door is one public signed-webhook controller whose POST verifies, then makes one durable domain intake and returns nothing or a declared literal ack, with no bus or handler dispatch.
@@ -1322,6 +1482,7 @@ rules:
       - BE_WEBHOOK_SHAPE
     enforcers:
       - {kind: eslint-be, id: webhook-shape}
+    covers: code/be-webhook-shape
   - id: R183
     code: BE_WEBHOOK_UNVERIFIED
     law: A webhook POST starts with an unconditional signature or domain verification before any other work, and an optional GET challenge echoes only its verifier's result.
@@ -1329,6 +1490,7 @@ rules:
       - BE_WEBHOOK_UNVERIFIED
     enforcers:
       - {kind: eslint-be, id: webhook-verify-first}
+    covers: code/be-webhook-unverified
   - id: R184
     code: BE_REALTIME_SHAPE
     law: A realtime file is the one door its role names (gateway, subscription or SSE controller), and all three doors are served from the api process in both editions.
@@ -1336,6 +1498,7 @@ rules:
       - BE_REALTIME_SHAPE
     enforcers:
       - {kind: eslint-be, id: realtime-shape}
+    covers: code/be-realtime-shape
   - id: R185
     code: BE_REALTIME_WRITES
     law: A realtime door only reads and pushes; it injects the `RealtimeHub` of `platform/realtime` and, in an SSE door, at most one stream read service whose public methods only answer an `Observable`.
@@ -1343,6 +1506,7 @@ rules:
       - BE_REALTIME_WRITES
     enforcers:
       - {kind: eslint-be, id: realtime-read-only}
+    covers: code/be-realtime-writes
   - id: R186
     code: BE_REALTIME_TOPIC_SCOPE
     law: A realtime handler subscribes only to topics built from its `@CurrentPrincipal()`, and a call to a stream read service passes that principal.
@@ -1350,6 +1514,7 @@ rules:
       - BE_REALTIME_TOPIC_SCOPE
     enforcers:
       - {kind: eslint-be, id: realtime-topic-scope}
+    covers: code/be-realtime-topic-scope
   - id: R187
     code: HFS_DOCKER_BUILD_CONTEXT
     law: Every app image builds from the app root, no COPY or ADD source leaves the build context, and a Next image copies be/contracts only when the back end holds it. Every image copies hfs.json (the repository root marker a package reads a shared folder from) and statics/brand when the repository holds it, before its build step.
@@ -1357,6 +1522,7 @@ rules:
       - HFS_DOCKER_BUILD_CONTEXT
     enforcers:
       - {kind: hfs, id: docker}
+    covers: repo/hfs-docker-build-context
   - id: R188
     code: HFS_DOCKER_STAGES
     law: An app Dockerfile is multi-stage with `build` and `runtime` stages, installs with `npm ci`, and its runtime stage builds nothing and runs as `node`.
@@ -1364,6 +1530,7 @@ rules:
       - HFS_DOCKER_STAGES
     enforcers:
       - {kind: hfs, id: docker}
+    covers: repo/hfs-docker-stages
   - id: R189
     code: HFS_DOCKER_ENTRY
     law: The runtime stage starts the app's built entry in exec form with the port, exposure and HEALTHCHECK its app kind requires.
@@ -1371,6 +1538,7 @@ rules:
       - HFS_DOCKER_ENTRY
     enforcers:
       - {kind: hfs, id: docker}
+    covers: repo/hfs-docker-entry
   - id: R190
     code: HFS_DOCKER_BASE_PIN
     law: Every FROM of an app Dockerfile is a prior stage, the canon node base image (stack/pins.yaml) or a digest-pinned image.
@@ -1378,6 +1546,7 @@ rules:
       - HFS_DOCKER_BASE_PIN
     enforcers:
       - {kind: hfs, id: docker}
+    covers: repo/hfs-docker-base-pin
   - id: R191
     code: HFS_DOCKER_SECRETS
     law: No secret enters an image through a copied file, a URL, or a credential-named ARG or ENV other than `NEXT_PUBLIC_*`.
@@ -1385,6 +1554,7 @@ rules:
       - HFS_DOCKER_SECRETS
     enforcers:
       - {kind: hfs, id: docker}
+    covers: repo/hfs-docker-secrets
   - id: R203
     code: BE_FEATURE_THIN
     law: A feature-tier file of `ruleParams.be.thinRoles` maps its parameters and makes one delegating call into `modules/`, with no branch, loop or computation beyond the gate calls its kind requires.
@@ -1392,6 +1562,7 @@ rules:
       - BE_FEATURE_THIN
     enforcers:
       - {kind: eslint-be, id: feature-thin}
+    covers: code/be-feature-thin
   - id: R204
     code: HFS_COVERAGE_SCOPE_DRIFT
     law: The back-end coverage scope is derived once from the slot manifest (its coverage fields, logic roles and the logic files slots declare), and the jest, Sonar and Codecov configurations are its render.
@@ -1399,6 +1570,7 @@ rules:
       - HFS_COVERAGE_SCOPE_DRIFT
     enforcers:
       - {kind: hfs, id: coverage-scope-drift}
+    covers: repo/hfs-coverage-scope-drift
   - id: R212
     code: HFS_EDITION_DEPRECATED
     law: "An app has ONE edition, what the live apps run. (a) The full code structure, slots, patterns and back-end unit specs. (b) No Work features catalog: `.starciwork` is optional and admits only .gitignore, workspace.yaml, brand/** and the product concepts. (c) Chat agents code directly and run the app gates before each commit; no Kernel op is required. (d) The app runs its own stack on Docker Swarm with the backing services it declares: its own PostgreSQL db service, S3-compatible storage, Passport identity, and one minimal instance of each backing service hfs.json sides.be.backing declares (Redis for the queue, Qdrant for vectors); a client library of an undeclared backing service is HFS_BACKING_UNDECLARED and a declared service no dependency consumes (and no imported back-end module src/modules/integrations/<service>/, the client an app writes over the service's own protocol) is HFS_BACKING_UNUSED. The event bus is pgmq in the db service, the queue BullMQ on the declared Redis fed by the Postgres outbox. (e) The integration and e2e test world (useTestWorld, a browser journey) is allowed and runs only on request (R12). The hfs.json `edition` field is deprecated: any value is accepted and ignored with the warning HFS_EDITION_DEPRECATED, and the field is dropped in a later train."
@@ -1410,6 +1582,7 @@ rules:
     enforcers:
       - {kind: hfs, id: edition}
       - {kind: hfs, id: lite-brand-work}
+    covers: repo/hfs-edition-deprecated
   - id: R213
     code: DB_MIGRATION_SHAPE
     law: "A migration is `db/migrations/<ts14>_<kebab>.sql` with a valid unique stamp sorting after the committed active migrations, parses as PostgreSQL, carries no transaction control (it is applied in one transaction with its history row), and is immutable once on the base. A declared one-time baseline reset (hfs.json `db.baselineReset` = `{ baseline, ruling, date, reason }`, declared by an app that keeps no data worth migrating) makes the one declared baseline file (`-- starci:baseline-reset <ruling>` header) the new base chain while it is not yet on the base branch: the removal of every older active file and of the archive is accepted (R213 immutability, R257 archive immutability); exactly one file may carry the marker, no older active file may stay, and later migrations sort after the baseline. Once the baseline is on the base branch the declaration is spent and every rule applies to it unchanged; without the declaration nothing changes."
@@ -1417,6 +1590,7 @@ rules:
       - DB_MIGRATION_SHAPE
     enforcers:
       - {kind: hfs, id: db-migration-shape}
+    covers: repo/db-migration-shape
   - id: R214
     code: DB_RLS_REQUIRED
     law: Every table in an exposed schema enables row level security in its creating migration, and policies are named, never tautological for writes, and never grant `service_role`.
@@ -1426,6 +1600,7 @@ rules:
       - DB_POLICY_SHAPE
     enforcers:
       - {kind: hfs, id: db-rls}
+    covers: repo/db-rls-required
   - id: R215
     code: DB_DEFINER_SAFE
     law: A `security definer` function pins `search_path`, is not executable by the public and interpolates only through `format`, and every storage bucket is private by default with declared limits and a policy.
@@ -1434,6 +1609,7 @@ rules:
       - DB_STORAGE_POLICY
     enforcers:
       - {kind: hfs, id: db-privileged-objects}
+    covers: repo/db-definer-safe
   - id: R220
     code: HFS_LITE_SECRET_CUSTODY
     law: A lite app holds no secret material in the tree outside the sealed `.starcistacks/<env>/secrets/<slug>.enc` members.
@@ -1441,6 +1617,7 @@ rules:
       - HFS_LITE_SECRET_CUSTODY
     enforcers:
       - {kind: hfs, id: secret-custody}
+    covers: repo/hfs-lite-secret-custody
   - id: R235
     code: SCAN_SMELL
     law: Code carries none of the Sonar way smells a lint rule can decide, each on at error in both canons (a leftover `TODO` marker comment among them, written as the upper-case word or as `todo:` and `todo(`; the noun in prose or a name is no marker), outside the files specs name (the specs run the test-scoped rules of the profile), and no raw U+2028, U+2029, U+0085 or bidirectional control character in any file, which the scanner counts as a line break and the language does not (the scan aborts with "Line n is out of range"); the finding names the escape to write.
@@ -1476,6 +1653,7 @@ rules:
       - {kind: eslint-fe, id: prefer-tag-over-role}
       - {kind: eslint-be, id: todo-tag}
       - {kind: eslint-fe, id: todo-tag}
+    covers: code/scan-smell
   - id: R243
     code: FE_SERVER_ACTION_FORBIDDEN
     law: "The front end serves no API: no `\"use server\"` directive, and no route handler but the health route."
@@ -1485,6 +1663,8 @@ rules:
     enforcers:
       - {kind: machine, id: server-action-forbidden}
       - {kind: eslint-fe, id: no-server-action}
+    covers: split/fe-server-action-forbidden
+    split: "eslint-fe no-server-action reads one source file; the machine server-action-forbidden reads the program's import graph."
   - id: R244
     code: FE_STACK_FORBIDDEN
     law: A front end depends on no package that contexts/stack/fe.yaml forbids for a concern, writes no SWR middleware or viewer-cache binding of its own (they are @starci/next-data's), and avatar generation stays inside the Grammar.
@@ -1493,6 +1673,8 @@ rules:
     enforcers:
       - {kind: hfs, id: fe-stack}
       - {kind: eslint-fe, id: fe-stack-import}
+    covers: split/fe-stack-forbidden
+    split: "eslint-fe refuses an import of a library outside the stack in source; hfs fe-stack judges the dependencies of package.json."
   - id: R245
     code: BE_APP_OPTIONS_COMPOSITION
     law: An app's `src/` holds the five app roles, `main.ts`, `<app>.env.ts`, `<app>.options.ts`, `compose/<area>.ts` and `app.module.ts`, each with its single responsibility.
@@ -1500,6 +1682,7 @@ rules:
       - BE_APP_OPTIONS_COMPOSITION
     enforcers:
       - {kind: eslint-be, id: app-options-composition-free}
+    covers: code/be-app-options-composition
   - id: R246
     code: BE_APP_COMPOSITION_BUDGET
     law: Each app file stays within the absolute line budget its `be.app.*` slot names (hfs/slots.yaml), counted in lines excluding import declarations (a multi-line import counts none of its lines).
@@ -1507,6 +1690,7 @@ rules:
       - BE_APP_COMPOSITION_BUDGET
     enforcers:
       - {kind: eslint-be, id: app-file-budget}
+    covers: code/be-app-composition-budget
   - id: R248
     code: ENV_REQUIRED_UNSET
     law: The environment keys a back end reads, the sealed keys and the keys the stack declares are one set by name, and no key name carries an environment (a leading DEV_, PROD_, PRODUCTION_, STAGING_, LOCAL_ or TEST_), since the environment of a key is its folder.
@@ -1518,6 +1702,7 @@ rules:
       - ENV_EXAMPLE_DRIFT
     enforcers:
       - {kind: hfs, id: env-parity}
+    covers: repo/env-required-unset
   - id: R249
     code: ENV_VALUE_SHAPE
     law: Every stored environment value parses as the type its `EnvSource` reader declares, verified without revealing values.
@@ -1525,6 +1710,7 @@ rules:
       - ENV_VALUE_SHAPE
     enforcers:
       - {kind: hfs, id: env-value-shape}
+    covers: repo/env-value-shape
   - id: R250
     code: HFS_HOST_CRON
     law: Scheduled work belongs to the app's queue scheduler, platform/jobs ticks or declared replicated jobs, never to a host crontab or a workflow schedule (the managed nightly cache verify, cache-verify.yml, aside), and deploy scripts only delegate to docker or the app CLI.
@@ -1535,6 +1721,7 @@ rules:
       - HFS_DEPLOY_SCHEDULER
     enforcers:
       - {kind: hfs, id: deploy-scan}
+    covers: repo/hfs-host-cron
   - id: R251
     code: HFS_DEPLOY_WORKFLOW
     law: Deployment workflows declare protected environments, permissions and concurrency, materialize only sealed secrets, pin every action by full commit SHA, and trigger only on the allowed refs (and cache-verify.yml, the nightly verify of the check cache, on its schedule).
@@ -1546,6 +1733,7 @@ rules:
     enforcers:
       - {kind: hfs, id: deploy-workflow}
       - {kind: hfs, id: supply-chain}
+    covers: repo/hfs-deploy-workflow
   - id: R252
     code: HFS_SCRIPT_PLAINTEXT_LOAD
     law: Scripts and workflows never load plaintext secret files, enable xtrace or reveal secrets.
@@ -1554,6 +1742,7 @@ rules:
       - HFS_SCRIPT_XTRACE
     enforcers:
       - {kind: hfs, id: script-hygiene}
+    covers: repo/hfs-script-plaintext-load
   - id: R253
     code: HFS_AGE_KEY_CUSTODY
     law: The age identity that seals an app's secrets stays in untracked host-local custody, and the hash-sensitive secret-custody platform files equal the skeleton template of the @starci/hfs version the app pins.
@@ -1563,6 +1752,7 @@ rules:
     enforcers:
       - {kind: hfs, id: secret-age-key-custody}
       - {kind: hfs, id: canon-copy-drift}
+    covers: repo/hfs-age-key-custody
   - id: R255
     code: DB_APP_ROLE
     law: The declared back-end database role holds only the privileges it needs, none of them on schema `auth` (accounts are reached through the identity account doors), and the tables it owns force row level security unless exempted with a reason.
@@ -1571,6 +1761,7 @@ rules:
       - DB_FORCE_RLS_DEFAULT
     enforcers:
       - {kind: hfs, id: db-app-role}
+    covers: repo/db-app-role
   - id: R256
     code: DB_POLICY_TAUTOLOGY
     law: "Exposed database objects keep their access boundaries: no tautological policies, principal-scoped policies for every role but the application role (the principal is auth.uid, auth.jwt, the request JWT claims or a transaction setting the app declares in hfs.json db.scopeSettings, read only by policies whose roles are all declared in db.scopeRoles, compared with the owning column of db.scopeColumns; a scope role is granted only to the application role), invoker-secured views and revoked execute on exposed definers."
@@ -1582,6 +1773,7 @@ rules:
     enforcers:
       - {kind: hfs, id: db-policy-hardening}
       - {kind: hfs, id: db-definer-revoke}
+    covers: repo/db-policy-tautology
   - id: R257
     code: DB_BASELINE_SHAPE
     law: An archived migration chain has exactly one active baseline, archive contents stay immutable, and the db baseline verbs are read-only unless `--execute` is explicit.
@@ -1590,6 +1782,7 @@ rules:
       - DB_ARCHIVE_MUTATED
     enforcers:
       - {kind: hfs, id: db-baseline-shape}
+    covers: repo/db-baseline-shape
   - id: R258
     code: DB_PGMQ_DECLARED
     law: pgmq is the event bus and carries no job queue; every pgmq queue is an event-bus topic queue named by a literal constant, bound to its topic by a literal binding, and granted only to the application role.
@@ -1597,6 +1790,7 @@ rules:
       - DB_PGMQ_DECLARED
     enforcers:
       - {kind: hfs, id: db-queue-cron}
+    covers: repo/db-pgmq-declared
   - id: R259
     code: DB_EXTENSION_ALLOWED
     law: "Database extensions follow the allowlist, migrations write no vault secret or role password, and destructive DDL lives only in contract migrations whose targets are unreferenced, also by the previous release's sources. A table a contract migration drops and a LATER migration of the ordered set creates anew under the same name is a replacement when the creating migration says so with a `-- replaces: <table>` comment line (the rule checks the create exists and sorts after the drop): code references to it are then judged against the new definition, and only a column the old table had and the new one lacks is still a read of the dropped table (DB_MIGRATION_DESTRUCTIVE); the rows of the old table lost by intent are reported as an info line. A migration already on the base unchanged is immutable (R213), so its destructive and dynamic DDL is reported as a known item, not a blocker; an entry of hfs.json `db.destructiveRulings` (the exact migration, the exact objects, a reason and the date) accepts those objects outside a contract migration only while the same proof finds them unreferenced, else DB_DESTRUCTIVE_RULING_UNPROVEN."
@@ -1609,6 +1803,7 @@ rules:
     enforcers:
       - {kind: hfs, id: db-config-ext}
       - {kind: hfs, id: db-migration-destructive}
+    covers: repo/db-extension-allowed
   - id: R260
     code: BE_JWT_ALG_PINNED
     law: Every back-end JWT verifier pins a literal subset of asymmetric algorithms and reads its issuer from typed configuration; it binds the principal by an audience read from typed configuration (an OIDC client such as Keycloak, or the app's own Passport tokens) or, where every token of the issuer shares one audience (Supabase-style), admits only the authenticated role.
@@ -1617,6 +1812,8 @@ rules:
     enforcers:
       - {kind: eslint-be, id: jwt-alg-pinned}
       - {kind: machine, id: jwt-policy}
+    covers: split/be-jwt-alg-pinned
+    split: "eslint-be jwt-alg-pinned reads the verify call of one source file; the machine jwt-policy reads the identity code across the program."
   - id: R261
     code: BE_CORS_ALLOWLIST
     law: Every back-end API declares an exact CORS origin allowlist, applies the http-security middleware, hides x-powered-by and trusts an explicit proxy hop count.
@@ -1628,6 +1825,7 @@ rules:
       - {kind: eslint-be, id: cors-allowlist}
       - {kind: eslint-be, id: security-headers}
       - {kind: eslint-be, id: trust-proxy}
+    covers: code/be-cors-allowlist
   - id: R262
     code: BE_READY_REAL
     law: Every back-end API serves distinct live and ready signals, readiness probes a required dependency with a bounded timeout, and the Docker HEALTHCHECK reaches the live route.
@@ -1639,6 +1837,8 @@ rules:
       - {kind: eslint-be, id: ready-real}
       - {kind: eslint-be, id: health-signals}
       - {kind: hfs, id: docker-health-reachability}
+    covers: split/be-ready-real
+    split: "eslint-be judges the readiness and health code; hfs docker-health-reachability judges that the compose healthcheck reaches it."
   - id: R263
     code: BE_WEBHOOK_SCOPE
     law: "Signed-webhook public metadata belongs only to webhook doors and declared verifiers; a delivery intake first claims its stable delivery key on the `Inbox` port (`claim`, or `claimRow` on its `EntityInbox`) and returns on a duplicate, and a webhook receipt transaction only records the inbox delivery and its outbox event. A receipt port the app declares in hfs.json sides.be.receiptPorts ({class, method, repeat, reason}: a class of the app, its method that records a delivery once, and the answer it gives a repeat, false or undefined) is held to the same contract as the Inbox claim: awaited first inside the receipt transaction, on that transaction's manager as its first argument, with an argument that comes from the delivery and no call inside its arguments, and its repeat answer returned on at once; only the declared method is the record, any other call of that class is processing. A port declared with many: true in place of repeat ({class, method, many, reason}) records a delivery of several events and answers the list of the new events only, the empty list on a repeat: its answer is bound to one const and every later statement of the receipt transaction is a for (const event of <that const>) whose body reads nothing of the delivery, of the bindings made before the claim or of the answer list, only its own bindings and the transaction's manager."
@@ -1648,6 +1848,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: webhook-scope}
       - {kind: eslint-be, id: webhook-inbox-key}
+    covers: code/be-webhook-scope
   - id: R264
     code: HFS_FEATURE_LOGIC_ROLE
     law: A non-door feature-tier role declares data, types and DTO metadata only, apart from a top-level `registerEnumType` in a GraphQL transport type file.
@@ -1655,6 +1856,7 @@ rules:
       - HFS_FEATURE_LOGIC_ROLE
     enforcers:
       - {kind: eslint-be, id: feature-logic-role}
+    covers: code/hfs-feature-logic-role
   - id: R265
     code: BE_COMPOSITION_UNTYPED
     law: App composition lives only in typed `compose/<area>.ts` groups identified by resolved types, never in `main.ts`, `<app>.env.ts` or `<app>.options.ts`; a group composes modules, providers, queues or schedules, or carries its area's typed catalogs (error-kind tables of `platform/errors`, message bundles of `platform/i18n`) that `compose/platform.ts` spreads into ErrorsModule and I18nModule.
@@ -1662,6 +1864,7 @@ rules:
       - BE_COMPOSITION_UNTYPED
     enforcers:
       - {kind: eslint-be, id: app-composition-typed}
+    covers: code/be-composition-untyped
   - id: R266
     code: STACKS_SECRET_NOT_EXTERNAL
     law: Rendered Swarm deployments use versioned external secrets, publish ports only through the declared ingress, and declare placement, healthchecks and rollout policies.
@@ -1674,6 +1877,7 @@ rules:
     enforcers:
       - {kind: hfs, id: stacks-swarm}
       - {kind: hfs, id: stacks-second-ingress}
+    covers: repo/stacks-secret-not-external
   - id: R267
     code: STACKS_RELEASE_UNDECLARED
     law: Each Swarm environment declares an immutable images lock, release pointers, health assertions and backup with a restore proof for every stateful dependency.
@@ -1684,6 +1888,7 @@ rules:
       - STACKS_MODEL_UNAVAILABLE
     enforcers:
       - {kind: hfs, id: stacks-release}
+    covers: repo/stacks-release-undeclared
   - id: R268
     code: HFS_SCHEDULE_UNDECLARED
     law: Every scheduler, pg_cron schedule and replicated job of a deployed server component matches a top-level jobs declaration that invokes a named back-end CLI action. An app of kind `client-cli` runs on the member's own machine, so its own timers are its process schedule and are not judged.
@@ -1691,9 +1896,10 @@ rules:
       - HFS_SCHEDULE_UNDECLARED
     enforcers:
       - {kind: hfs, id: stacks-release}
+    covers: repo/hfs-schedule-undeclared
   - id: R269
     code: HFS_DEPENDABOT_MISSING
-    law: Dependabot schedules npm, Actions and Docker updates with minor-and-patch groups, CI gates on the production audit (`starci app audit`, judged against owner-approved, time-boxed exceptions, PROJECT-LINT-5; unless the app's stack declaration switches audit off, PROJECT-LINT-4), and release images carry an SBOM and provenance.
+    law: Dependabot schedules npm, Actions and Docker updates with minor-and-patch groups, CI gates on the production audit (`starci app audit`, judged against owner-approved, time-boxed exceptions, PROJECT-LINT-7; unless the app's stack declaration switches audit off, PROJECT-LINT-4), and release images carry an SBOM and provenance.
     failureCodes:
       - HFS_DEPENDABOT_MISSING
       - HFS_AUDIT_STEP_MISSING
@@ -1708,6 +1914,7 @@ rules:
       - AUDIT_REPORT_UNREADABLE
     enforcers:
       - {kind: hfs, id: supply-chain}
+    covers: repo/hfs-dependabot-missing
   - id: R270
     code: HFS_DOC_PATH_MISSING
     law: Documentation cites only existing paths, scripts, CLI verbs and catalog rule ids.
@@ -1717,6 +1924,7 @@ rules:
       - HFS_DOC_RULE_UNKNOWN
     enforcers:
       - {kind: hfs, id: doc-fresh}
+    covers: repo/hfs-doc-path-missing
   - id: R271
     code: HFS_RELEASE_TAG_MISMATCH
     law: A release tag is a v-prefixed semantic version equal to the package version, images are pushed under the immutable sha-<sha> tag with the release name as a guarded retag of that digest, and database deployment refuses a non-tag ref.
@@ -1725,13 +1933,16 @@ rules:
       - HFS_DB_DEPLOY_UNGUARDED
     enforcers:
       - {kind: hfs, id: release-provenance}
+    covers: repo/hfs-release-tag-mismatch
   - id: R272
     code: BE_APP_BOOT_PROOF_MISSING
     law: Every lite back-end app proves its real AppModule composition by compiling the dependency graph with fixture options and infrastructure doubles, in `app check` and in the fast job of the app's CI (`starci app check --gate hfs`, whatever the wiring gate says), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot.
     failureCodes:
       - BE_APP_BOOT_PROOF_MISSING
+      - BOOT_PROOF_TIMEOUT
     enforcers:
       - {kind: hfs, id: boot-proof}
+    covers: repo/be-app-boot-proof-missing
   - id: R273
     code: HFS_COVERAGE_BELOW
     law: "A supplied coverage report proves the coverage bar (owner 2026-11-25, BE-TEST-13): every back-end logic file (a logic-role file or one its slot declares) in the slot-derived measured scope reaches the per-file floor of lines, functions and branches, and each coverage tier (the modules hfs.json sides.be.coverageTiers puts in it, the default tier the rest) reaches its lines and branches bar as a whole, the numbers being knowledge/sonar-gate.yaml's; a root package's type module, which that scope leaves out, holds types only. These are test and coverage obligations: judged only while the app's test and coverage gates run; an app that declares either off (PROJECT-LINT-4) is not judged and the run reports `off (declared: <reason>)`."
@@ -1739,6 +1950,7 @@ rules:
       - HFS_COVERAGE_BELOW
     enforcers:
       - {kind: hfs, id: coverage-below}
+    covers: repo/hfs-coverage-below
   - id: R275
     code: STACKS_INGRESS_INVALID
     law: Every Swarm environment declares one ingress component with a digest-pinned supported ingress image and its hosts, never a second ingress; each public host declares its DNS owner and receipt, the environment its TLS owner and receipt, and every declared host is routed by the ingress (STACKS_INGRESS_INVALID).
@@ -1746,6 +1958,7 @@ rules:
       - STACKS_INGRESS_INVALID
     enforcers:
       - {kind: hfs, id: stacks-ingress}
+    covers: repo/stacks-ingress-invalid
   - id: R276
     code: STACKS_LITE_SELFHOSTED_DB
     law: Lite runs no self-hosted database or vector store, and runs Redis only when declared; that a declared Redis runs durably (one service, AOF on a named volume, no eviction) and that its sidecars keep their own storage on a declared volume is held by review, not by a check.
@@ -1753,6 +1966,7 @@ rules:
       - STACKS_LITE_SELFHOSTED_DB
     enforcers:
       - {kind: hfs, id: stacks-backing}
+    covers: repo/stacks-lite-selfhosted-db
   - id: R277
     code: HFS_SECRET_PLAINTEXT_FILE
     law: A tracked secret exists only as a sops envelope under `.starcistacks/<env>/secrets/`, in every edition; a business package may also commit `packages/<pkg>/secrets/<name>.sops.yaml`, only as a valid sops document (every leaf `ENC[...]`, a `sops` block with age recipients) sealed to the recipients of its own `packages/<pkg>/.sops.yaml`.
@@ -1762,6 +1976,7 @@ rules:
       - HFS_PACKAGE_SECRET_RECIPIENT
     enforcers:
       - {kind: hfs, id: secret-custody-only}
+    covers: repo/hfs-secret-plaintext-file
   - id: R278
     code: BE_REST_DOOR_EVIDENCE
     law: An api app's declared contract (graphql when absent) is its default door; in a graphql back end every REST route carries its own evidence from the closed set of door reasons the pattern lists, and a rest back end holds no GraphQL door or GraphQL platform.
@@ -1773,6 +1988,8 @@ rules:
       - {kind: eslint-be, id: rest-door-needs-a-reason}
       - {kind: eslint-be, id: rest-route-declared}
       - {kind: hfs, id: rest-app-graphql}
+    covers: split/be-rest-door-evidence
+    split: "eslint-be judges each REST route's evidence inside source; hfs rest-app-graphql judges the app's GraphQL declaration."
   - id: R279
     code: BE_THIRD_PARTY_OWNER
     law: A third-party SDK outside the library allowlists is imported only by its one `integrations/<provider>` capability; a workspace package of the app itself (a folder its root `workspaces` name) is first-party source, no SDK, and what it imports is judged over its own files. `socket.io-client` is a test library.
@@ -1780,6 +1997,7 @@ rules:
       - BE_THIRD_PARTY_OWNER
     enforcers:
       - {kind: eslint-be, id: third-party-import-owner}
+    covers: code/be-third-party-owner
   - id: R280
     code: HFS_UNUSED_SYMBOL
     law: Every enum member, queue constant, error code and catalog key has a production consumer, and dynamic keys are declared with a reason.
@@ -1788,6 +2006,7 @@ rules:
     enforcers:
       - {kind: hfs, id: unused-symbol}
       - {kind: hfs, id: unused-symbol-ledger}
+    covers: repo/hfs-unused-symbol
   - id: R281
     code: BE_SPEC_FORM_ALL_ROLES
     law: Every declared logic role has a unit spec in the canon form, its subject obtained from a compiled testing module, except value roles whose spec parses the value directly.
@@ -1801,6 +2020,7 @@ rules:
       - {kind: eslint-be, id: spec-behavior-assertion}
       - {kind: eslint-be, id: spec-infra-double-from-kit}
       - {kind: eslint-be, id: spec-exact-values}
+    covers: code/be-spec-form-all-roles
   - id: R282
     code: HFS_ASSET_OVERSIZE
     law: Back-end build assets stay within the `be.assets` slot budget and extension allowlist, and model weights and datasets are never tracked.
@@ -1809,13 +2029,7 @@ rules:
       - HFS_ASSET_KIND
     enforcers:
       - {kind: hfs, id: assets}
-  - id: R284
-    code: BE_LITE_PROOF_LANE_MISSING
-    law: A lite back end proves every declared pattern through integration specs titled `<pattern>/<scenario>`.
-    failureCodes:
-      - BE_LITE_PROOF_LANE_MISSING
-    enforcers:
-      - {kind: hfs, id: proof-lane}
+    covers: repo/hfs-asset-oversize
   - id: R285
     code: FE_SWR_OUTSIDE_FAMILY
     law: SWR runtime calls stay in the `hooks/swr` wrappers, and each back-end operation is imported only by its wrapper.
@@ -1827,6 +2041,7 @@ rules:
       - {kind: eslint-fe, id: swr-only-in-family}
       - {kind: eslint-fe, id: operations-only-in-swr-hooks}
       - {kind: eslint-fe, id: subscription-refetches-snapshot}
+    covers: code/fe-swr-outside-family
   - id: R286
     code: FE_COPY_IN_CALL
     law: Validation and toast copy comes from the catalog, browser alerts are forbidden, and icons come only from the Grammar icon owner or declared brand-mark owners.
@@ -1838,6 +2053,7 @@ rules:
       - {kind: eslint-fe, id: no-copy-in-call}
       - {kind: eslint-fe, id: no-alert}
       - {kind: eslint-grammar-core, id: no-inline-svg-outside-brand-mark-leaf}
+    covers: code/fe-copy-in-call
   - id: R288
     code: FE_STACK_UNLISTED
     law: Every direct front-end dependency is listed in contexts/stack/fe.yaml or declared with a reason, and every product Next app declares the catalog's core packages.
@@ -1846,6 +2062,7 @@ rules:
       - FE_STACK_CORE_MISSING
     enforcers:
       - {kind: hfs, id: fe-stack-allowlist}
+    covers: repo/fe-stack-unlisted
   - id: R289
     code: BE_APP_ENV_REQUIRED
     law: Every back-end app owns a typed `<app>.env.ts` reader that `main.ts` delegates to, and `app.module.ts` only spreads the compose groups and binds app-wide guards and filters.
@@ -1856,12 +2073,15 @@ rules:
       - {kind: hfs, id: app-env-required}
       - {kind: eslint-be, id: app-env-required}
       - {kind: eslint-be, id: app-module-list-inline}
+    covers: split/be-app-env-required
+    split: "hfs judges that the app env file exists; eslint-be judges its shape and the inline module list."
   - id: R290
     code: BE_PUBLIC_REASON_CLOSED
     law: "`PublicReason` is exactly Health, AuthHandshake, SignedWebhook and CatalogRead, and other access uses its own credential guard."
     failureCodes:
       - BE_PUBLIC_REASON_CLOSED
     enforcers: []
+    covers: review/be-public-reason-closed
   - id: R291
     code: HFS_FUNCTION_BUDGET
     law: Every function, method or arrow body stays within the function line budget (ruleParams.common.functionLines).
@@ -1870,6 +2090,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: function-line-budget}
       - {kind: eslint-fe, id: function-line-budget}
+    covers: code/hfs-function-budget
   - id: R292
     code: HFS_FEATURE_FILE_BUDGET
     law: Every feature owner stays within the feature file budget (ruleParams.common.featureFiles).
@@ -1877,6 +2098,7 @@ rules:
       - HFS_FEATURE_FILE_BUDGET
     enforcers:
       - {kind: hfs, id: feature-files}
+    covers: repo/hfs-feature-file-budget
   - id: R293
     code: STACK_TOOLING_REIMPLEMENTED
     law: An app does not re-implement the canon Swarm deploy tooling in its own scripts or workflows.
@@ -1884,6 +2106,7 @@ rules:
       - STACK_TOOLING_REIMPLEMENTED
     enforcers:
       - {kind: hfs, id: stack-tooling}
+    covers: repo/stack-tooling-reimplemented
   - id: R294
     code: STACKS_DEPLOY_CONFIG_INVALID
     law: Every Swarm environment's deploy block is coherent under the stack verbs' own normalization against the real tree.
@@ -1892,6 +2115,7 @@ rules:
       - STACKS_SEALED_MEMBER_PENDING
     enforcers:
       - {kind: hfs, id: stacks-deploy}
+    covers: repo/stacks-deploy-config-invalid
   - id: R295
     code: BE_MODULE_DEFINITION_MISSING
     law: Every NestJS module has its module definition and options files and is imported only through `register`.
@@ -1899,7 +2123,7 @@ rules:
       - BE_MODULE_DEFINITION_MISSING
     enforcers:
       - {kind: eslint-be, id: module-definition-required}
-      - {kind: eslint-be, id: capability-module-shape}
+    covers: code/be-module-definition-missing
   - id: R296
     code: CI_SECRET_SEALED
     law: A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key, sealed unless its service declares the open owner step that provisions it (`ownerAction.needed`); required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential.
@@ -1907,6 +2131,7 @@ rules:
       - CI_SECRET_SEALED
     enforcers:
       - {kind: hfs, id: ci-custody}
+    covers: repo/ci-secret-sealed
   - id: R297
     code: APP_SECRET_IN_CI
     law: No sealed key selected by an app runtime secret declaration or deploy grant appears in the CI secrets or vars.
@@ -1914,6 +2139,7 @@ rules:
       - APP_SECRET_IN_CI
     enforcers:
       - {kind: hfs, id: ci-custody}
+    covers: repo/app-secret-in-ci
   - id: R298
     code: CI_DECLARATION_DRIFT
     law: Every workflow secret and variable reference is declared in its matching CI class, and every non-optional declaration is consumed, except the names of a service whose gate the app's stack declaration switches off (PROJECT-LINT-4), which the render does not read.
@@ -1921,6 +2147,7 @@ rules:
       - CI_DECLARATION_DRIFT
     enforcers:
       - {kind: hfs, id: ci-custody}
+    covers: repo/ci-declaration-drift
   - id: R299
     code: HFS_WORKFLOW_CONTEXT
     law: GitHub Actions expressions use only contexts available at their workflow key.
@@ -1928,6 +2155,7 @@ rules:
       - HFS_WORKFLOW_CONTEXT
     enforcers:
       - {kind: hfs, id: workflow-contexts}
+    covers: repo/hfs-workflow-context
   - id: R300
     code: FE_PUBLIC_BUILD_ARG_MISSING
     law: Every front-end image receives each required `NEXT_PUBLIC_*` value through a Dockerfile ARG default or the deploy build args of every environment.
@@ -1935,6 +2163,7 @@ rules:
       - FE_PUBLIC_BUILD_ARG_MISSING
     enforcers:
       - {kind: hfs, id: fe-build-args}
+    covers: repo/fe-public-build-arg-missing
   - id: R301
     code: CI_STANDARD
     law: App CI follows the one CI standard of packages/hfs/templates/app/ci-workflows, delivered only through the app sync; an item never requires the step of a gate the app's stack declaration switches off (PROJECT-LINT-4), which the sync renders without it.
@@ -1942,6 +2171,7 @@ rules:
       - CI_STANDARD
     enforcers:
       - {kind: hfs, id: ci-standard}
+    covers: repo/ci-standard
   - id: R302
     code: HFS_MCP_TOOLS_SNAPSHOT
     law: A back end that serves an MCP server (its source imports `@modelcontextprotocol/sdk/server`) commits its tool catalog, and a committed MCP tool catalog is the server's `tools/list` result at `be/contracts/<app>/<server>@<major>.tools.json`.
@@ -1950,6 +2180,7 @@ rules:
       - HFS_MCP_TOOLS_SNAPSHOT_MISSING
     enforcers:
       - {kind: hfs, id: mcp-tools-snapshot}
+    covers: repo/hfs-mcp-tools-snapshot
   - id: R303
     code: HFS_BYPASS_MARKER
     law: "A product repository holds no bypass marker: no inline disable, type-check ignore, coverage ignore, skipped test, swallowed failure or constant false condition on a check; a job of the managed ci.yml that the app's gate declaration idles (PROJECT-LINT-4) is the render of that declaration, not a bypass."
@@ -1958,6 +2189,7 @@ rules:
     enforcers:
       - {kind: hfs, id: bypass-markers}
       - {kind: hfs, id: bypass-guard}
+    covers: repo/hfs-bypass-marker
   - id: R304
     code: BE_SCHEMA_PLACE
     law: Transport doors validate with `class-validator`, other untrusted data is read through zod schemas declared only in `<name>.schema.ts` files of modules or in a root workspace package, whose node, block and vocabulary contracts are zod schemas, and no schema of a module is shared with the front end.
@@ -1966,6 +2198,7 @@ rules:
     enforcers:
       - {kind: eslint-be, id: schema-place}
       - {kind: eslint-be, id: schema-file-values-only}
+    covers: code/be-schema-place
   - id: R305
     code: BE_SCHEMA_BOUNDED
     law: Every zod schema is bounded by a finite positive bound on every string, collection and record, and refuses unknown or arbitrary JSON.
@@ -1973,6 +2206,7 @@ rules:
       - BE_SCHEMA_BOUNDED
     enforcers:
       - {kind: eslint-be, id: schema-bounded}
+    covers: code/be-schema-bounded
   - id: R310
     code: BE_MUTATION_IDEMPOTENT
     law: An `Effectful` client command carries a required bounded idempotency key and runs through the inbox inside its domain transaction, refusing a reused key with different input.
@@ -1980,6 +2214,7 @@ rules:
       - BE_MUTATION_IDEMPOTENT
     enforcers:
       - {kind: eslint-be, id: mutation-idempotent}
+    covers: code/be-mutation-idempotent
   - id: R311
     code: HFS_TEXT_CORRUPT
     law: Every message catalog and locale file is valid UTF-8 and carries no lossy re-encode marks.
@@ -1987,6 +2222,7 @@ rules:
       - HFS_TEXT_CORRUPT
     enforcers:
       - {kind: hfs, id: text-integrity}
+    covers: repo/hfs-text-corrupt
   - id: R312
     code: BE_UPLOAD_BUFFERED
     law: Browser uploads go directly to storage through presigned requests of the ObjectStorage port, and no multipart upload handling exists in the back end.
@@ -1994,12 +2230,14 @@ rules:
       - BE_UPLOAD_BUFFERED
     enforcers:
       - {kind: eslint-be, id: no-buffered-upload}
+    covers: code/be-upload-buffered
   - id: R313
     code: FE_APP_SHELL_FRAME
     law: The selected Grammar shell owns the fixed application frame with independent navigation and content scroll, and the application layout never recreates it.
     failureCodes:
       - FE_APP_SHELL_FRAME
     enforcers: []
+    covers: review/fe-app-shell-frame
   - id: R314
     code: FE_NAVBAR_CONTROL_SIZE
     law: Navbar controls share one height and icons one size per region from the selected Grammar scale.
@@ -2007,24 +2245,28 @@ rules:
       - FE_NAVBAR_CONTROL_SIZE
     enforcers:
       - {kind: eslint-grammar-core, id: navbar-control-size}
+    covers: code/fe-navbar-control-size
   - id: R315
     code: FE_NAVBAR_CLUSTER
     law: Navbar controls appear in the order language, theme, notifications and account, each supplied by the selected Grammar.
     failureCodes:
       - FE_NAVBAR_CLUSTER
     enforcers: []
+    covers: review/fe-navbar-cluster
   - id: R316
     code: FE_APP_SHELL_BOTTOM_TABS
     law: An application keeps the selected Grammar shell's navigation model across viewports; the only bottom bar of places is the Grammar BottomNav as the compactNavigation of a WorkspaceShell (two to five places), and a hand-made bottom tab bar or a BottomNav anywhere else is refused.
     failureCodes:
       - FE_APP_SHELL_BOTTOM_TABS
     enforcers: []
+    covers: review/fe-app-shell-bottom-tabs
   - id: R317
     code: FE_NAVBAR_CREATE
     law: Create actions live on the page that owns them, never in the global navbar.
     failureCodes:
       - FE_NAVBAR_CREATE
     enforcers: []
+    covers: review/fe-navbar-create
   - id: R318
     code: FE_NESTED_VARIANT
     law: Apps compose the Grammar with layout-only CSS; paint and surface edges belong to the Grammar, and app styles never target Grammar internals.
@@ -2036,6 +2278,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-app-surface-paint}
       - {kind: eslint-fe, id: no-grammar-internal-selector}
+    covers: code/fe-nested-variant
   - id: R319
     code: FE_BUTTON_INTENT
     law: An app Button takes one of three looks (variant primary, border or danger); a render holds at most one primary and a collection item none.
@@ -2046,6 +2289,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: single-commit-per-render}
       - {kind: eslint-fe, id: no-commit-in-collection-item}
+    covers: code/fe-button-intent
   - id: R320
     code: FE_CONTROL_HEIGHT
     law: Every standalone control uses the selected Grammar's default control height, larger only for a landing hero call to action, and controls of one row share one size.
@@ -2053,6 +2297,7 @@ rules:
       - FE_CONTROL_HEIGHT
     enforcers:
       - {kind: eslint-fe, id: control-height}
+    covers: code/fe-control-height
   - id: R321
     code: FE_GRAMMAR_SHIM
     law: An app imports a Grammar component where it renders it and never re-exports a Grammar export under its own name; a Grammar defect is reported to the Grammar.
@@ -2060,12 +2305,14 @@ rules:
       - FE_GRAMMAR_SHIM
     enforcers:
       - {kind: eslint-fe, id: no-grammar-shim}
+    covers: code/fe-grammar-shim
   - id: R322
     code: FE_CHIP_LABEL_CASE
     law: The label of a status chip (a Badge, with or without its dot) starts with an uppercase letter, so every chip of an app reads in one vocabulary.
     failureCodes:
       - FE_CHIP_LABEL_CASE
     enforcers: []
+    covers: review/fe-chip-label-case
   - id: R324
     code: FE_PAGE_TABS_OUTSIDE_HEADER
     law: Page tabs are the header's tabs; a Tabs that is the first element of a Page body is a page tab bar drawn outside the band.
@@ -2073,6 +2320,7 @@ rules:
       - FE_PAGE_TABS_OUTSIDE_HEADER
     enforcers:
       - {kind: eslint-grammar-core, id: page-tabs-in-header}
+    covers: code/fe-page-tabs-outside-header
   - id: R325
     code: FE_ROUTE_PAGE_OUTSIDE_PAGE
     law: A route draws exactly one Grammar Page, drawn by its page owner, the owner's pure half or the one connected block the owner renders as its root, or by the route segment layout whose owner draws a Page with header.tabs, the one Page of every route under it; that Page has nothing beside it and no second Page inside it, so a page owner under such a layout draws its body only; a page owner that draws no UI, sits under such a layout, or is mounted only under the (auth) route group whose layout frames it, needs none.
@@ -2080,6 +2328,7 @@ rules:
       - FE_ROUTE_PAGE_OUTSIDE_PAGE
     enforcers:
       - {kind: eslint-grammar-core, id: route-page-is-one-page}
+    covers: code/fe-route-page-outside-page
   - id: R326
     code: BE_AI_KEY_CUSTODY
     law: An upstream model provider key variable is named only inside the ai-router gateway's custody owner `integrations/ai-gateway`; every other file reaches a model through the gateway with a virtual key.
@@ -2087,6 +2336,7 @@ rules:
       - BE_AI_KEY_CUSTODY
     enforcers:
       - {kind: eslint-be, id: provider-key-custody}
+    covers: code/be-ai-key-custody
   - id: R327
     code: BE_AI_GATEWAY_CLIENT
     law: Code builds only the `ChatOpenAI` and `OpenAIEmbeddings` clients of `@langchain/openai`, each with its `configuration.baseURL` read from the integration's options and its `apiKey` revealed from a `Secret`, so every model call goes through the ai-router gateway.
@@ -2094,6 +2344,7 @@ rules:
       - BE_AI_GATEWAY_CLIENT
     enforcers:
       - {kind: eslint-be, id: ai-client-through-gateway}
+    covers: code/be-ai-gateway-client
   - id: R328
     code: BE_AUTH_PASSPORT_OWNER
     law: "The identity libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, passport-oauth2, @nestjs/jwt, jose and bcryptjs) are the dependencies of @starci/auth, the one sign-in package of both editions, and are imported by no app file; @starci/auth and @starci/auth/server are imported only by integrations/passport (lite), @starci/auth/oidc only by integrations/keycloak (full, which also composes the issuer presets, the GitHub Actions CI attestation among them), @starci/auth/contracts and @starci/auth/testing only by those two glues. bcrypt and every Supabase client are owned nowhere."
@@ -2101,6 +2352,7 @@ rules:
       - BE_AUTH_PASSPORT_OWNER
     enforcers:
       - {kind: eslint-be, id: infra-import-owner}
+    covers: code/be-auth-passport-owner
   - id: R329
     code: BE_AUTH_JWT_OWN_JWKS
     law: "A lite back-end principal comes only from the app's own access token, verified by @starci/auth (EdDSA pinned, issuer and audience checked, a local key set that may hold several keys), never from a remote JWKS, a token decoded without its signature check, a jwtVerify call in the app or a body claim."
@@ -2109,6 +2361,8 @@ rules:
     enforcers:
       - {kind: machine, id: own-jwks-principal}
       - {kind: eslint-be, id: own-jwks-only}
+    covers: split/be-auth-jwt-own-jwks
+    split: "eslint-be own-jwks-only reads one source file; the machine own-jwks-principal reads where the principal comes from across the program."
   - id: R330
     code: BE_AUTH_REFRESH_COOKIE
     law: A refresh token travels only in the httpOnly, Secure cookie that @starci/auth sets, rotates (with a reuse grace window and reuse detection) and clears; no app file writes that cookie, and the token never appears as a field of a request or response body.
@@ -2116,6 +2370,7 @@ rules:
       - BE_AUTH_REFRESH_COOKIE
     enforcers:
       - {kind: eslint-be, id: refresh-token-cookie-only}
+    covers: code/be-auth-refresh-cookie
   - id: R331
     code: BE_STORAGE_OWNER
     law: "The S3 client libraries (@aws-sdk/client-s3, @aws-sdk/s3-request-presigner) are the dependencies of @starci/object-storage and are imported by no app file; @starci/object-storage is imported only by `integrations/object-storage`, its one glue; minio is imported nowhere."
@@ -2123,6 +2378,7 @@ rules:
       - BE_STORAGE_OWNER
     enforcers:
       - {kind: eslint-be, id: infra-import-owner}
+    covers: code/be-storage-owner
   - id: R332
     code: LITE_DB_MIGRATION
     law: A lite app's schema lives only in `db/` (`db/migrations/<ts14>_<kebab>.sql`, its archive, the managed `db/bootstrap.sql`; any other SQL under `db/` is refused); the tree holds no `supabase/` folder and no SQL outside `db/` but the `sql/` entries of its seed levels in `.starcistacks/` (R375).
@@ -2130,6 +2386,7 @@ rules:
       - LITE_DB_MIGRATION
     enforcers:
       - {kind: hfs, id: lite-db-path}
+    covers: repo/lite-db-migration
   - id: R333
     code: BE_ENTITY_SCHEMA_DRIFT
     law: Every TypeORM entity column of a lite app's entity list matches the schema its `db/migrations` build; `starci app db drift` applies `db/bootstrap.sql` and every migration to an empty database and compares each column; an app that declares sides.be.engineOwned also has the partitions, views, CHECKs and indexes of the engine-owned objects compared with the engine's entity manifest, both ways.
@@ -2137,6 +2394,7 @@ rules:
       - BE_ENTITY_SCHEMA_DRIFT
     enforcers:
       - {kind: hfs, id: db-drift}
+    covers: repo/be-entity-schema-drift
   - id: R334
     code: BE_PERSISTENCE_NO_RAW_SQL
     law: "Lite TypeScript holds no SQL text, outside the test world. A table is read and written through its TypeORM entity on an EntityManager (domain code the injected one; specs, builders, fixtures and the test world the world's `world.db.<connection>`): find, save, update, delete, upsert, a pessimistic `lock` option, `createQueryBuilder(Entity, \"alias\")` with named parameters; never a table-name builder or a Repository. Every table a migration creates has an entity. Anything else is a database function, called through `callDbFunction` of `platform/database/database.client.ts`, which names only a function that `ruleParams.be.dbFunctions` or hfs.json `sides.be.dbFunctions` lists with a reason: a function of a migration, schema-qualified (`public.job_claim`); an extension function, schema-qualified; a pg built-in of the canon's list, bare (`pg_notify`, called in pg_catalog). `database.client.ts` alone composes SQL text (the call statement and LISTEN), from parts its validator checked; `advisoryXactLock` and `notify` are `callDbFunction` calls of built-ins there. The only other `.query(` outside the world is the pass-through of a file that `ruleParams.be.sqlPassThrough` or hfs.json `sides.be.sqlPassThrough` lists with a reason, whose text is not the app's own (the tracked seed, a customer data-source read, an outside session's setup), with a plain string first argument, never a template or a `+`. The test world `src/tests/world` may hold raw SQL, as `sql`-tagged text with numbered `$n` parameters (and `<name>.sql.ts` files), only for what neither an entity nor a listed function expresses: a privilege or row-level-security probe, catalog, cron or trigger introspection, a pgmq queue table, a lock or failure probe; in the world too plain CRUD on an application table goes through its entity, an application function through `callDbFunction`, and seeded rows come from builders (R98). No `sql` template, `*.sql.ts`, `sql`/`ident` import or other `.query(` exists anywhere else."
@@ -2144,6 +2402,7 @@ rules:
       - BE_PERSISTENCE_NO_RAW_SQL
     enforcers:
       - {kind: eslint-be, id: no-raw-sql}
+    covers: code/be-persistence-no-raw-sql
   - id: R335
     code: BE_JOBS_SCHEDULER_OWNER
     law: "Recurring work is a tick of platform/jobs: only its job-tick.service.ts and jobs.module.ts import @nestjs/schedule or cron, no file uses a cron, interval or timeout decorator, and the tick service takes advisoryXactLock and claims the tick's minute through job_tick_claim before it writes the outbox, so one replica enqueues each tick once per minute."
@@ -2151,6 +2410,7 @@ rules:
       - BE_JOBS_SCHEDULER_OWNER
     enforcers:
       - {kind: eslint-be, id: jobs-scheduler-owner}
+    covers: code/be-jobs-scheduler-owner
   - id: R336
     code: BE_EVENT_BUS_LITE_SHAPE
     law: "On the lite event bus (pgmq, delivery at least once and unordered), every event payload type declares dedupeKey, the business key a consumer inbox claims as (consumer, dedupeKey), and a reactor subscribes with a *_TOPIC_QUEUE constant imported from platform/event-bus and literal options, so every subscription is static data."
@@ -2159,12 +2419,14 @@ rules:
     enforcers:
       - {kind: eslint-be, id: event-dedupe-key}
       - {kind: eslint-be, id: event-subscription-static}
+    covers: code/be-event-bus-lite-shape
   - id: R338
     code: FE_GENERATED_ART_OUTSIDE_FRAME
     law: Generated art, a .webp or .png under the public /images/ tree, renders only through Grammar's Mascot (the character size scale sm, md, lg, hero) or inside a MediaFrame; a bare Image, img or other src-taking element drawing it takes whatever box its page gives.
     failureCodes:
       - FE_GENERATED_ART_OUTSIDE_FRAME
     enforcers: []
+    covers: review/fe-generated-art-outside-frame
   - id: R339
     code: FE_MASCOT_ASSET_SLOT_MISSING
     law: Every Grammar Mascot names its assetSlot (a non-empty value), tying the rendered art to the asset workflow's request; an element with a spread attribute is not judged.
@@ -2172,6 +2434,7 @@ rules:
       - FE_MASCOT_ASSET_SLOT_MISSING
     enforcers:
       - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
+    covers: code/fe-mascot-asset-slot-missing
   - id: R340
     code: FE_RAISED_SURFACE_IN_SURFACE
     law: 'A card never stands inside another card; a SurfaceCard that another SurfaceCard of the same file encloses is refused. A white Pane surface, Drawer, Dialog, AlertDialog or Popover may hold an object card, drawn as everywhere: a 1px --border edge and no shadow (BOUNDARY-6). The Grammar throws the card-in-card refusal in development. Across files the whole-program rule closes it (R356).'
@@ -2179,6 +2442,7 @@ rules:
       - FE_RAISED_SURFACE_IN_SURFACE
     enforcers:
       - {kind: eslint-grammar-core, id: no-raised-surface-in-surface}
+    covers: code/fe-raised-surface-in-surface
   - id: R341
     code: FE_FREESTYLE_REASON_MISSING
     law: A Grammar Freestyle region, the one sanctioned place where an app writes its own plain elements and CSS because no Grammar component fits, names its reason, a non-empty string literal saying why. The rules that judge hand-written elements, classes, styles and generated art leave the raw elements of a Freestyle subtree alone; a Grammar component inside it is judged as before. An element with a spread attribute is not judged.
@@ -2186,6 +2450,7 @@ rules:
       - FE_FREESTYLE_REASON_MISSING
     enforcers:
       - {kind: eslint-grammar-core, id: freestyle-has-reason}
+    covers: code/fe-freestyle-reason-missing
   - id: R342
     code: BE_ENTITY_EXTENDS_BASE
     law: "An @Entity class does not repeat the columns every table shares: a database-set created_at or updated_at (CreateDateColumn, UpdateDateColumn, or a Column on those names with insert false, update false or a default) and, beside both, the generated uuid id are inherited from AbstractEntity or UuidAbstractEntity of @modules/platform/database (BE-PERSISTENCE-3). A table whose timestamps the application sets, or that lacks one, extends nothing; the base file platform/database/abstract.entity.ts is exempt."
@@ -2193,6 +2458,7 @@ rules:
       - BE_ENTITY_EXTENDS_BASE
     enforcers:
       - {kind: eslint-be, id: entity-extends-base}
+    covers: code/be-entity-extends-base
 
   - id: R343
     code: HFS_CHECK_CACHE_FORGED
@@ -2207,12 +2473,14 @@ rules:
       - HFS_CHECK_CACHE_VERIFY_LOCKED
     enforcers:
       - {kind: hfs, id: check-cache}
+    covers: repo/hfs-check-cache-forged
   - id: R344
     code: BE_AI_VIRTUAL_KEY
     law: An app's ai-router gateway has one client key, `STARCI_AI_KEY`, and no admin token; `integrations/ai` reads exactly that secret name, and the gateway's custody owner passes no `adminToken`.
     failureCodes:
       - BE_AI_VIRTUAL_KEY
     enforcers: []
+    covers: review/be-ai-virtual-key
   - id: R345
     code: FE_PANE_GRID_CHILD_NOT_PANE
     law: "A child of a Grammar PaneGrid is a literal Pane element, written directly or returned by a conditional (`cond ? <Pane/> : null`, `cond && <Pane/>`) or a `.map`; a wrapper component, a raw element, a fragment or a variable is refused, because PaneGrid places each child by the area of a Pane and drops the rest, leaving its cell blank. A Freestyle subtree leaves the raw elements inside it alone."
@@ -2220,6 +2488,7 @@ rules:
       - FE_PANE_GRID_CHILD_NOT_PANE
     enforcers:
       - {kind: eslint-grammar-core, id: pane-grid-children}
+    covers: code/fe-pane-grid-child-not-pane
   - id: R346
     code: FE_PANE_CHILD_NOT_SECTION
     law: "A Grammar Pane holds PaneSection elements, one nested PaneGrid or the one ChatFrame of a chat pane; a raw element, or a Grammar component other than PaneSection, PaneGrid, ChatFrame and Freestyle, placed directly in a Pane skips the inset the pane publishes to its bands. A project component is judged in its own file, and a Freestyle subtree leaves its raw elements alone."
@@ -2227,6 +2496,7 @@ rules:
       - FE_PANE_CHILD_NOT_SECTION
     enforcers:
       - {kind: eslint-grammar-core, id: pane-children}
+    covers: code/fe-pane-child-not-section
   - id: R347
     code: FE_PANE_SECTION_PADDING
     law: "The outermost element a Grammar PaneSection renders, and the root of a same-file component returned as its child, carries no padding or margin utility (`p-*`, `px-*`, `py-*`, `ps/pe/pt/pb/pl/pr-*`, `m-*`, `mx/my/ms/me/mt/mb/ml/mr-*`, their negative forms, or an arbitrary padding or margin property; zero and auto values place or reset and are not one), because the Pane owns the content inset and the section applies it. A Freestyle subtree leaves its raw elements alone."
@@ -2234,6 +2504,7 @@ rules:
       - FE_PANE_SECTION_PADDING
     enforcers:
       - {kind: eslint-grammar-core, id: no-pane-section-padding}
+    covers: code/fe-pane-section-padding
   - id: R348
     code: FE_PANE_GRID_FRAME
     law: "A Grammar PaneGrid is the one child of `Page chrome=\"panes\"`, written there as a PaneGrid element, or stands inside a Pane; a PaneGrid drawn in a SurfaceCard of any kind or a Page of another chrome re-decides the frame and the bottom edge that Page owns, and `Page chrome=\"panes\"` holding anything but one written PaneGrid element (a wrapper element, a component that renders the grid, a fragment, a variable, a condition) throws PAGE_PANES_CHILD_NOT_PANE_GRID at run time. A grid whose frame lives in another file is judged where the frame is, and a Freestyle subtree is not judged."
@@ -2241,6 +2512,7 @@ rules:
       - FE_PANE_GRID_FRAME
     enforcers:
       - {kind: eslint-grammar-core, id: pane-grid-page}
+    covers: code/fe-pane-grid-frame
   - id: R349
     code: FE_HAND_BUILT_PANES
     law: "A multi-pane frame is a Grammar PaneGrid of Panes, which draws the dividers between panes; a vertical Divider used as a column seam (among the plain columns of a flex row, or anywhere inside a SurfaceCard composition=\"joined\") and a joined SurfaceCard that holds a flex row of two or more plain columns are a pane frame drawn by hand and are refused. A short vertical separator between controls and a row whose classes cannot be read in the file are not judged."
@@ -2248,6 +2520,7 @@ rules:
       - FE_HAND_BUILT_PANES
     enforcers:
       - {kind: eslint-fe, id: no-hand-built-panes}
+    covers: code/fe-hand-built-panes
 
   - id: R350
     code: FE_SPACING_UTILITY
@@ -2258,6 +2531,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: no-spacing-utility}
       - {kind: stylelint, id: spacing-scale}
+    covers: code/fe-spacing-utility
 
   - id: R351
     code: FE_TABLE_IN_CARD
@@ -2266,6 +2540,7 @@ rules:
       - FE_TABLE_IN_CARD
     enforcers:
       - {kind: eslint-fe, id: no-table-in-card}
+    covers: code/fe-table-in-card
 
   - id: R352
     code: FE_COMMAND_FILLS_HEADER
@@ -2274,6 +2549,7 @@ rules:
       - FE_COMMAND_FILLS_HEADER
     enforcers:
       - {kind: eslint-fe, id: no-fill-command-in-header}
+    covers: code/fe-command-fills-header
 
   - id: R353
     code: FE_TAG_GROUP_SELECTION
@@ -2281,6 +2557,7 @@ rules:
     failureCodes:
       - FE_TAG_GROUP_SELECTION
     enforcers: []
+    covers: review/fe-tag-group-selection
 
   - id: R354
     code: FE_HEADING_ABOVE_CARD
@@ -2289,6 +2566,7 @@ rules:
       - FE_HEADING_ABOVE_CARD
     enforcers:
       - {kind: eslint-fe, id: no-heading-above-card}
+    covers: code/fe-heading-above-card
 
   - id: R355
     code: FE_SURFACE_CARD_KIND
@@ -2297,6 +2575,7 @@ rules:
       - FE_SURFACE_CARD_KIND
     enforcers:
       - {kind: eslint-grammar-core, id: surface-card-kind}
+    covers: code/fe-surface-card-kind
 
   - id: R356
     code: FE_SURFACE_NESTING
@@ -2305,6 +2584,7 @@ rules:
       - FE_SURFACE_NESTING
     enforcers:
       - {kind: machine, id: surface-nesting}
+    covers: repo/fe-surface-nesting
   - id: R357
     code: FE_TEXT_BLOCK
     law: "Text holds a run of words; a block component or element inside it is refused."
@@ -2312,6 +2592,7 @@ rules:
       - FE_TEXT_BLOCK
     enforcers:
       - {kind: eslint-grammar-core, id: text-inline-only}
+    covers: code/fe-text-block
   - id: R358
     code: FE_TEXT_HEADING
     law: "A strong Text that only titles the blocks after it is a hand heading; use a Section title, a card label or Heading."
@@ -2319,6 +2600,7 @@ rules:
       - FE_TEXT_HEADING
     enforcers:
       - {kind: eslint-grammar-core, id: no-text-heading}
+    covers: code/fe-text-heading
   - id: R359
     code: FE_ONE_HIGHLIGHT
     law: "A render states one highlighted thing; a second isHighlight is refused."
@@ -2326,6 +2608,7 @@ rules:
       - FE_ONE_HIGHLIGHT
     enforcers:
       - {kind: eslint-grammar-core, id: one-highlight-per-render}
+    covers: code/fe-one-highlight
   - id: R361
     code: FE_RENDER_PROP_ACROSS_SERVER
     law: "A function is not handed from a server file to a client component; pass data, or move the callback into the client branch that owns the interaction."
@@ -2333,6 +2616,7 @@ rules:
       - FE_RENDER_PROP_ACROSS_SERVER
     enforcers:
       - {kind: machine, id: render-prop-across-server}
+    covers: repo/fe-render-prop-across-server
   - id: R363
     code: FE_GRAMMAR_LITERAL
     law: "A Grammar component holds no hardcoded colour, length, utility class or numeric style value (`no-literal-look`); its stylesheets read named roles and ramps."
@@ -2340,6 +2624,7 @@ rules:
       - FE_GRAMMAR_LITERAL
     enforcers:
       - {kind: grammar-lint, id: no-literal-look}
+    covers: code/fe-grammar-literal
   - id: R366
     code: FE_LABEL_IN_GRID
     law: "A card with a label heads a section and draws the label outside its material; a peer you recognise and open names itself inside, beside its mark. A SurfaceCard with a label repeated in a Grid kind=cards (two or more as direct children, or one written in a .map) is refused: it is a tile (SurfaceCard kind=tile with name, mark, description, badge and action), or, when the peers are compared by a fact, one Section kind=list."
@@ -2347,6 +2632,7 @@ rules:
       - FE_LABEL_IN_GRID
     enforcers:
       - {kind: eslint-grammar-core, id: no-label-in-grid}
+    covers: code/fe-label-in-grid
 
   - id: R367
     code: FE_SWR_DEFAULT_ARRAY
@@ -2363,6 +2649,7 @@ rules:
       - {kind: eslint-fe, id: no-validating-as-loading}
       - {kind: eslint-fe, id: no-placeholder-object}
       - {kind: eslint-fe, id: no-hand-skeleton}
+    covers: code/fe-swr-default-array
   - id: R368
     code: HFS_EXPLICIT_EXPORT_SURFACE
     law: "An exported declaration states its type where it is exported: the return type of an exported function, the type of an exported variable and the type of its parameters are written, not inferred from a body or from other files, because the isolated declaration emit must be able to write the file's surface alone. A component that returns only JSX is explicit. Each export that cannot be written is reported at its place with what to annotate, in a front-end and a back-end file alike."
@@ -2371,6 +2658,7 @@ rules:
     enforcers:
       - {kind: eslint-fe, id: explicit-export-surface}
       - {kind: eslint-be, id: explicit-export-surface}
+    covers: code/hfs-explicit-export-surface
   - id: R369
     code: FE_DIRECTIVE_FIRST
     law: "A `use client` or `use server` directive is the first statement of its module, above every import: below another statement it is an expression that does nothing (Prettier writes it as a parenthesised string) and next build refuses the file."
@@ -2378,6 +2666,7 @@ rules:
       - FE_DIRECTIVE_FIRST
     enforcers:
       - {kind: eslint-fe, id: directive-first}
+    covers: code/fe-directive-first
   - id: R372
     code: STACKS_LOCAL_CONFIG_INVALID
     law: Every docker-compose environment declares a coherent `local` block under the dev verbs' own normalization, and a lite app declares one such dev environment, so `starci app stack up --env dev` has something to run.
@@ -2385,6 +2674,7 @@ rules:
       - STACKS_LOCAL_CONFIG_INVALID
     enforcers:
       - {kind: hfs, id: stacks-local}
+    covers: repo/stacks-local-config-invalid
   - id: R374
     code: STACKS_CODE_BIND_MOUNT
     law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned; when the harness owns a StarCi fork image for that service the final stage is FROM it, held by review), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
@@ -2394,6 +2684,7 @@ rules:
       - STACKS_IMAGE_ENV_DIVERGES
     enforcers:
       - {kind: hfs, id: stacks-service-images}
+    covers: repo/stacks-code-bind-mount
   - id: R375
     code: HFS_SEEDS_SHAPE
     law: Seed data lives only in the seed levels of `.starcistacks/`, where `seeds/` is applied in every environment first and `<env>/seeds/` in the one environment the stack declaration names `<env>`; each level is a `seeds.yaml` manifest (schema starci/seeds@1) whose entries list every file of its `sql/`, `data/` and `files/` folders; a seed is never a migration (no statement that creates, alters, drops, truncates, grants, revokes or comments on an object), never custody, a data document validates against the schema its entry names, a level a production environment applies holds no test data but the one test account an environment declares (a test-account entry with its reason), and a document names a secret only as a reference to a sealed seeds-<name> member of its environment.
@@ -2401,6 +2692,7 @@ rules:
       - HFS_SEEDS_SHAPE
     enforcers:
       - {kind: hfs, id: seeds-shape}
+    covers: repo/hfs-seeds-shape
   - id: R377
     code: BE_FLOW_FAILURE_SWALLOWED
     law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation, a message consumer and a domain method that takes a `ClaimedJob` never catch a failure without rethrowing or parking it (feature and domain code never catches to wait, loop, retry, count or swallow), and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one on the flow's declared ladder and ends any other as a dead letter, parked `failed_awaiting_fix` with one item for a person per park episode until a resume, so no flow ends silently."
@@ -2408,6 +2700,7 @@ rules:
       - BE_FLOW_FAILURE_SWALLOWED
     enforcers:
       - {kind: hfs, id: flow-failure}
+    covers: repo/be-flow-failure-swallowed
   - id: R378
     code: HFS_BRANCH_PROFILE_INVALID
     law: "An app's branch profile (`branches` of .starcistacks/application-stacks.yaml) lowers only the polish gates lint, sonar and codecov, to report or off, on a branch, or a branch pattern (`ui/*`: a literal first segment, never release/, `*` any characters but `/`), policy/loosening.yaml branchProfiles allows; the safety gates hfs, types, wiring, db, secrets, format and test block on every branch, and the default branch (main, master or ci.github.defaultBranch) is never declared, by its name or by a pattern that matches it, and always runs the full gate, as does a pull request into it; a refused profile lowers nothing."
@@ -2415,6 +2708,7 @@ rules:
       - HFS_BRANCH_PROFILE_INVALID
     enforcers:
       - {kind: hfs, id: branch-profile}
+    covers: repo/hfs-branch-profile-invalid
   - id: R379
     code: LINT_RATCHET_RAISED
     law: "On a branch whose profile runs lint as report, a commit never adds lint findings to a file it touches: each touched source file has no more ESLint error findings than at the base (the parent commit for the pre-commit hook, the merge-base with the pushed range or the remote branch, else HEAD^, for the pre-push hook and CI) and a new file has none, judged by the lint records of the base commit's committed cache and of the run when both hold a file and no rule rose, else by linting both versions of the touched files through the side's installed config in bounded children; the findings a file already carried stay report-only, and a ratchet violation blocks at any count."
@@ -2422,6 +2716,7 @@ rules:
       - LINT_RATCHET_RAISED
     enforcers:
       - {kind: hfs, id: lint-ratchet}
+    covers: repo/lint-ratchet-raised
   - id: R380
     code: FE_GROUPED_CHOICE_CONTROL
     law: "A view switch is never a row of `Button`s carrying `aria-pressed`, `isSelected` or `isActive`: a switch between views or periods of one block is `Tabs`, and `Tabs appearance=\"primary\"` holds two to four short, fixed options with no `count`, no `href` and no `isAttention`."
@@ -2430,6 +2725,7 @@ rules:
     enforcers:
       - {kind: eslint-grammar-core, id: no-button-view-switch}
       - {kind: eslint-grammar-core, id: no-primary-tabs-misuse}
+    covers: code/fe-grouped-choice-control
   - id: R381
     code: HFS_EXT_INVALID
     law: "A project adds its own laws only in its ext/ folder at the app root, declared in `ext/manifest.json` (`starci/project-ext@1`, with the extension API version it targets): every rule carries an id, a finding code, a severity, its doc, the app-relative globs it applies to and exactly one engine (a machine rule of ext/hfs/ the app check runs, or an ESLint rule of ext/lint/ the canon factories load), and every project check of ext/checks/ is declared there too (R402); the app check loads and runs them on every run; an extension only adds, so a rule or manifest with any other key, a code the harness reports, an id or code declared twice, a declared file that is not there, a rule file no rule declares, a rule that throws, a finding without a path or a manifest of another API version refuses the extension, which then lends nothing while the check is red; its findings go through the harness's policy (a machine rule and a project check block like hfs, an ESLint rule follows the lint gate, its branch profile and the ratchet)."
@@ -2438,6 +2734,7 @@ rules:
       - HFS_EXT_API_MISMATCH
     enforcers:
       - {kind: hfs, id: project-ext}
+    covers: repo/hfs-ext-invalid
   - id: R382
     code: HFS_PACKAGE_SLOT_UNPLACED
     law: "A root workspace package whose slots the project's ext/manifest.json declares (packages, by the package's folder) is held to them as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the declaration itself is readable; its coverage follows the slots, every file measured at its coverage tier (BE-TEST-13) but the barrels, the type files and a slot that opts out with coverage none and its reason; a slot names the canon that judges it (lint be or fe): the packages lint hands a lint fe slot to the front-end canon and the Grammar lint, the first slot that holds a file decides, every .tsx file is the front end's, and no folder name of a package is known to the harness. A package's own slots.yaml is read for one more minor, with a warning, for a package the manifest does not declare."
@@ -2448,6 +2745,7 @@ rules:
       - HFS_PACKAGE_SLOTS_INVALID
     enforcers:
       - {kind: hfs, id: package-slots}
+    covers: repo/hfs-package-slot-unplaced
   - id: R383
     code: CI_PARITY_STEP_FAILED
     law: "A whole `starci app check` runs every command of the app's managed CI that no other family runs, as CI runs it, so a green run is not followed by a red CI on one of them: the build and audit families read their commands from the app's rendered .github/workflows/ci.yml (the fast job's production dependency audit and typecheck script, the build job's `npm run build:be`, each `build fe` step, a next build per front-end app with its own SWC cache root under the app's tool cache, and the database migration checks, `db:lint` and `app db drift`, which need Docker or an empty `--db-url-env` database and are reported as the warning CI_PARITY_DB_SKIPPED where the host has neither), and CI's coverage step (`starci app coverage verify`) runs on the lcov the test family merged from its records; a step that fails is CI_PARITY_STEP_FAILED."
@@ -2455,6 +2753,7 @@ rules:
       - CI_PARITY_STEP_FAILED
     enforcers:
       - {kind: hfs, id: ci-parity}
+    covers: repo/ci-parity-step-failed
   - id: R384
     code: FE_RENDERER_LOGIC
     law: "A renderer of a root workspace package (every `.tsx` file of its source, `packages/<pkg>/src/**/*.tsx`) holds presentation only: mapping rows to components, choosing what to show, formatting. Data computation (arithmetic between two data values, accumulation, reduce, a chain of filters and sorts, date math), a domain comparison between two data values and a mutation outside a declared action (a write to a prop, an in-place array mutator on data, fetch, storage) live in a measured .ts module the renderer calls; the renderer itself is outside coverage."
@@ -2462,6 +2761,7 @@ rules:
       - FE_RENDERER_LOGIC
     enforcers:
       - {kind: eslint-fe, id: renderer-presentation-only}
+    covers: code/fe-renderer-logic
   - id: R386
     code: CI_PARITY_SONAR_SCAN_FAILED
     law: "A whole `starci app check` runs the app's CI sonar job against the app's own Sonar server: the scanner (`@sonar/scan`) with the app's `sonar-project.properties` (project key, sources, exclusions, coverage and lint-report paths), the server and token custody of its stack declaration (`services.sonar`, the token opened from its sealed secrets), and the quality gate the server holds for the project, read from the server after the analysis. The analysis never overwrites the project's own: a server with branch support receives it as the branch `local/<user>`, a server without (Community) as the derived project `<projectKey>-local`, created with the main project's visibility and bound to the main project's quality gate when the token may. A scanner that fails is CI_PARITY_SONAR_SCAN_FAILED and a red gate or a failed compute-engine task is CI_PARITY_SONAR_GATE_FAILED, both errors; a missing token, an unreachable server, a token without the permission it needs or an unreadable verdict is the warning CI_PARITY_SONAR_SKIPPED, never a green. An app with no `sonar-project.properties` or no Sonar service gets an info line. The scan runs after lint and coverage are green; a green verdict is kept in the untracked tool cache by the scanned content and the gate's conditions, so an unchanged tree is not scanned again (`--fresh` scans again)."
@@ -2471,6 +2771,7 @@ rules:
       - CI_PARITY_SONAR_SKIPPED
     enforcers:
       - {kind: hfs, id: ci-sonar-scan}
+    covers: repo/ci-parity-sonar-scan-failed
   - id: R387
     code: LINT_NEW_CODE_FINDING
     law: "On a branch whose profile reports lint or sonar, a profile lowers old debt only and never new code: an ESLint error finding on a line the branch changed since its merge-base with main (the diff the Sonar new-code prediction reads) is a blocking LINT_NEW_CODE_FINDING at any count while a finding on an untouched line stays report-only, and the predicted new-code coverage of the changed lines below the minimum `newCode.coverage.minPercent` of the Sonar gate main enforces is a blocking COVERAGE_NEW_CODE_BELOW; the Sonar server's quality gate and the Codecov upload stay report-only, the lint ratchet (R379) stays, and main always runs the full gate."
@@ -2479,6 +2780,7 @@ rules:
       - COVERAGE_NEW_CODE_BELOW
     enforcers:
       - {kind: hfs, id: new-code}
+    covers: repo/lint-new-code-finding
   - id: R388
     code: BRANCH_MAIN_NOT_ON_DEV
     law: "An app repository has exactly two long-lived branches, main and dev: main is released on git, moves only by a release (the annotated v* tag through `release push`) and only by fast-forward to a commit on dev; dev is the working branch, forked from main and always at or ahead of it, so main is always an ancestor of dev and the two never diverge; lane and feature branches fork from dev and merge back into it, and nobody commits on main directly. The managed pre-push hook refuses a push of main whose commit is not reachable from dev, locally and on the remote (BRANCH_MAIN_NOT_ON_DEV), or is not the checked-out HEAD the hook's check judges (BRANCH_MAIN_NOT_CHECKED_OUT), and a push of dev that deletes it or does not contain main (BRANCH_DEV_NOT_ON_MAIN); a push of main or a release tag runs the full app check whatever branch is checked out, and a whole app check warns HFS_DEV_BRANCH_MISSING when the repository has no dev. The harness repository is no app and has neither."
@@ -2490,6 +2792,7 @@ rules:
     enforcers:
       - {kind: hfs, id: app-branches}
       - {kind: hfs, id: dev-branch}
+    covers: repo/branch-main-not-on-dev
   - id: R07
     code: HFS_AGENT_DATA_TRACKED
     law: "`.starciwork` holds product records only; agent and session data never lives there."
@@ -2497,13 +2800,16 @@ rules:
       - HFS_AGENT_DATA_TRACKED
     enforcers:
       - {kind: hfs, id: agent-data-tracked, status: planned}
+    covers: repo/hfs-agent-data-tracked
   - id: R09
     code: HFS_IDENTITY_CUSTODY
     law: "An identity points its secret at `secrets/identity-<slug>.enc`, and UAT chooses an identity by role."
     failureCodes:
       - HFS_IDENTITY_CUSTODY
+      - SEALED_CUSTODY_LOCATION
     enforcers:
       - {kind: hfs, id: identity-custody, status: planned}
+    covers: repo/hfs-identity-custody
   - id: R385
     code: HFS_SCRIPT_ONE_OFF
     law: "`scripts/` holds the app's standing tooling; a one-off codemod or fix script is agent output and is never committed."
@@ -2511,6 +2817,7 @@ rules:
       - HFS_SCRIPT_ONE_OFF
     enforcers:
       - {kind: hfs, id: script-one-off, status: planned}
+    covers: repo/hfs-script-one-off
   - id: R389
     code: STACKS_BASE_PORT_UNDECLARED
     law: "The host ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+79; the compose services take base+80 to base+99, the database on base+90, the mail sink's SMTP on base+91 and web UI on base+92, the object store's S3 API on base+93 and console on base+94; and every compose file publishes its host ports from `local.ports`, never a literal port (a departure is STACKS_LOCAL_CONFIG_INVALID). An environment with native processes on ports and no `basePort` is reported as a warning, not an error. Each project owns its own hundred: the doctor fails, the scaffold refuses a named base (taking the next free hundred otherwise) and stack up refuses to start, when another registered project's hundred or declared ports overlap it; the local app check reports it as a warning."
@@ -2521,6 +2828,7 @@ rules:
       - STACK_BASE_PORT_OVERLAP
     enforcers:
       - {kind: hfs, id: stacks-local}
+    covers: repo/stacks-base-port-undeclared
   - id: R390
     code: BE_SAGA_SIDE_STEP_BLOCKING
     law: "A saga or graph step that only informs (an owner notice, a report, analytics, an echo into team chat) is declared non-blocking: its failure is recorded and alerted once and the run continues to its next step, and no step that answers the customer is ordered after a side step, so a failed notice never parks the run that serves the customer."
@@ -2528,6 +2836,7 @@ rules:
       - BE_SAGA_SIDE_STEP_BLOCKING
     enforcers:
       - {kind: hfs, id: saga-side-step, status: planned}
+    covers: repo/be-saga-side-step-blocking
   - id: R391
     code: BE_SAGA_CUSTOMER_HOLDING_LINE
     law: "A run triggered by a customer message that parks or dead-letters before the customer received a reply sends the customer one holding line, in the run's locale, through the same outbound channel as the reply and claimed idempotently under the run id, so a customer is never left silent and a resume or a second park never sends it twice."
@@ -2535,6 +2844,7 @@ rules:
       - BE_SAGA_CUSTOMER_HOLDING_LINE
     enforcers:
       - {kind: hfs, id: saga-holding-line, status: planned}
+    covers: repo/be-saga-customer-holding-line
   - id: R392
     code: BE_SAGA_INTERACTIVE_RESUME_LADDER
     law: "A flow a customer waits on declares the `waited` ladder (minutes, such as 1, 2, 4 and 8) in the declaration of its jobs and every other flow `background` (seconds, such as 5, 10 and 20), each ladder declared once per class of flow by the jobs platform's ladder policy; after the last rung the run is a dead letter with one item for a person, and a new build hands it back at once."
@@ -2542,6 +2852,7 @@ rules:
       - BE_SAGA_INTERACTIVE_RESUME_LADDER
     enforcers:
       - {kind: hfs, id: saga-resume-ladder, status: planned}
+    covers: repo/be-saga-interactive-resume-ladder
   - id: R393
     code: STACK_PENDING_MIGRATIONS
     law: "`starci app check --env local` compares the migration files of the repository with the history the running dev database recorded (supabase_migrations.schema_migrations) and fails on every file the database has not applied, naming the files and `starci app stack up --env <env> --execute`; a stack that is not running is not judged, and `--env prod` does not ask (check id `pending-migrations`)."
@@ -2549,6 +2860,7 @@ rules:
       - STACK_PENDING_MIGRATIONS
     enforcers:
       - {kind: hfs, id: pending-migrations}
+    covers: repo/stack-pending-migrations
   - id: R394
     code: STACK_DEAD_LETTER_REPEAT
     law: "`starci app check --env local` reads the last 24 hours of the api log of the dev environment and fails on every queue or job that dead-lettered more than once, naming the queue, the job and the last error message; a missing log is not judged, and `--env prod` does not ask (check id `dead-letter-repeat`)."
@@ -2556,6 +2868,7 @@ rules:
       - STACK_DEAD_LETTER_REPEAT
     enforcers:
       - {kind: hfs, id: dead-letter-repeat}
+    covers: repo/stack-dead-letter-repeat
   - id: R395
     code: HFS_APP_GALLERY_MISSING
     law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset`; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a `links.json` or `flows.json` that names a screen folder that does not exist, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json` (a warning in `--env local`), and, where the app keeps `.starcistacks/canvas/design.json` (the design pass drawn before code, PROJECT-GALLERY-6), a manifest that is not its shape, a built page with no screen folder, a built page that records no sha256 of its 1440 or 390 shot or whose shot in the work tree is not the recorded one, and a shot record on a page not yet built (all but the first are warnings in `--env local`; the design needs no owner approval before code, owner decision 2026-11-25), and, where the app keeps `gallery/board/board.yaml` (the design board, PROJECT-GALLERY-9), a record that is not its shape or a section without its module, a `page.tsx` route with no board section, and a board section whose route is neither coded nor marked `planned`, or marked `planned` while coded (both the last two are warnings in `--env local`) fail."
@@ -2586,6 +2899,7 @@ rules:
       - HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED
     enforcers:
       - {kind: hfs, id: gallery}
+    covers: repo/hfs-app-gallery-missing
   - id: R396
     code: BE_REST_OPERATION_ID
     law: "A rest api app commits the OpenAPI 3 document of its controllers, and every operation in it has a unique explicit `<area>.<action>` operationId, named request and answer schemas, the one Error answer as `default`, a cursor page for a list, and a declared security or a stated public reason."
@@ -2596,6 +2910,7 @@ rules:
       - BE_REST_SECURITY
     enforcers:
       - {kind: hfs, id: rest-contract}
+    covers: repo/be-rest-operation-id
   - id: R397
     code: BE_CLI_CLIENT
     law: "A client cli is an app of kind `client-cli` that declares its npm `package` and its `bin` in `hfs.json` (no other app does, and no two share either), keeps its commands in its own feature root `be/src/features/client-cli/<app>/`, and tracks `be/apps/<app>/package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a version, every dependency at the app root's pin) and `be/apps/<app>/tsconfig.build.json` (it emits the import closure of `src/main.ts` into `dist/`). A client cli that declares `bundle: true` ships one self-contained file instead: `be/apps/<app>/bundle.mjs` bundles that output into `dist/bundle/<bin>.cjs`, the bin points there, `files` holds `dist/bundle`, `prepack` is `node bundle.mjs` and the manifest lists no runtime dependency; `bundle.mjs` with no declared bundle is refused."
@@ -2603,6 +2918,7 @@ rules:
       - BE_CLI_CLIENT
     enforcers:
       - {kind: hfs, id: cli}
+    covers: repo/be-cli-client
   - id: R398
     code: BE_CLI_CLIENT_BOUNDARY
     law: A client cli (its app and its feature root) imports no domain, events, queues or projections module, nothing of the database capability or of a persistence folder, and no database library.
@@ -2610,6 +2926,7 @@ rules:
       - BE_CLI_CLIENT_BOUNDARY
     enforcers:
       - {kind: eslint-be, id: cli-client-boundary}
+    covers: code/be-cli-client-boundary
   - id: R399
     code: HFS_SIDE_UNDECLARED
     law: "A project's sides are the ones hfs.json declares (a non-empty subset of be, fe, packages): each declared side tracks files under its folder, no tracked be/, fe/ or packages/ belongs to an undeclared side, and the stack declaration states the same sides with no component of a missing side."
@@ -2621,6 +2938,7 @@ rules:
       - STACKS_COMPONENT_SIDE
     enforcers:
       - {kind: hfs, id: project-sides}
+    covers: repo/hfs-side-undeclared
   - id: R400
     code: HFS_DATA_IN_CODE
     law: "Data lives in git only in a seed copy repository, `<name>-seed-standard` (plain, pinned by commit, read once by the bring-up) or `<name>-seed-backup-<env>` (one environment, always sealed, read only by an explicit sync): a copy repository has no hfs.json and a root manifest.json of schema `starci/data-manifest@1` whose purpose agrees with its format name; a code project tracks no copy document (a data manifest, the data/ blobs/ index/ tree next to one, a sops binary-mode envelope: HFS_DATA_IN_CODE) and never depends on a copy repository (package dependency, workspace, submodule, tsconfig path); the commit hook refuses in a copy repository an unsealed backup file, a sealed file in a standard, a manifest that disagrees with the tracked data files or its format name, a data file over 4 MiB and a snapshot over 500 MiB, which needs the s3 driver."
@@ -2629,6 +2947,7 @@ rules:
       - HFS_DATA_COPY_INVALID
     enforcers:
       - {kind: hfs, id: data-copies}
+    covers: repo/hfs-data-in-code
   - id: R401
     code: BE_DI_RING
     law: No Nest provider of a lite back-end app reaches itself through its constructor, property, factory or `useExisting` injections (a `forwardRef` edge aside, which R85 refuses); the boot proof scans the real AppModule before it compiles and names every ring of two or more providers, since Nest refuses a ring of two and hangs at boot on a longer one.
@@ -2636,6 +2955,7 @@ rules:
       - BE_DI_RING
     enforcers:
       - {kind: hfs, id: di-ring}
+    covers: repo/be-di-ring
   - id: R402
     code: HFS_PROJECT_CHECK_FAILED
     law: "Every project check the project's ext/manifest.json `checks` declares passes. A declaration is {id, run, why}: a unique kebab-case id, run a unique `ext/checks/<name>.mjs` file, and why the project keeps it (its shape, and a declared file that is not there, are HFS_EXT_INVALID, R381). `starci app check` runs every declared check wherever the hfs gate runs (a whole run, `--gate hfs`, CI), as its own `checks` step after the structure pass: with the Node that runs the check, from the app root, one after another through the heavy governor; exit 0 is green and says so in one line, any other exit, or a missing file, is HFS_PROJECT_CHECK_FAILED naming the check, its file, its exit, what it guards and the last 20 lines it printed. An hfs finding: it blocks like hfs under the branch profile. A check reads what it reads, so its verdict is never cached."
@@ -2643,6 +2963,7 @@ rules:
       - HFS_PROJECT_CHECK_FAILED
     enforcers:
       - {kind: hfs, id: project-checks}
+    covers: repo/hfs-project-check-failed
   - id: R403
     code: BE_JOB_NEXT_DECLARED
     law: "In a `defineJob` declaration `next` is an array literal of statically readable job names, each the name of a job a `defineJob` of the program declares; the queue platform refuses, at run time, an enqueue of a job the running job's `next` does not list (Known gap: the call site is judged by that refusal, review and the chain's specs)."
@@ -2650,6 +2971,7 @@ rules:
       - BE_JOB_NEXT_DECLARED
     enforcers:
       - {kind: eslint-be, id: job-next-declared}
+    covers: code/be-job-next-declared
   - id: R404
     code: BE_JOB_PROGRESS_SHAPE
     law: "A `defineJob` `progress.topic` is a function whose declared return type is `JobProgressTopic` of `platform/jobs` (the principal first, then the chain root), and a function that takes a `ClaimedJob` never calls the `RealtimeHub`: it reports step progress through `JobProgress`, which the jobs frame stores on the row and publishes."
@@ -2657,6 +2979,7 @@ rules:
       - BE_JOB_PROGRESS_SHAPE
     enforcers:
       - {kind: eslint-be, id: job-progress-shape}
+    covers: code/be-job-progress-shape
   - id: R426
     code: DATA_STORE_INVALID
     law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration; a store has a kind of the closed list (database, storage) and a level logical or physical, an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (or a factory whose declared return type is `StoreAdapter`) and, for a store of a seed-backup set or a store a seed-standard without a project `completeness` fills, an `adapter.command` argv of the app command that serves it over starci/data-entries@1, the door `starci app data` and the bring-up's seed step reach it through; a derived entry has a non-empty `rebuild` and, when it names a `from`, a declared store (`from` is optional for a source outside the project); a project with no stateful component and no `data:` member is green."
@@ -2664,6 +2987,7 @@ rules:
       - DATA_STORE_INVALID
     enforcers:
       - {kind: hfs, id: data-stores}
+    covers: repo/data-store-invalid
   - id: R427
     code: DATA_SET_INVALID
     law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments, a destination whose driver is git or s3, a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup, where `<env>` is the environment's declared `short` name (lowercase kebab, at most 12 characters, unique across the environments), else its name (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit`, `force` and `commit` belong to a standard and `everyMinutes` and `maxAgeMinutes` to a backup; `completeness` is `ext:<id>` of a check of ext/manifest.json; no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository."
@@ -2672,6 +2996,7 @@ rules:
       - DATA_COPY_NAME
     enforcers:
       - {kind: hfs, id: data-sets}
+    covers: repo/data-set-invalid
   - id: R428
     code: STORAGE_PUBLIC_ROUTE_CONSOLE
     law: "A dev environment that runs an object store (a `local.services[]` entry of `kind: object-store`, or the `component` of a `data.stores[]` of kind storage) publishes its S3 API port only: no `tunnel.routes[]` entry reaches the store's declared admin `console` port (STORAGE_PUBLIC_ROUTE_CONSOLE). The rest of PROJECT-STACKS-15 is a convention held by review and the app's specs: a `tunnel.routes[]` entry whose port is the store's S3 port; every process that sets STORAGE_ENDPOINT, the internal address of its writes, also sets STORAGE_PUBLIC_URL to `https://<the host of a route to the store>`, so a link the app builds is never a loopback address, localhost or a container name; the statics base (`NEXT_PUBLIC_STATICS_URL`, `VITE_STATICS_URL`, PROJECT-STATICS-4) of a process in an environment with a tunnel starts with `https://<the host of a route to the store>/`; stored data holds a bucket and a key, never a host. `starci app stack up --env <env> --execute` makes the ingress rule and the DNS record of each declared route, `stack verify` reads the public side. Production is not judged here."
@@ -2679,6 +3004,7 @@ rules:
       - STORAGE_PUBLIC_ROUTE_CONSOLE
     enforcers:
       - {kind: hfs, id: stacks-storage-public}
+    covers: repo/storage-public-route-console
   - id: R429
     code: HFS_SECRET_TARGET_MISSING
     law: "A secret target the project declares in `secretTargets` of ext/manifest.json (starci/project-ext@1: id, root, one `*.enc.yaml` file per environment, the `.sops.yaml` whose creation rule names the recipients, optional `under` and `depth`) holds sealed files only, judged when its checkout is on the machine and never by reading a value: a file of a declared environment, or the target's `.sops.yaml`, that is not in the checkout is HFS_SECRET_TARGET_MISSING, a file that is not a sops envelope (no `sops` block) HFS_SECRET_TARGET_UNSEALED, a file with its `sops` block and a value that is not an ENC[...] value HFS_SECRET_TARGET_PLAIN; the declaration's own shape is HFS_EXT_INVALID (R381). `starci app secret set|unset|list --env <env> --ext <target>` is the one writer: it resolves the target through the extension, prompts masked as set does, seals to the file's recipients and never prints a value or writes one to the stack; an unknown target, an environment the target does not seal, or a key naming an environment is refused."
@@ -2688,6 +3014,7 @@ rules:
       - HFS_SECRET_TARGET_PLAIN
     enforcers:
       - {kind: hfs, id: secret-targets}
+    covers: repo/hfs-secret-target-missing
   - id: R430
     code: HFS_GATE_DECLARATION_INVALID
     law: "An app's `gates` block (.starcistacks/application-stacks.yaml, PROJECT-LINT-4) switches off, for the whole app and every branch, any gate but the three that are the harness's own rules: `hfs`, `secrets` and `db` are never switched off, whatever the declaration says; every other id (lint, format, sonar, codecov, test, coverage, types, build, audit, wiring, checks, deps) may be, each as `{ run: off, reason }` with a mandatory reason and only where policy/loosening.yaml optionalGates lists it; an id that is no gate, a gate that is never switchable, a missing reason, a `run` other than off and a switched-off gate whose reader stays on (test needs coverage, codecov and sonar; lint needs sonar; coverage needs codecov) are HFS_GATE_DECLARATION_INVALID, and a refused block switches nothing off. One reader (readGateDeclarations, folded by activeProfile) serves `starci app check` in both envs, the managed hooks, the release gate (whose build rows always run) and the rendered CI, and every one reports an off gate as `off (declared: <reason>)`, never as passed."
@@ -2695,6 +3022,7 @@ rules:
       - HFS_GATE_DECLARATION_INVALID
     enforcers:
       - {kind: hfs, id: gate-declaration}
+    covers: repo/hfs-gate-declaration-invalid
   - id: R431
     code: DB_PRIMARY_KEY_SHAPE
     law: "Every table an app creates in its schema has the primary key `id uuid` (DB_PRIMARY_KEY_SHAPE; a natural key is a unique constraint beside it); a one-column foreign key is named `<referenced table singular>_id` or `<role>_<referenced table singular>_id`, or is the table's own `id` when the table shares the key of the row it extends (DB_FOREIGN_KEY_NAME), the singular being a fixed rule set on the last word of the table name with the app's map of irregular plurals, hfs.json `db.singulars`, first; every foreign key has an index, primary key or unique constraint of its table whose leading columns are its columns somewhere in the migration set (DB_FOREIGN_KEY_INDEX). A table hfs.json `db.keyExceptions` lists with a reason is not judged for its key shape or foreign key names. The rule binds every new migration: a migration already on the base unchanged is the backlog, its findings reported as known items, never blocking."
@@ -2704,6 +3032,7 @@ rules:
       - DB_FOREIGN_KEY_INDEX
     enforcers:
       - {kind: hfs, id: db-key-shape}
+    covers: repo/db-primary-key-shape
   - id: R432
     code: BE_FAILURE_CLASS_BY_TEXT
     law: "Whether a failure is transient or permanent is decided only by `classifyFailure` of @starci/nest-kit, which reads an explicit `failureClass` the error carries first: no back-end source (src/**, not a spec) matches an error's code or message text against a transient failure code (ECONNRESET, ETIMEDOUT, EAI_AGAIN, 40001, 40P01, 57P01 and their siblings), as a quoted literal or inside a regular expression literal; code that knows a class throws its error with `failureClass`, and a back end with a Postgres job outbox takes the outbox, its runner and its judge from @starci/outbox."
@@ -2711,6 +3040,7 @@ rules:
       - BE_FAILURE_CLASS_BY_TEXT
     enforcers:
       - {kind: hfs, id: failure-class}
+    covers: repo/be-failure-class-by-text
   - id: R433
     code: HFS_CONCEPT_CONVENTIONS_MISSING
     law: "Every app keeps a `conventions` concept: `.starciwork/concepts/conventions.md` is tracked and the catalog `.starciwork/concepts/README.md` has a row linking it, and the catalog has one row per concept (every tracked `.starciwork/concepts/<topic>.md` is linked by a row, and every row links a tracked concept); the check reads the tree and the catalog, never the concept's content, which is held by review."
@@ -2719,6 +3049,7 @@ rules:
       - HFS_CONCEPT_UNCATALOGUED
     enforcers:
       - {kind: hfs, id: concept-conventions}
+    covers: repo/hfs-concept-conventions-missing
   - id: R434
     code: HFS_DATA_ADAPTER_DRIFT
     law: "A seed-standard repository may keep what people author in `raw/` (plain, never sealed, sized and capped like the data files by R400) and an `adapter/` whose `convert(rawDir)` turns it into entries written through the git driver of @starci/seed (`renderStandard`, `runStandardAdapter`); its committed manifest.json, data/, blobs/ and index/ are then, byte for byte, what `node adapter/main.ts` writes from raw/: the copy repository's commit hook and CI (`starci app check --staged`) run the adapter twice over raw/ as the index holds it and refuse a run that fails, two runs that differ (a non-deterministic adapter), an output file that differs from, is missing from or is absent in the commit (a hand edit of data/, or raw/ committed without its output), and an adapter/ the index does not hold as it stands (HFS_DATA_ADAPTER_DRIFT); an adapter repository tracks adapter/main.ts, adapter/package.json, the hook .githooks/pre-commit and the workflow .github/workflows/seed-standard.yml, each of the last two running `starci app check --staged` (`starci data standard init --adapter` writes them); the bring-up's seed step verifies each pinned seed-standard of the environment once per pin before any entry applies, running the same check on the pinned commit, and refuses a pin whose adapter output drifts or that cannot be read (STACK_SEED_ADAPTER_DRIFT)."
@@ -2729,6 +3060,7 @@ rules:
     enforcers:
       - {kind: hfs, id: data-adapter}
       - {kind: hfs, id: standard-gate}
+    covers: repo/hfs-data-adapter-drift
   - id: R435
     code: STACK_SEED_STANDARD_UNREADABLE
     law: "A seed-standard reaches an app by one path, the bring-up's seed step over the commit `data.sets` pins; no app, whatever its source, scripts, workflows or environment, clones, pulls or fetches a `-seed-standard` repository, declares a content-sync command for one or names one in an environment variable (review holds this convention, no check guesses at the ways around it). That path is the loader of the seed step: after the R434 gate it reads each pin at its commit through `pinRepository` and the git driver (an unreadable pin is STACK_SEED_STANDARD_UNREADABLE, a copy that is no healthy plain standard or fills a store its set does not list is STACK_SEED_STANDARD_SCHEMA), applies it through each store's `adapter.command` over starci/data-entries@1 (a store with none is STACK_SEED_STORE_COMMAND), a dry run through every door first and then an upsert by natural key (a door that fails or refuses a key is STACK_SEED_DOOR_REFUSED), and writes one receipt per standard and commit only once every store applied; a receipt skips the pin, a changed pin is reported DATA_STANDARD_CHANGED and applies only with the set's `force: true`, once per commit; a set with a project `completeness` is left to the project."
@@ -2739,6 +3071,7 @@ rules:
       - STACK_SEED_DOOR_REFUSED
     enforcers:
       - {kind: hfs, id: standard-load}
+    covers: repo/stack-seed-standard-unreadable
   - id: R436
     code: HFS_NIVOOS_PACKAGE_MISSING
     law: "The nivoos packages a project declares (hfs.json `sides.nivoos.packages`, each `{ name, entry?, out? }`, a kebab-case folder `packages/<name>/` once, `entry` defaulting to `src/<name>.package.ts` and `out` to `seed`; declaring one declares the packages side) agree with its tree and its check, each way: a declared package tracks its `package.json`, `tsconfig.json` and entry (HFS_NIVOOS_PACKAGE_MISSING); a root package that depends on the nivoos SDK or its CLI is declared (HFS_NIVOOS_UNDECLARED), since the slot `app.nivoos-package` is what hands its source to the SDK authoring lint profile of `@starci/eslint-canon-be` (Vietnamese copy in string and template literals, the default export of the entry; the canon otherwise whole) and what leaves it unmeasured; and `nivoos package check <entry> --out <out>`, run from the package folder in the `checks` step of `starci app check`, passes: a package that does not type-check, a committed seed or secrets template that differs from a fresh build, or a nivoos CLI that is not installed for it is HFS_NIVOOS_PACKAGE_CHECK, which is never cached. Every cell (`<name>.cell.ts`) and flow (`<name>.workflow.ts`) below the src/ of a declared package has its spec beside it (`<name>.cell.spec.ts`, `<name>.flow.spec.ts` or `<name>.workflow.spec.ts`, HFS_NIVOOS_SPEC_MISSING; owner 2026-11-25, BE-TEST-13). The spec of every cell and flow is a test obligation: judged only while the app's test and coverage gates run; an app that declares either off (PROJECT-LINT-4) is not judged for it."
@@ -2750,6 +3083,7 @@ rules:
     enforcers:
       - {kind: hfs, id: nivoos}
       - {kind: hfs, id: nivoos-package-check}
+    covers: repo/hfs-nivoos-package-missing
   - id: R437
     code: HFS_BRAND_INVALID
     law: "An app that keeps AI-generated images prompts them from its brand sheet: `.starcistacks/brand/illustration.yaml` holds `basePrompt: { version: <integer from 1>, text }`, the block every image prompt starts with, and every `statics/**/*.prompt.yaml` records the `basePrompt.version` it was built from, a `subject` and a `prompt` that starts with the current base text; a brand sheet whose basePrompt is not that shape (HFS_BRAND_INVALID, an error), a prompt file in an app with no illustration.yaml, a prompt file whose recorded version is absent or not the current one and a prompt file with no subject, not YAML or whose prompt does not start with the base text fail HFS_BRAND_PROMPT_INVALID; the prompt findings are a warning in `--env local` and an error in `--env prod`. A named media base lives in the optional `.starcistacks/brand/media.yaml` as `bases: { <lowercase-kebab-name>: { version: <integer from 1>, text } }` (`illustration` is reserved: it is the basePrompt of illustration.yaml, read as the base named `illustration`); a prompt file names its base in `basePrompt.name` (default `illustration`) and is judged against that base's version and text, a media.yaml not of that shape is HFS_BRAND_INVALID too, and a prompt file naming a base neither file defines fails HFS_BRAND_PROMPT_INVALID (a warning in `--env local`, an error in `--env prod`). `starci app scaffold` writes the starter folder once (brand.md, illustration.md, illustration.yaml, media.md, media.yaml, references/) and `starci app sync` never overwrites it (PROJECT-BRAND-1, PROJECT-BRAND-2)."
@@ -2758,6 +3092,7 @@ rules:
       - HFS_BRAND_PROMPT_INVALID
     enforcers:
       - {kind: hfs, id: brand}
+    covers: repo/hfs-brand-invalid
   - id: R438
     code: HFS_STATICS_FILE_KIND
     law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
@@ -2767,6 +3102,7 @@ rules:
       - HFS_STATICS_FILE_SIZE
     enforcers:
       - {kind: hfs, id: statics-shape}
+    covers: repo/hfs-statics-file-kind
   - id: R439
     code: HFS_STATIC_ASSET_OUTSIDE_STATICS
     law: "A tracked media file (png, jpg, jpeg, webp, avif, gif, svg, mp4, webm) under `fe/**/public/**` or `{fe,be}/**/src/**` is HFS_STATIC_ASSET_OUTSIDE_STATICS: move it to statics/<area>/ and reference it by its staticsKey. Exempt: inside `fe/**/public/` only the favicon (`favicon.*`), the PWA/manifest icons (`apple-touch-icon*.png`, `android-chrome-*.png`, `mstile-*.png`, `safari-pinned-tab.svg`, `icon-*.png`, `icons/**`) and the app logo (`logo.{png,svg,webp}` or a variant `*-logo.{png,svg,webp}` in `public/` or `public/brand/`) stay, everything else lives in statics/ behind the CDN; also exempt: the route metadata files Next.js reads by name (`src/app/{icon,favicon,apple-icon,opengraph-image,twitter-image}.*`), and the small build-time binaries under `be/**/src/assets/` (slot be.assets, HFS_ASSET_KIND)."
@@ -2774,6 +3110,7 @@ rules:
       - HFS_STATIC_ASSET_OUTSIDE_STATICS
     enforcers:
       - {kind: hfs, id: statics-outside}
+    covers: repo/hfs-static-asset-outside-statics
   - id: R440
     code: STACK_STORAGE_MISSING
     law: "A project ships its own MinIO, in development and in production, on one condition: it has statics/ (a file other than .gitkeep) or its back end needs object storage (the @starci/object-storage dependency, a `storage` custody member or a sealed storage-* secret). With the condition and no `storage` service in a dev docker-compose environment, or no `deploy.images.storage` in a lite production, the check refuses (STACK_STORAGE_MISSING); a declared storage service with no condition is an object store nothing uses: remove it (held by review, not by a check). The service is built from the managed .starcistacks/images/storage/Dockerfile: when statics/ holds media and the dev service does not build it, or a service that builds it does not have the shape, STACK_STORAGE_IMAGE_SHAPE: it must have build.context the app root, build.dockerfile the override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX (kebab-case) and STATICS_PUBLIC (download or none), a healthcheck on /tmp/statics-ready and an existing statics/ folder, and the production `deploy.images.storage` is {app: storage} (STACK_STORAGE_IMAGE_SHAPE). The Dockerfile's own drift is HFS_MANAGED_FILE_DRIFT."
@@ -2782,6 +3119,7 @@ rules:
       - STACK_STORAGE_IMAGE_SHAPE
     enforcers:
       - {kind: hfs, id: storage-image}
+    covers: repo/stack-storage-missing
   - id: R442
     code: FE_RAW_MEDIA_ELEMENT
     law: A picture, a video or decorative art is drawn by Grammar's Image, Video or Illustration, never by a raw img, video or picture element in app source (the family-ui package, whose components are the renderers, and a Freestyle region are exempt); a raw element reserves no ratio, loads at once and carries none of the Grammar's alt, rendition, caption, track or stream contract.
@@ -2789,6 +3127,7 @@ rules:
       - FE_RAW_MEDIA_ELEMENT
     enforcers:
       - {kind: eslint-grammar-core, id: no-raw-media}
+    covers: code/fe-raw-media-element
   - id: R445
     code: FE_BRAND_NOT_ONE
     law: "The colours of a product live in ONE brand token file: the web apps of a front end hold exactly one `modules/brand/brand.css`, which every global stylesheet imports (a colour literal elsewhere is R61's lint, which also refuses a named colour and a Tailwind arbitrary or palette colour), and the canvas holds none of its own: `.starcistacks/canvas/tokens.css` is generated from the brand file by `canvas-tokens.mjs`, and no generator under `.starcistacks/canvas/gen/` (the claude-design `gen/kit/` aside) writes a colour literal."
@@ -2798,6 +3137,7 @@ rules:
       - FE_BRAND_CANVAS_TOKENS_STALE
     enforcers:
       - {kind: hfs, id: brand-one}
+    covers: repo/fe-brand-not-one
   - id: R446
     code: FE_GLOBALS_NOT_ONE
     law: "A web app loads its CSS through exactly ONE global stylesheet, `src/app/globals.css`, which imports the Grammar stylesheet and the brand file: no second `.css` file under the app's `src/` (a route group's `site.css`), and no TypeScript file imports a stylesheet other than the globals."
@@ -2806,6 +3146,7 @@ rules:
       - FE_GLOBALS_IMPORTS_MISSING
     enforcers:
       - {kind: hfs, id: globals-one}
+    covers: repo/fe-globals-not-one
   - id: R447
     code: FE_STATE_PAGE_NOT_SHARED
     law: "Every system state has ONE page: all the `not-found.tsx` of a front end render one shared page component, all the `error.tsx` and `global-error.tsx` one, all the offline pages one, and every route group of the app tree (any depth) carries its own `error.tsx` and `not-found.tsx`, so no group falls through to a different look. The page component is the file of the boundary's reachable source that draws the Grammar's page empty state."
@@ -2814,6 +3155,7 @@ rules:
       - FE_STATE_PAGE_GROUP_MISSING
     enforcers:
       - {kind: hfs, id: state-pages}
+    covers: repo/fe-state-page-not-shared
   - id: R448
     code: BE_BOOT_ENTRY_FAILED
     law: A back-end app that declares a boot entry (hfs.json `sides.be.apps[].boot`) has that entry composed by the gate, with NestFactory.createApplicationContext, no listener, no lifecycle hook, no network and only the declared stub env, in `app check` and in the fast job of the app's CI (`starci app check --gate wiring`), so a provider wiring error that only a command's boot reaches never passes the other gates to take the stack down.
@@ -2822,6 +3164,7 @@ rules:
       - BE_BOOT_ENTRY_UNJUDGED
     enforcers:
       - {kind: hfs, id: boot-entry}
+    covers: repo/be-boot-entry-failed
   - id: R449
     code: HFS_MASTER_PLAN_INVALID
     law: "An app root keeps its Master Plan in `.starciwork/master-plan.yaml` (schema `starci/master-plan@1`): the nine layers business, tech, patterns, ui, data, testing, security, observability and domains in that order, each with its decisions, its reason, its always/never rules (ids unique, each optionally `enforcedBy` an hfs rule id, a check preset or `review`) and an optional roadmap; a malformed file or an `enforcedBy` naming an hfs rule the catalog does not hold is refused, and an app that tracks none yet is a warning."
@@ -2830,6 +3173,7 @@ rules:
       - HFS_MASTER_PLAN_MISSING
     enforcers:
       - {kind: hfs, id: master-plan}
+    covers: repo/hfs-master-plan-invalid
   - id: R450
     code: HFS_CUTOVER_EXPIRED
     law: "An environment that still runs the previous release while the branch carries the next shape may declare `cutover: { state: pending, reason, until: <YYYY-MM-DD>, keep?: [<member> | <member>/<KEY>] }` (PROJECT-STACKS-20): `starci app check` in both envs then reports, for that environment alone, the findings of the codes the failure-code catalog marks `cutoverTolerant` (`true`: any finding about the environment; `kept`: only one about a member or key `keep` names) in a section of their own, while every other finding still blocks; a block of another shape is HFS_CUTOVER_DECLARATION_INVALID and one past its `until` is HFS_CUTOVER_EXPIRED, both blocking and neither tolerating anything; while the block is present at all, every `stack deploy` and `stack prepare --execute` refuse the environment with STACK_CUTOVER_PENDING."
@@ -2840,6 +3184,7 @@ rules:
       - STACK_CUTOVER_PENDING
     enforcers:
       - {kind: hfs, id: cutover}
+    covers: repo/hfs-cutover-expired
   - id: R451
     code: HFS_SOPS_RECIPIENTS
     law: "Every app's sealed members follow the one recipient policy of knowledge/hfs/sops-recipients.yaml (owned by the harness repository's ops/vps/recipients.yaml, public halves only): the rule sops uses for an environment's members names exactly that environment's set, dev the harness recipient alone and every deployed environment (staging, production) the key of the VPS it deploys to (deploy.remote.serverRecipient) plus that server's one backup recipient, never the harness key, and no recipient that is not a declared key, which is an app-only identity (HFS_SOPS_RECIPIENTS); an environment whose set cannot be resolved (no recorded server, a server not declared, a backup not minted) is HFS_SOPS_RECIPIENT_UNDECLARED; a rule that reaches the members of an environment the app does not declare is HFS_SOPS_CATCH_ALL; and a sealed member whose cleartext sops.age recipients are not exactly its environment's set is HFS_SOPS_MEMBER_RECIPIENTS; the severity is data: while the policy's `enforce` (a server's own `enforce` for the environments deploying to it) is false, each is a warning in every env, so a fresh app with no server yet and an app awaiting its migration pass --env prod; once true, each is an error, report-only in --env local and blocking in --env prod; the check reads no value and no key. The SOPS_AGE_KEY guard compares the public recipient of the identity the lookup takes with a dev member's recipients before sops runs (stack up refuses SECRET_IDENTITY_MISMATCH, app check --env local warns HFS_SOPS_IDENTITY_MISMATCH), naming the file read and the recipient prefix expected."
@@ -2852,3 +3197,4 @@ rules:
     enforcers:
       - {kind: hfs, id: sops-recipients}
       - {kind: hfs, id: sops-identity-guard}
+    covers: repo/hfs-sops-recipients

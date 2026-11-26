@@ -18,7 +18,7 @@ export type Keyboard = readonly (readonly Button[])[]
 /** One update of getUpdates, the fields the bot reads. */
 export interface Update {
     readonly update_id: number
-    readonly message?: { readonly message_id: number; readonly date: number; readonly text?: string; readonly chat: { readonly id: number; readonly type: string }; readonly from?: { readonly id: number } }
+    readonly message?: { readonly message_id: number; readonly date: number; readonly text?: string; readonly chat: { readonly id: number; readonly type: string }; readonly from?: { readonly id: number; readonly username?: string } }
     readonly callback_query?: { readonly id: string; readonly data?: string; readonly from: { readonly id: number }; readonly message?: { readonly message_id: number; readonly chat: { readonly id: number } } }
 }
 

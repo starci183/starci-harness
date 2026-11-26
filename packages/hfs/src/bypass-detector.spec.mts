@@ -60,21 +60,30 @@ const stagedRepo = (t: TestContext, files: Record<string, string>) => {
   return root;
 };
 
-test('HFS_BYPASS_MARKER: the tree rule and the staged pre-commit guard refuse a bypass, also in a front end that has no specs', async (t) => {
+test('HFS_BYPASS_MARKER: the tree rule and the staged pre-commit guard refuse a bypass the canon lint does not read', async (t) => {
   const root = stagedRepo(t, {
     'fe/src/ok.ts': 'export const ok = 1;\n',
-    'fe/src/bad.ts': `export const bad = 1;\n${form('eslint-disable line')}`,
-    'be/src/bad.service.spec.ts': form('describe.skip'),
+    'scripts/bad.mjs': `export const bad = 1;\n${form('eslint-disable line')}`,
     '.husky/pre-commit': form('or true in a hook'),
   });
-  const files = ['fe/src/ok.ts', 'fe/src/bad.ts', 'be/src/bad.service.spec.ts', '.husky/pre-commit'];
+  const files = ['fe/src/ok.ts', 'scripts/bad.mjs', '.husky/pre-commit'];
   const found = bypassMarkerFindings({ repoRoot: root, files });
-  assert.deepEqual(found.map((finding) => finding.path), ['fe/src/bad.ts', 'be/src/bad.service.spec.ts', '.husky/pre-commit']);
+  assert.deepEqual(found.map((finding) => finding.path), ['scripts/bad.mjs', '.husky/pre-commit']);
   assert.ok(found.every((finding) => finding.code === 'HFS_BYPASS_MARKER' && finding.level === 'error'));
   const lines: string[] = [];
   assert.equal(await runWorkHygiene({ cwd: root, out: (line) => lines.push(line) }), 1);
-  assert.equal(lines.filter((line) => line.startsWith('HFS_BYPASS_MARKER ')).length, 3, lines.join('\n'));
-  assert.match(lines.find((line) => line.includes('fe/src/bad.ts')) ?? '', /fe\/src\/bad\.ts:2 spells/);
+  assert.equal(lines.filter((line) => line.startsWith('HFS_BYPASS_MARKER ')).length, 2, lines.join('\n'));
+  assert.match(lines.find((line) => line.includes('scripts/bad.mjs')) ?? '', /scripts\/bad\.mjs:2 spells/);
+});
+
+test('HFS_BYPASS_MARKER: a suppression comment or a skipped test in TypeScript source is the canon lint\'s alone (R18, R48): one marker, one rule', (t) => {
+  const root = stagedRepo(t, {
+    'fe/src/bad.ts': `export const bad = 1;\n${form('eslint-disable line')}`,
+    'be/src/bad.service.spec.ts': form('describe.skip'),
+  });
+  const files = ['fe/src/bad.ts', 'be/src/bad.service.spec.ts'];
+  assert.deepEqual(bypassMarkerFindings({ repoRoot: root, files }), []);
+  assert.deepEqual(hygieneJudge(root, files).findings, []);
 });
 
 test('HFS_BYPASS_MARKER: a relaxed gate configuration of an app is the same code, and its managed lists stay with the drift check', (t) => {
@@ -85,15 +94,16 @@ test('HFS_BYPASS_MARKER: a relaxed gate configuration of an app is the same code
     'modules/kernel/approvals.yaml': form('an approvals file'),
   });
   const found = bypassMarkerFindings({ repoRoot: root, files: ['codecov.yml', 'be/tsconfig.json', 'sonar-project.properties', 'modules/kernel/approvals.yaml'] });
-  assert.deepEqual(found.map((finding) => finding.path).sort(), ['be/tsconfig.json', 'codecov.yml', 'modules/kernel/approvals.yaml']);
+  // be/tsconfig.json is a side's tsconfig: its strictness is HFS_TS_STRICT's (R22), never a second finding here.
+  assert.deepEqual(found.map((finding) => finding.path).sort(), ['codecov.yml', 'modules/kernel/approvals.yaml']);
   assert.ok(found.every((finding) => finding.code === 'HFS_BYPASS_MARKER'));
 });
 
 for (const edition of ['lite'] as const) {
-  test(`HFS_BYPASS_MARKER ${edition}: the tree rule and the staged guard refuse an inline disable in a front end`, (t) => {
-    const root = stagedRepo(t, { 'fe/src/bad.ts': `export const bad = 1;\n${form('eslint-disable line')}` });
-    assert.equal(bypassMarkerFindings({ repoRoot: root, files: ['fe/src/bad.ts'] })[0]!.code, 'HFS_BYPASS_MARKER');
-    assert.equal(hygieneJudge(root, ['fe/src/bad.ts']).findings[0]!.code, 'HFS_BYPASS_MARKER');
+  test(`HFS_BYPASS_MARKER ${edition}: the tree rule and the staged guard refuse an inline disable in a front-end script the lint does not read`, (t) => {
+    const root = stagedRepo(t, { 'fe/scripts/bad.mjs': `export const bad = 1;\n${form('eslint-disable line')}` });
+    assert.equal(bypassMarkerFindings({ repoRoot: root, files: ['fe/scripts/bad.mjs'] })[0]!.code, 'HFS_BYPASS_MARKER');
+    assert.equal(hygieneJudge(root, ['fe/scripts/bad.mjs']).findings[0]!.code, 'HFS_BYPASS_MARKER');
   });
   test(`HFS_BYPASS_MARKER ${edition}: the tree rule and the staged guard accept a clean front end`, (t) => {
     const root = stagedRepo(t, { 'fe/src/ok.ts': 'export const ok = 1;\n' });

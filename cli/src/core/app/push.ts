@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process"
-import { captureGitSync } from "../../shared/git.js"
+import { CHECK_CACHE_DIR, captureGitSync } from "../../shared/git.js"
 import { defineVerb, WRITERS } from "../../shared/verb.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { appRootOf } from "../../harness/memory-plan.js"
@@ -7,7 +7,8 @@ import { levelOfTarget, pushTargetOfArgs } from "./fast-check.js"
 import type { CheckLevel } from "./fast-check.js"
 
 /** The committed cache folder of an app. */
-const CACHE_DIR = ".starcistacks/cache"
+/** The committed check cache folder, without its trailing slash (shared/git.ts CHECK_CACHE_DIR owns the path). */
+const CACHE_DIR = CHECK_CACHE_DIR.replace(/[/]$/, "")
 /** The check runs a push may take to settle the cache: the run that writes it, the run that proves it (a record can move once the cache commit changes HEAD), one spare. */
 const MAX_RUNS = 3
 

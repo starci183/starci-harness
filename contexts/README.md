@@ -90,6 +90,7 @@ Before you send a brief, a plan or an answer, check it:
 | [harness/questions.md](harness/questions.md) | the open questions awaiting the owner |
 | [harness/check-cache.md](harness/check-cache.md) | the harness repository's own committed check cache (`.cache/check/`): its key, who reuses it (lane gate, full gate, CI), forged records and the nightly verify |
 | [harness/presence-audit.md](harness/presence-audit.md) | every hfs rule and contexts law that requires something to exist, classified by whether a check refuses its absence |
+| [harness/capabilities.yaml](harness/capabilities.yaml) | each capability of the harness (checking, git, install, publish, cache) with its one owner module and the reimplementations still to fold in (PROJECT-LINT-7) |
 
 ## Authority
 
@@ -175,10 +176,8 @@ reasoning for an agent.
 
 ## Feedback is fixed at its root
 
-A feedback is absorbed by fixing its root cause (CONTRIBUTING.md CONTRIB-7, rewritten where its concept lives by
-CONTRIB-6). In order of preference it becomes: an API or generator change that removes the choice; the fix in the owning
-component; or the general rule rewritten in its one place, stated as the rule that holds now. It never becomes a check
-for that one case; CONTRIB-10 is the only way a check is added. Every rule therefore has exactly one place where a
+A feedback is absorbed by fixing its root cause, never by a check for that one case: [CONTRIBUTING.md](../CONTRIBUTING.md) CONTRIB-7 states
+the rule and its order of preference, and CONTRIB-10 is the only way a check is added. Every rule therefore has exactly one place where a
 correction lands: its own section (ui, patterns), its contract role, or its threshold key.
 
 ### When a rule was missed

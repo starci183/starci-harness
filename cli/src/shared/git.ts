@@ -19,6 +19,24 @@ export const captureGitSync = (args: readonly string[], cwd: string): ToolRun =>
 /** Runs git in `cwd` and returns its trimmed stdout, refusing when git fails. */
 export const git = async (cwd: string, args: readonly string[]): Promise<string> => (await runTool("git", [...HARNESS_CONFIG, ...args], cwd)).stdout
 
+/** A git run read as a verdict: whether it exited 0, with its trimmed stdout and stderr. The one wrapper of captureGit the verbs share. */
+export const gitOutcome = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
+    const run = await captureGit(args, cwd)
+    return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
+}
+
+/**
+ * Merges `ref` into the branch checked out at `root` (`git merge --no-edit`); a conflict is aborted, never left behind, and answered with the
+ * conflicting files. The one merge-or-abort of the lane gate and the dev landing.
+ */
+export const mergeOrAbort = async (root: string, ref: string): Promise<{ readonly ok: true } | { readonly ok: false; readonly files: readonly string[]; readonly err: string }> => {
+    const merge = await gitOutcome(root, ["merge", "--no-edit", ref])
+    if (merge.ok) return { ok: true }
+    const files = (await gitOutcome(root, ["diff", "--name-only", "--diff-filter=U"])).out.split("\n").filter((file) => file !== "")
+    await gitOutcome(root, ["merge", "--abort"])
+    return { ok: false, files, err: merge.err }
+}
+
 /** True when the git command exits 0; for yes/no questions such as ancestry. */
 export const gitSucceeds = async (cwd: string, args: readonly string[]): Promise<boolean> => (await captureGit(args, cwd)).exitCode === 0
 

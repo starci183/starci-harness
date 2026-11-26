@@ -273,9 +273,9 @@ rules:
   - id: BE-WEBHOOK-4
     title: Three behaviours are proven on the test world
     kind: mandatory
-    hfsRules: [R155, R284]
+    hfsRules: [R155]
     requirement: |-
-      Declaring the pattern `webhooks` requires e2e or integration tests in full and integration tests in lite (R284),
+      Declaring the pattern `webhooks` requires e2e or integration tests in full and integration tests in lite (R155),
       titled `webhooks/<scenario>: ...` for each scenario
       `bad-signature-is-refused` (a tampered body is refused and nothing is published), `replay-is-refused` (a stale timestamp is
       refused and nothing is published) and `accepted-delivery-publishes-once` (a valid delivery publishes the event once and a

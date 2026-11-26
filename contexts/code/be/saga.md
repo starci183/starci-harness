@@ -54,7 +54,7 @@ runs, and reads the compensated state back; one more spec runs the saga from the
 Why: a compensation undoes what a person decides to undo; a happy-flow spec proves nothing about it, and a fault injected at delivery
 proves retry and resume.
 
-Enforced by: R167 BE_ASYNC_SPEC_MISSING, R284 BE_LITE_PROOF_LANE_MISSING.
+Enforced by: R167 BE_ASYNC_SPEC_MISSING, R155 BE_PATTERN_SPEC_MISSING.
 
 ## BE-SAGA-5 A side step does not block the run
 A step that only informs (an owner notice posted into team chat, a report, analytics, an echo of the message) is declared non-blocking

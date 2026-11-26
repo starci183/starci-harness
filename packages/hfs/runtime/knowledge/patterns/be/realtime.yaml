@@ -689,5 +689,5 @@ adapter:
   proof: >-
     The door's own unit spec (<channel>.controller.spec.ts or <channel>.gateway.spec.ts) and the hub adapter's spec, as full;
     declaring realtime requires integration specs titled `realtime/<scenario>: ...` for every declared scenario on
-    `starci supabase start` (R284), using a real client (an HTTP event-stream read or a socket.io client). Lite has no e2e world.
+    `starci supabase start` (R155), using a real client (an HTTP event-stream read or a socket.io client). Lite has no e2e world.
   see: [knowledge/patterns/fe/realtime.yaml]
