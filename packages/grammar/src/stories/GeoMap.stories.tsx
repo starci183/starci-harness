@@ -64,9 +64,7 @@ export const GeoMapClusters: Story = {
   ),
   play: async ({ canvasElement }) => {
     const frame = frameOf(canvasElement);
-    const total = (markers: HTMLElement[]) => markers.reduce((sum, marker) => sum + Number(marker.getAttribute('aria-label')?.match(/(\d+) stores/)?.[1] ?? 0), 0);
     // The markers together say every store: clusters add their members.
-    const before = all(frame, '[data-grammar-geomap-marker]');
     const clusters = all(frame, '[data-grammar-geomap-marker="cluster"]');
     const biggest = clusters.reduce((a, b) => (Number(a.textContent?.replace(/\D/g, '') || 0) >= Number(b.textContent?.replace(/\D/g, '') || 0) ? a : b));
     await userEvent.click(biggest);
@@ -116,7 +114,6 @@ export const GeoMapControls: Story = {
     frame.focus();
     await userEvent.keyboard('+');
     // An arrow key pans: the first marker's place on screen moves with it.
-    const marker = all(frame, '[data-grammar-geomap-marker]')[0] as HTMLElement;
     await userEvent.keyboard('{ArrowLeft}');
     await userEvent.keyboard('{Home}');
     await userEvent.keyboard('-');

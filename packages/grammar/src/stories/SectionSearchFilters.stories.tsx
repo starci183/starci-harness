@@ -98,7 +98,6 @@ export const PressableTableRows: Story = {
     );
   },
   play: async ({ canvasElement }) => {
-    const opened = () => canvasElement.querySelector('[data-story-opened="true"]')?.textContent;
     const row = canvasElement.querySelector<HTMLElement>('[data-grammar-table-row="true"]');
     if (row === null) throw new Error('a row renders');
     await userEvent.click(row.querySelector('[role="rowheader"], [role="gridcell"]') ?? row);

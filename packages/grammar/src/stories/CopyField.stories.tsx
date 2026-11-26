@@ -75,7 +75,7 @@ export const Masked: Story = {
     neverClear();
     const value = part(field, '[data-grammar-copy-value]');
     value.focus();
-    const clipboard = stubClipboard(canvasElement, 'accept');
+    stubClipboard(canvasElement, 'accept');
     await userEvent.click(part(field, '[data-grammar-copy-action]'));
     neverClear();
   },
@@ -105,7 +105,7 @@ export const Copied: Story = {
   play: async ({ canvasElement }) => {
     const field = fieldOf(canvasElement, 'Account number');
     const action = part(field, '[data-grammar-copy-action]');
-    const clipboard = stubClipboard(canvasElement, 'accept');
+    stubClipboard(canvasElement, 'accept');
     const copied = async () => {
       await userEvent.click(action);
     };

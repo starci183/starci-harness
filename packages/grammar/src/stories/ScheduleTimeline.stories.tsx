@@ -147,7 +147,6 @@ export const ScheduleTimelineResize: Story = {
   play: async ({ canvasElement }) => {
     const grid = boxOf(canvasElement, '[data-component="ScheduleGrid"]');
     const view = within(grid);
-    const log = within(canvasElement).getByTestId('resize-log');
     const end = view.getByRole('button', { name: 'End of Design, Wed 4' });
     end.focus();
     await userEvent.keyboard('{ArrowRight}');
@@ -227,7 +226,6 @@ export const ScheduleDropFromList: Story = {
   play: async ({ canvasElement }) => {
     const grid = boxOf(canvasElement, '[data-component="ScheduleGrid"]');
     const view = within(canvasElement);
-    const log = view.getByTestId('drop-log');
     // The drag path: an outside chip over a cell, then dropped.
     const source = view.getByRole('button', { name: 'Pick: Call the supplier' }).closest<HTMLElement>('[data-component="DragItem"]') as HTMLElement;
     const dataTransfer = new DataTransfer();

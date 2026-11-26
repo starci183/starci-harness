@@ -175,7 +175,6 @@ export const MarginNotesOnPhone: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const fold = within(canvasElement).getByRole('button', { name: /Thuật ngữ \(3\)/ });
     await userEvent.click(canvasElement.querySelector('[data-component="SidenoteTerm"]') as HTMLElement);
   },
 };

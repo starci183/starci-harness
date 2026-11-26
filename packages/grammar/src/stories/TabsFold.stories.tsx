@@ -36,16 +36,16 @@ const FoldPage = ({ initial }: { readonly initial: string }) => {
 };
 
 /** The underline's top is at or below the label's bottom, its bottom on the line; when the strip folds, the selected tab stays in the strip and the menu trigger is drawn. */
-const foldStory = (width: string | number, initial: string, folded: boolean): Story => ({
+const foldStory = (width: string | number, initial: string): Story => ({
   render: () => <div style={{ width }}><FoldPage initial={initial} /></div>,
 });
 
 /** At 1440 the six views fit: no menu, the underline under "Overview". */
-export const PageTabsFold1440: Story = foldStory(WIDE, 'overview', false);
+export const PageTabsFold1440: Story = foldStory(WIDE, 'overview');
 /** At 390 the strip folds the tail into "More"; the selected tab stays shown with its underline under it. */
-export const PageTabsFold390: Story = foldStory(PHONE, 'overview', true);
+export const PageTabsFold390: Story = foldStory(PHONE, 'overview');
 /** At 390 with the last view selected: it stays in the strip and the underline is under it. */
-export const PageTabsFold390LastSelected: Story = foldStory(PHONE, 'settings', true);
+export const PageTabsFold390LastSelected: Story = foldStory(PHONE, 'settings');
 
 /* ---------- the underline follows the selected key; the active tab is in view ---------- */
 

@@ -735,7 +735,6 @@ export const TagGroup: Story = {
   play: async ({ canvasElement }) => {
     const group = canvasElement.querySelector<HTMLElement>('[data-grammar-tag-reorderable="true"]');
     if (group === null) throw new Error('The reorderable group must render');
-    const order = () => [...group.querySelectorAll<HTMLElement>('[data-grammar-tag-id]')].map((tag) => tag.dataset.grammarTagId).join(',');
     const tag = (id: string) => {
       const found = group.querySelector<HTMLElement>(`[data-grammar-tag-id="${id}"]`);
       if (found === null) throw new Error(`Tag ${id} must render`);

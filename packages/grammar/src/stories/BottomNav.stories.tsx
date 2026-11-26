@@ -58,7 +58,6 @@ export const Phone: Story = {
     const page = within(canvasElement.ownerDocument.body);
     const bar = await page.findByRole('navigation', { name: 'Workspace places' });
     const scope = within(bar);
-    const items = [...bar.querySelectorAll<HTMLElement>('[data-grammar-bottom-nav-item]')];
 
     await userEvent.click(scope.getByRole('button', { name: 'More' }));
     const sheet = await page.findByRole('dialog', { name: 'More' });
@@ -74,7 +73,7 @@ export const MoreSheet: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement.ownerDocument.body);
     await userEvent.click(await page.findByRole('button', { name: 'More' }));
-    const sheet = await page.findByRole('dialog', { name: 'More' });
+    await page.findByRole('dialog', { name: 'More' });
   },
 };
 
@@ -126,6 +125,6 @@ export const MoreSheetGroups: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement.ownerDocument.body);
     await userEvent.click(await page.findByRole('button', { name: 'More' }));
-    const sheet = await page.findByRole('dialog', { name: 'More' });
+    await page.findByRole('dialog', { name: 'More' });
   },
 };

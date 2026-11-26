@@ -48,7 +48,6 @@ export const AgentCard: Story = {
   render: () => <Card />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const log = () => canvasElement.querySelector('[data-testid="log"]')?.textContent ?? '';
     const trigger = await canvas.findByRole('button', { name: 'Actions for Chatbot' });
     await userEvent.click(trigger);
     await userEvent.keyboard('{Escape}');
@@ -87,7 +86,6 @@ export const BodyCardAgent: Story = {
   render: () => <BodyCardWithMenu />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const log = () => canvasElement.querySelector('[data-testid="log"]')?.textContent ?? '';
     const trigger = await canvas.findByRole('button', { name: 'Actions for Chatbot' });
     await userEvent.click(trigger);
     await userEvent.keyboard('{Escape}');

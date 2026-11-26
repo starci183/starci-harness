@@ -277,14 +277,14 @@ const Ledger = ({ mode }: { readonly mode: 'ready' | 'empty' | 'loading' | 'erro
 );
 
 /** The ledger with three day groups: one column header, group rows; at phone width the rows fold into a title and muted amounts. */
-const ledgerStory = (width: string | number, isPhone: boolean): Story => ({
+const ledgerStory = (width: string | number): Story => ({
   render: () => <div data-story-ledger="true" style={{ width }}><Ledger mode="ready" /></div>,
 });
 
 /** The ledger at 1920px. */
-export const LedgerWide: Story = ledgerStory(WIDE, false);
+export const LedgerWide: Story = ledgerStory(WIDE);
 /** The ledger at 390px. */
-export const LedgerPhone: Story = ledgerStory(PHONE, true);
+export const LedgerPhone: Story = ledgerStory(PHONE);
 
 /** Empty, loading and error states of the ledger: the section keeps its head and filter row, the table draws the state in its body. */
 export const LedgerStates: Story = {

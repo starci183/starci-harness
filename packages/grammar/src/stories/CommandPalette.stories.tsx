@@ -89,8 +89,7 @@ export const Results: Story = {
 /** The whole keyboard path: Ctrl K opens, typing narrows the results, the arrows move the active result while the caret stays in the field, Enter chooses and closes. */
 export const Keyboard: Story = {
   render: () => <Demo />,
-  play: async ({ canvasElement }) => {
-    const page = within(canvasElement.ownerDocument.body);
+  play: async () => {
     await userEvent.keyboard('{Control>}k{/Control}');
     await userEvent.keyboard('dis');
     await userEvent.keyboard('{ArrowDown}{ArrowDown}');
@@ -133,8 +132,7 @@ export const Phone: Story = {
 /** At 1440 the palette stands at the top of the page, 48rem wide at most, so the field never moves while the results change. */
 export const Wide: Story = {
   render: () => <Demo defaultOpen />,
-  play: async ({ canvasElement }) => {
-    const page = within(canvasElement.ownerDocument.body);
+  play: async () => {
     await userEvent.keyboard('thu');
   },
 };
