@@ -1,9 +1,10 @@
 import { Position, type Edge, type Node } from "@xyflow/react"
 import type { ReactNode } from "react"
-import { ENTITY_HEAD_HEIGHT, ENTITY_ROW_HEIGHT, ENTITY_WIDTH, NODE_WIDTH, SCHEMA_FIELD_ROWS, portKey, type Box, type LinkEnds, type Route, type SizedNode } from "./layout.js"
-import { isDiamond, type FlowModel, type ResolvedPort } from "./model.js"
-import { edgeClassName, isEdgeAnimated, nodeAriaLabel, normalizeStatus, tileTone, type EdgeStyle } from "./shared/status.js"
-import type { FlowContainer, FlowKindTones, FlowNode, FlowStatus, FlowStatusLabels, GraphDirection, GraphEdge, GraphPosition, GraphTone, SchemaEntity, SchemaField } from "./types.js"
+import { ENTITY_HEAD_HEIGHT, ENTITY_ROW_HEIGHT, ENTITY_WIDTH, NODE_WIDTH, SCHEMA_FIELD_ROWS, portKey, type Bar, type Box, type LinkEnds, type Route, type SizedNode } from "./layout.js"
+import { MAIN_KINDS, isDiamond, type FlowLayoutMode, type FlowModel, type ResolvedPort } from "./model.js"
+import { edgeClassName, edgeKindClassName, isEdgeAnimated, nodeAriaLabel, normalizeStatus, tileTone, type EdgeStyle } from "./shared/status.js"
+import type { BadgeTone } from "../../index.js"
+import type { FlowContainer, FlowKindTones, FlowNode, FlowStatus, FlowStatusLabels, GraphDirection, GraphEdge, GraphEdgeKind, GraphPosition, GraphTone, SchemaEntity, SchemaField } from "./types.js"
 
 /** What a card, a diamond or a container node carries to its view. */
 export interface FlowNodeData extends Record<string, unknown> {
@@ -16,11 +17,24 @@ export interface FlowNodeData extends Record<string, unknown> {
     exitAt: Readonly<Record<string, GraphPosition>>
     ports: readonly ResolvedPort[]
     direction: GraphDirection
+    /** The layout the node stands in: the spine layout gives every node its four midpoint handles and draws no port pill. */
+    layout: FlowLayoutMode
     selected: boolean
     width: number
     height: number
 }
 export type FlowRfNode = Node<FlowNodeData, "flow" | "diamond" | "container">
+
+/** A fork or merge bar of the spine layout, drawn as a node of its own (never pressed, never focused). */
+export interface BarNodeData extends Record<string, unknown> {
+    width: number
+    /** A merge bar's arrow: where along the bar it leaves, and how far below the bar the target's top stands. */
+    stem: { readonly x: number; readonly length: number } | undefined
+}
+export type BarRfNode = Node<BarNodeData, "bar">
+
+/** The thickness of a bar; its node is that tall, centred on the bar's line. */
+export const BAR_THICKNESS = 4
 
 export interface EntityNodeData extends Record<string, unknown> {
     label: string
@@ -46,8 +60,12 @@ export interface StepEdgeData extends Record<string, unknown> {
     joinStart?: boolean
     /** The route ends on another edge's line, which carries the one arrowhead: a junction dot there and no arrowhead. */
     joinEnd?: boolean
-    /** The tone of the pill's words when the edge has one of its own (a diagram edge's tone); else the pill takes the tone of its style. */
-    pillTone?: "accent" | "info" | "success" | "danger"
+    /** The tone of the pill's words when the edge has one of its own (a diagram edge's tone, a flow edge's kind); else the pill takes the tone of its style. */
+    pillTone?: BadgeTone
+    /** The route ends on a merge bar: no arrowhead and no dot, the bar carries the one arrow. */
+    bareEnd?: boolean
+    /** What a flow edge means (its look). */
+    kind?: GraphEdgeKind
 }
 
 const SIDES: Readonly<Record<GraphDirection, { readonly source: Position; readonly target: Position }>> = {
@@ -87,6 +105,8 @@ export interface FlowBuildContext {
     readonly kindTones: FlowKindTones | undefined
     readonly direction: GraphDirection
     readonly selectedId: string | null
+    /** Default `layered`. */
+    readonly layout?: FlowLayoutMode
 }
 
 /**
@@ -122,6 +142,7 @@ export const buildFlowNodes = (
                 exitAt: Object.fromEntries((model.ports.get(node.id) ?? []).flatMap((port) => { const at = portPositions[portKey(node.id, port.id)]; return at === undefined ? [] : [[port.id, at] as const] })),
                 ports: model.ports.get(node.id) ?? [],
                 direction: context.direction,
+                layout: context.layout ?? "layered",
                 selected: node.id === context.selectedId,
                 width,
                 height,
@@ -143,20 +164,26 @@ export const buildFlowNodes = (
  * success, `fallback` dashed, `skipped` faded and dotted (an untaken branch of a decision also carries `skippedLabel`), `back` dashed and curved.
  * A label on a branch's port stays on the port; any other label is a pill on the line.
  */
-export const buildFlowEdges = (model: FlowModel, nodes: readonly FlowNode[]): Edge[] => {
+export const buildFlowEdges = (model: FlowModel, nodes: readonly FlowNode[], layout: FlowLayoutMode = "layered"): Edge[] => {
     const dimmed = new Set(nodes.filter((node) => node.dimmed === true).map((node) => node.id))
     return model.edges.map((item): Edge => {
-        const { edge, style, port } = item
+        const { edge, style, port, kind } = item
         const danger = port?.tone === "danger"
-        const classes = [edgeClassName(style), edge.placeholder === true ? "starci-graph-edge--placeholder" : "", danger ? "starci-graph-edge--danger" : "", dimmed.has(edge.target) ? "starci-graph-edge--dimmed" : ""].filter((part) => part !== "").join(" ")
-        const data: StepEdgeData = { style, pill: item.pill, dangerPort: danger, dimmed: dimmed.has(edge.target) }
+        const classes = [edgeClassName(style), edgeKindClassName(kind), edge.placeholder === true ? "starci-graph-edge--placeholder" : "", danger ? "starci-graph-edge--danger" : "", dimmed.has(edge.target) ? "starci-graph-edge--dimmed" : ""].filter((part) => part !== "").join(" ")
+        // The words of an edge the run has not reached (or will not take) stay quiet; otherwise they speak in the tone of the edge's kind.
+        const quiet = style === "skipped" || style === "pending" || style === "running" || style === "wait"
+        const tone = quiet ? undefined : KIND_PILL_TONE[kind]
+        const data: StepEdgeData = { style, pill: item.pill, dangerPort: danger, dimmed: dimmed.has(edge.target), kind, ...(tone === undefined ? {} : { pillTone: tone }) }
+        // The spine layout's four midpoint handles: in at the top (a loop at the left), out at the bottom (a side road at the right, a loop at the left).
+        const spine = layout === "spine"
+        const sourceHandle = spine ? (kind === "loop" ? "loop-out" : MAIN_KINDS.has(kind) ? "out" : "side") : port === undefined ? "out" : `port:${port.id}`
         return {
             id: item.id,
             source: edge.source,
             target: edge.target,
             type: "step",
-            sourceHandle: port === undefined ? "out" : `port:${port.id}`,
-            targetHandle: "in",
+            sourceHandle,
+            targetHandle: spine && kind === "loop" ? "loop-in" : "in",
             animated: isEdgeAnimated(model.statuses.get(edge.target) ?? "todo") && style === "running",
             className: classes,
             zIndex: 2,
@@ -166,6 +193,25 @@ export const buildFlowEdges = (model: FlowModel, nodes: readonly FlowNode[]): Ed
         }
     })
 }
+
+/** The Badge tone of a flow edge's words by its kind; `ok` and `parallel` take the tone of their run style. */
+const KIND_PILL_TONE: Readonly<Record<GraphEdgeKind, BadgeTone | undefined>> = { ok: undefined, parallel: undefined, yes: "success", no: "neutral", loop: "accent", timeout: "warning", refused: "danger", declined: "danger" }
+
+/** The xyflow nodes of the fork and merge bars: each a thin node on its line, under no step and never pressed. */
+export const buildBarNodes = (bars: readonly Bar[]): BarRfNode[] =>
+    bars.map((bar) => ({
+        id: bar.id,
+        type: "bar" as const,
+        position: { x: bar.x, y: bar.y - BAR_THICKNESS / 2 },
+        initialWidth: Math.max(bar.width, 1),
+        initialHeight: BAR_THICKNESS,
+        data: { width: Math.max(bar.width, 1), stem: bar.stemX === undefined || bar.stemTo === undefined ? undefined : { x: bar.stemX - bar.x, length: bar.stemTo - bar.y } },
+        draggable: false,
+        connectable: false,
+        selectable: false,
+        focusable: false,
+        zIndex: 3,
+    }))
 
 /** The xyflow nodes of a schema map. A node is named by its label, its description and its figure. */
 export const buildEntityNodes = (entities: readonly SchemaEntity[], positions: Readonly<Record<string, GraphPosition>>, direction: GraphDirection, selectedId: string | null): EntityRfNode[] =>
@@ -224,5 +270,5 @@ export const structureKey = (sizes: readonly SizedNode[], links: readonly LinkEn
         islands,
         width,
         sizes.map((size) => [size.id, size.width, size.height, size.parentId ?? null, (size.ports ?? []).map((port) => `${port.id}:${port.side}`)]),
-        links.map((link) => [link.source, link.target, link.sourcePort ?? null, link.targetPort ?? null, link.label ?? null, link.back === true]),
+        links.map((link) => [link.source, link.target, link.sourcePort ?? null, link.targetPort ?? null, link.label ?? null, link.back === true, link.kind ?? null]),
     ])

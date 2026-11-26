@@ -1,4 +1,4 @@
-import type { FlowKind, FlowKindTones, FlowStatus, FlowStatusInput, GraphEdgeVariant, GraphTone } from "../types.js"
+import type { FlowKind, FlowKindTones, FlowStatus, FlowStatusInput, GraphEdgeKind, GraphEdgeVariant, GraphTone } from "../types.js"
 import type { BadgeTone, MarkState } from "../../../index.js"
 
 /** Each status draws in one Grammar tone: the node border, the status mark and the edge that leaves it. */
@@ -81,6 +81,9 @@ export const edgeStyleOf = (variant: GraphEdgeVariant | undefined, sourceStatus:
 
 /** The class of an edge in a style; the stylesheet draws the colour and the dash from it. */
 export const edgeClassName = (style: EdgeStyle): string => `starci-graph-edge starci-graph-edge--${style}`
+
+/** The classes of an edge's kind (see `GraphEdgeKind`): its colour, weight and dash, under the run's own (a running edge still flows, a skipped one fades). */
+export const edgeKindClassName = (kind: GraphEdgeKind): string => `starci-graph-edge--kinded starci-graph-edge--kind-${kind}`
 
 /** The accessible name of a node: its label, then its status in the app's words. */
 export const nodeAriaLabel = (label: string, statusWord: string): string => `${label}, ${statusWord}`

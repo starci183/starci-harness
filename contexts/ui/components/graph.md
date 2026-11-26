@@ -2,7 +2,7 @@
 
 `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model (`SchemaMap`, `ErdMap`) or a knowledge map (`KnowledgeMap`). Everything else is core: a list, `Timeline`, `Stepper`, cards ([situations](../situations.md)). The ext imports the core and its tokens; the core entry never imports the ext, so an app that draws no graph installs none of its libraries (`@xyflow/react`, `elkjs`, `d3-force` are optional peers of `@starci/grammar`). An app never imports those libraries itself.
 
-The node graphs of a StarCi front end, over xyflow and in the look of the Grammar: `FlowGraph` draws one workflow run (cards, decision diamonds, loops and groups, with a status on each node and the way the run went on each edge) and `SchemaMap` draws the object types of an app with their fields and the relations between them. Both are laid out by ELK (layered, left to right or top to bottom), so nobody places a node by hand unless the app turns on `editable`; they pan and zoom, open fitted (the whole graph, centred, at 100% or less), lay out top-down on a phone, select a node on click, Enter or Space, can show an overview map, and are a skeleton while loading.
+The node graphs of a StarCi front end, over xyflow and in the look of the Grammar: `FlowGraph` draws one workflow run (cards, decision diamonds, loops and groups, with a status on each node and the way the run went on each edge) and `SchemaMap` draws the object types of an app with their fields and the relations between them. A flow is laid out on its spine (the spine layout, below) and a schema map by ELK (layered, left to right or top to bottom), so nobody places a node by hand unless the app turns on `editable`; they pan and zoom, open fitted (the whole graph, centred, at 100% or less), lay out top-down on a phone, select a node on click, Enter or Space, can show an overview map, and are a skeleton while loading.
 
 They draw only from the tokens of the Grammar theme in the page (`--surface`, `--foreground` (the dot grid of the panel is `--foreground` mixed 22% into `--surface`, quiet but seen in light and dark), `--border`, `--muted`, `--accent*`, `--info`, `--success*`, `--warning*`, `--danger*`, `--default*`, `--grammar-radius-*`, `--grammar-type-*`), so they follow the app's brand and its dark mode. They carry no icon and no text of their own: the icons, the words of the states, the labels of the controls and the legend are the app's.
 
@@ -107,6 +107,8 @@ interface FlowGraphProps extends GraphCanvasProps {
     kindTones?: Partial<Record<FlowKind, GraphTone>>
     legend?: readonly FlowLegendItem[]
     linkComponent?: GraphLinkComponent            // the app's router link for a node with an href
+    layout?: "spine" | "layered"                  // default spine (see "The spine layout"); layered is ELK's, LR or TB
+    onNodeOpen?: (id: string) => void             // a step was opened (click, Enter, Space): the app opens its FlowStepDrawer
 }
 ```
 
@@ -163,11 +165,24 @@ interface GraphEdge {
     id?: string; source: string; target: string; label?: string
     sourcePort?: string
     variant?: "taken" | "fallback" | "skipped" | "back"
+    kind?: "ok" | "yes" | "no" | "loop" | "timeout" | "refused" | "declined" | "parallel"   // GraphEdgeKind, GRAPH_EDGE_KINDS
     placeholder?: boolean
 }
 ```
 
-Left to the run, an edge is drawn from the step it leads into (see the line styles below). A variant sets it: `taken` solid success; `fallback` dashed (the road when the awaited thing does not happen); `skipped` faded and dotted; `back` dashed, in a lane beside the steps it joins (it places nothing; see Layout). A label is a pill on the line, except a branch's port label.
+An edge carries two things. Its **run** says how far the run went: left to the run, an edge is drawn from the step it leads into (see the line styles below), and a variant sets it: `taken` the run went this way; `fallback` the road when the awaited thing does not happen; `skipped` not taken; `back` returns to an earlier step. Its **kind** says which road it is, and sets its look and, on the spine, the sides it attaches to (`GraphEdgeKind`):
+
+| kind | the road | look | leaves by | enters by |
+|---|---|---|---|---|
+| `ok` | the plain next step | solid, neutral | bottom-mid | top-mid |
+| `yes` | the main answer of a decision | solid success green, stronger | bottom-mid | top-mid |
+| `no` | the other answer of a decision | grey dots | right-mid | top-mid |
+| `loop` | back to an earlier step | accent dashes, its words after the loop mark (`LOOP_MARK`, ↻), the mark alone when it has none | left-mid | left-mid |
+| `timeout` | a wait ran out | round amber dots | right-mid | top-mid |
+| `refused`, `declined` | a person or a service said no | thin red dashes | right-mid | top-mid |
+| `parallel` | one of the branches that run at once | solid, neutral, from a fork bar | bottom-mid | top-mid |
+
+Left out, the kind is read from the edge (`edgeKindOf`): `variant: "back"` is `loop`, `variant: "fallback"` is `timeout`, a decision's first port `yes` and its others `no`, two or more plain edges out of a step that is not a decision `parallel`, anything else `ok`; so a graph written before kinds keeps working and gains the looks. The run still shows over the kind: an edge into the running step flows green, one into a waiting step is still amber, one the run has not reached or did not take fades in its own kind's look. The words of an edge are a pill in the tone of its kind (`yes` success, `loop` accent, `timeout` warning, `refused` and `declined` danger), quiet while the run has not reached it. On the spine a port's label stands on its edge, never as a pill inside the card.
 
 ### The first view, on every screen
 
@@ -184,13 +199,39 @@ The first view and the phone are the routing law's rule 4 (below): every graph o
 | dotted, faint | a branch not taken (`skipped`) |
 | dashed | `fallback`, `back` |
 
+Over these, each edge kind keeps its own line (the table under Edges): the run sets the tone of `running` and `wait` and fades what was not reached or taken; the kind sets the line of everything else.
+
 A container frame is thin, solid and lightly tinted in the tone of its state, never dashed; its state is what its children are (error, running, wait, done, skipped, not run). Each edge starts with a hollow 8px circle centred on the border of its source and ends with a hollow open triangle whose tip touches the border of its target.
 
-### Layout
+### The spine layout
 
-Top to bottom (`direction: "TB"`) is the layout the owner's spine rules are written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A back edge is routed after the layout: it leaves its source by the west or east side, runs in a lane and enters its target by the west or east side. Of every lane its ends allow (beside both, between them, in each gap between the nodes it passes) it takes the shortest that passes no node, frame or label; a crossing with another edge and a side of the target another back edge already enters cost extra, and a lane or label outside the box of all the nodes (it would widen the layout) its distance out; a lane more than one card and its gutter (320) outside the box of its ends, or more than its gutter (40) outside the box of all the nodes, is a last resort. A loop's back edge stays inside its frame, on its own branch's side when both sides are equal. Every back edge stays within 320 of the box of its ends, and it and its label within 40 of the box of all the nodes (rule 11), looked at in the demo shots.
+The default (`layout: "spine"`, `layoutSpine` in `spine.ts`, its numbers `SPINE`), always top to bottom (`direction` is not read):
+
+1. **The spine is one straight column.** The longest path from the start to an end along `ok`, `yes` and `parallel` edges stands in one column, every node on it centred on one x (of equal paths, the middle one). Side roads stand in columns to its right, at `x = spine + lane * (NODE_WIDTH + columnGap)` (`COLUMN_PITCH`, 360); a road keeps its column down to where it meets the spine again, and the next free column to the right is taken when one is held. The branches of a parallel fork split evenly round their fork, `lane = i - (n - 1) / 2`, and so do several starts that all lead into one step. One layer is one row: its nodes share one centre y, `rowGap` (72) apart, more when a gap carries several runs.
+2. **Edges attach only at the middles of the sides, with the fewest bends.** A node has four ports: IN at the top-mid (a forward edge) and the left-mid (a loop); OUT at the bottom-mid (the main road), the right-mid (a side road) and the left-mid (a loop). A main road in one column is straight (0 bends). A side road (`no`, `timeout`, `refused`, `declined`) leaves the right-mid, runs across its own row to the target's column and drops into its top-mid (1 bend); where a node or a frame stands in that way it steps out, drops to the gap above the target and runs across there. A road that meets the spine again drops from its bottom-mid to the gap above its target and runs across (1 bend). A loop leaves the left-mid, runs out to a lane on the left of every node it passes, up, and into its target's left-mid (a U, 2 bends); loops that cross one span take lanes `edgeSpacing` (14) apart, the shorter inside. A fork's branches leave a bar under the fork and drop straight into their targets (0 bends each). Every horizontal run lies in the gap between two rows or on its source's own row, never across a node; runs that share a gap stand `edgeSpacing` apart.
+3. **One drawn segment per port.** Two forward edges into one node meet at a merge point, a dot in the gap right above its centre: the edge already in its column runs straight through and carries the one arrow into the top-mid, the other ends at the dot. Three or more (and the branches of a parallel join) drop straight down their own columns, whatever their layer, into a merge bar in the gap right above the target, spanning its leftmost to its rightmost source column and the target's own (centred on the target when the sources stand round it; never a stub out to where no edge drops); each keeps its kind's look on its own drop, and the bar and its one arrow from the middle into the top-mid are neutral (`Bar`, a node of type `bar`, never pressed). A source whose column is blocked below (a spine step with a side road into the bar) steps out of its right-mid to the first free column and drops there. Loops into one node gather in its left lane into one stroke into its left-mid: the longest carries the arrow, the others join it at a dot.
+4. **Frames.** A loop or a group is a frame round its children's box, its loops' lanes and their words, with its header (`description`, "up to 3 rounds") above its first row and its foot below its last; a step that follows the frame stands below it, and a node outside it never stands in its columns. An edge into the frame enters its top over its first step's column; an edge out of it leaves its bottom over its last step's column.
+5. **Words beside the first segment, never on a bend.** Right of a line that leaves downwards, above one that leaves sideways (after the drop of a sibling that shares the run); a first segment too short for them hands them to the next. A loop's words stand left of its lane.
+
+The spine layout is plain code over the layers, the lanes and the gaps, not ELK: ELK's layered placement holds no column grid and its router puts ports anywhere along a side and bends past the budget, so the coordinates are computed (the same graph, the same whole pixels). Known gap: a frame's columns are kept free of outside nodes after the lanes are chosen (an outside node moves past the frame's last column), so a crowded graph beside a wide frame can stand one column further out than it needs; and a side road that must step out of a blocked row takes 3 bends.
+
+### Layout (`layout: "layered"`)
+
+Top to bottom (`direction: "TB"`) is the layout the owner's earlier spine rules were written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A back edge is routed after the layout: it leaves its source by the west or east side, runs in a lane and enters its target by the west or east side. Of every lane its ends allow (beside both, between them, in each gap between the nodes it passes) it takes the shortest that passes no node, frame or label; a crossing with another edge and a side of the target another back edge already enters cost extra, and a lane or label outside the box of all the nodes (it would widen the layout) its distance out; a lane more than one card and its gutter (320) outside the box of its ends, or more than its gutter (40) outside the box of all the nodes, is a last resort. A loop's back edge stays inside its frame, on its own branch's side when both sides are equal. Every back edge stays within 320 of the box of its ends, and it and its label within 40 of the box of all the nodes (rule 11), looked at in the demo shots.
 
 ELK `layered`, left to right or top to bottom, with ports and containers; edges are orthogonal with rounded corners, a dot where they leave and an arrowhead. **Islands** (parts of the graph with no edge between them) are laid out one by one and packed side by side in rows up to `islandsWidth` (default 1200 graph units); `islands: "stack"` puts them in one column. The layout depends on ids, sizes, ports, edge ends, direction and islands only: a status change neither moves nor refits the graph.
+
+### Opening a step
+
+`onNodeOpen(id)` fires when a step is opened (click, Enter or Space; with `onNodePress`, never for a bar): the app opens `FlowStepDrawer`, never a rail of its own beside the graph. It is the core's `Drawer`, on the right, `wide`: the step's name, its version badge (`version`, "v2.1") and state (`status`), then its parts in one fixed order (`FLOW_STEP_PARTS`): `in` (Data in), `code` (the code that ran), `mutation` (what it wrote into the run's state), `out` (Data out), `state` (the state the whole run shares). Each part is a titled `Section` with the app's title and the app's blocks (a `CodeBlock`, a key-value list); a part the app does not have is left out. The Grammar lays the parts out; the app fills them.
+
+```tsx
+const [open, setOpen] = useState<string | null>(null)
+<FlowGraph {...graph} onNodeOpen={setOpen} />
+<FlowStepDrawer isOpen={open !== null} onOpenChange={(isOpen) => { if (!isOpen) setOpen(null) }} title={step.label} version={step.version}
+    status={{ state: step.status, label: words[step.status] }} closeLabel={t("close")}
+    sections={[{ part: "in", title: t("dataIn"), children: <CodeBlock code={json(step.input)} language="json" /> }, /* code, mutation, out, state */]} />
+```
 
 ### Editing
 
@@ -198,7 +239,7 @@ Read-only by default. `editable` lets a person drag the nodes; ELK gives the fir
 
 ### Legend
 
-`legend` draws a row under the canvas; `<FlowLegend items kindTones />` is the same row for a place of your own (under a card). An item is `{ label, kind }` (a step kind, or `loop`; `shape: "diamond"` for a condition), `{ label, status }` or `{ label, edge }` (`taken`, `fallback`, `skipped`, `back`, `running`, `wait`).
+`legend` draws a row under the canvas; `<FlowLegend items kindTones />` is the same row for a place of your own (under a card). An item is `{ label, kind }` (a step kind, or `loop`; `shape: "diamond"` for a condition), `{ label, status }` or `{ label, edge }` (a run style: `taken`, `fallback`, `skipped`, `back`, `running`, `wait`; or an edge kind: `ok`, `yes`, `no`, `loop`, `timeout`, `refused`, `declined`, `parallel`).
 
 ### Loading
 
@@ -259,7 +300,7 @@ import { KnowledgeMap } from "@starci/grammar/core/ext/graph"
 
 ## The routing law
 
-Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `SchemaMap`, `ErdMap`, `KnowledgeMap` and the lesson `MermaidDiagram`): an edge reads at a glance.
+Owner decisions (rules 1 to 6), for every graph of the ext (`FlowGraph`, `SchemaMap`, `ErdMap`, `KnowledgeMap` and the lesson `MermaidDiagram`): an edge reads at a glance. A `FlowGraph` on its spine (the default) holds rules 1, 2, 3 and 6 in their spine form, "The spine layout" items 2 and 3: four midpoint ports, the bend budget, merge dots and bars in place of junctions; the ELK wording below is the `layered` layout's and the other graphs'.
 
 1. **No handle dots, one entry.** A read-only graph shows no dot where an edge leaves (only an `editable` graph does). Edges without a named port touch a node at one
    point per side (ELK `mergeEdges`); every edge enters its target by the side facing the flow, and leaves its source by the side facing its target, never from two
@@ -306,7 +347,7 @@ A card is 280 wide (a card with a column of ports down its end side, 376), radiu
 
 ## Layout and helpers
 
-`layoutFlow(sizedNodes, links, { direction, islands, width })` is the pure layout (ELK `layered`); it returns the top-left corner and the box of each node, rounded to whole pixels, and the same graph always gets the same layout. `layoutGraph` is its positions only. `resolveFlow`, `buildFlowNodes`, `buildFlowEdges`, `buildEntityNodes`, `isEdgeAnimated`, `normalizeStatus`, `statusTone`, `findConcurrentRunning` and the rest are exported for a custom canvas.
+`layoutSpine(sizedNodes, links, { islands, width, measure })` is the pure spine layout (with its `bars` and each route's `end`: an arrow, a merge dot or a bar); `layoutFlow(sizedNodes, links, { direction, islands, width })` is the pure ELK layout (`layered`); it returns the top-left corner and the box of each node, rounded to whole pixels, and the same graph always gets the same layout. `layoutGraph` is its positions only. `resolveFlow`, `buildFlowNodes`, `buildFlowEdges`, `buildEntityNodes`, `isEdgeAnimated`, `normalizeStatus`, `statusTone`, `findConcurrentRunning` and the rest are exported for a custom canvas.
 
 `@xyflow/react` and `elkjs` are dependencies; `react` and `react-dom` are peers.
 

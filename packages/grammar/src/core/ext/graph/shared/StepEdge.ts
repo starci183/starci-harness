@@ -80,7 +80,9 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
             : [Math.sign(end[0] - before[0]), Math.sign(end[1] - before[1])]
     const start = given?.points[0] ?? [sourceX, sourceY]
     const joinEnd = given !== undefined && data?.joinEnd === true
-    const shortened = given === undefined ? undefined : joinEnd ? given.points : [...given.points.slice(0, -1), [end[0] - dir[0] * ARROW, end[1] - dir[1] * ARROW] as const]
+    // An edge that ends on a merge bar draws nothing at its end: the bar carries the one arrow into the target.
+    const bareEnd = given !== undefined && data?.bareEnd === true
+    const shortened = given === undefined ? undefined : joinEnd || bareEnd ? given.points : [...given.points.slice(0, -1), [end[0] - dir[0] * ARROW, end[1] - dir[1] * ARROW] as const]
     const [path, labelX, labelY] =
         given !== undefined && shortened !== undefined
             ? [roundedPath(shortened, CORNER), 0, 0]
@@ -96,7 +98,9 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
         h(BaseEdge, { path, interactionWidth: 0 }),
         h("circle", { className: "starci-graph-edge-dot", cx: start[0], cy: start[1], r: DOT }),
         // One arrowhead per target (the routing law, rule 6): an edge that ends on another edge's line draws a junction dot there instead.
-        joinEnd
+        bareEnd
+            ? null
+            : joinEnd
             ? h("circle", { className: "starci-graph-edge-join", cx: end[0], cy: end[1], r: JOIN })
             : h("path", { className: "starci-graph-edge-arrow", d: `M0 0L${String(-ARROW)} ${String(-ARROW / 2)}L${String(-ARROW)} ${String(ARROW / 2)}Z`, transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }),
         given !== undefined && data?.joinStart === true ? h("circle", { className: "starci-graph-edge-join", cx: start[0], cy: start[1], r: JOIN }) : null,

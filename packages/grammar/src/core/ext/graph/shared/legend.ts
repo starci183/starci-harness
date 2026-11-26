@@ -1,7 +1,9 @@
 import { Fragment, createElement as h, type ReactElement } from "react"
 import { InlineStatus, Text } from "../../../index.js"
-import { edgeClassName, kindTone, markState, type EdgeStyle } from "./status.js"
-import type { FlowKindTones, FlowLegendItem } from "../types.js"
+import { edgeClassName, edgeKindClassName, kindTone, markState, type EdgeStyle } from "./status.js"
+import { GRAPH_EDGE_KINDS, type FlowKindTones, type FlowLegendItem, type GraphEdgeKind } from "../types.js"
+
+const isKind = (value: string): value is GraphEdgeKind => (GRAPH_EDGE_KINDS as readonly string[]).includes(value)
 
 export interface FlowLegendProps {
     readonly items: readonly FlowLegendItem[]
@@ -12,10 +14,12 @@ export interface FlowLegendProps {
 
 const swatch = (item: FlowLegendItem, kindTones: FlowKindTones | undefined): ReactElement => {
     if (item.edge !== undefined) {
-        const style: EdgeStyle = item.edge
+        const edge = item.edge
+        // A kind is drawn as an untouched edge of that kind; a style as an edge in that run style.
+        const classes = isKind(edge) ? `${edgeClassName("plain")} ${edgeKindClassName(edge)}` : edgeClassName(edge as EdgeStyle)
         return h(
             "span",
-            { className: `starci-graph-legend-edge ${edgeClassName(style)}`, "aria-hidden": true },
+            { className: `starci-graph-legend-edge ${classes}`, "aria-hidden": true },
             h("svg", { width: 28, height: 8, viewBox: "0 0 28 8" }, h("path", { className: "react-flow__edge-path", d: "M1 4H27" })),
         )
     }

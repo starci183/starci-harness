@@ -352,3 +352,136 @@
 .starci-graph:not([data-editable="true"]) .starci-graph-edge-dot {
     display: none;
 }
+
+/*
+ * Edge kinds (GraphEdgeKind, owner 2026-11-26: "today they all look alike"): which road an edge is. `ok` and `parallel` are the solid neutral line, `yes`
+ * solid success green and stronger, `no` grey dots, `loop` accent dashes (its words carry the loop mark), `timeout` round amber dots, `refused` and
+ * `declined` thin red dashes. The kind sets the line; the run still says how far it went: a running edge flows green, a waiting one is still amber, one the
+ * run has not reached or will not take fades in its own kind's look.
+ */
+.starci-graph .starci-graph-edge--kind-ok,
+.starci-graph .starci-graph-edge--kind-parallel {
+    color: var(--starci-graph-line);
+}
+
+.starci-graph .starci-graph-edge--kind-ok .react-flow__edge-path,
+.starci-graph .starci-graph-edge--kind-parallel .react-flow__edge-path {
+    stroke: var(--starci-graph-line);
+    stroke-width: 1.5;
+    stroke-dasharray: none;
+}
+
+.starci-graph .starci-graph-edge--kind-yes {
+    color: var(--success);
+}
+
+.starci-graph .starci-graph-edge--kind-yes .react-flow__edge-path {
+    stroke: var(--success);
+    stroke-width: 2.5;
+    stroke-dasharray: none;
+}
+
+.starci-graph .starci-graph-edge--kind-no {
+    color: var(--muted);
+}
+
+.starci-graph .starci-graph-edge--kind-no .react-flow__edge-path {
+    stroke: var(--muted);
+    stroke-width: 1.5;
+    stroke-dasharray: 2 5;
+    stroke-linecap: round;
+}
+
+.starci-graph .starci-graph-edge--kind-loop {
+    color: var(--accent);
+}
+
+.starci-graph .starci-graph-edge--kind-loop .react-flow__edge-path {
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-dasharray: 7 5;
+}
+
+.starci-graph .starci-graph-edge--kind-timeout {
+    color: var(--warning);
+}
+
+.starci-graph .starci-graph-edge--kind-timeout .react-flow__edge-path {
+    stroke: var(--warning);
+    stroke-width: 2.5;
+    stroke-dasharray: 0 6;
+    stroke-linecap: round;
+}
+
+.starci-graph .starci-graph-edge--kind-refused,
+.starci-graph .starci-graph-edge--kind-declined {
+    color: var(--danger);
+}
+
+.starci-graph .starci-graph-edge--kind-refused .react-flow__edge-path,
+.starci-graph .starci-graph-edge--kind-declined .react-flow__edge-path {
+    stroke: var(--danger);
+    stroke-width: 1;
+    stroke-dasharray: 5 3;
+}
+
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--pending,
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--skipped {
+    opacity: var(--grammar-opacity-faded);
+}
+
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--running {
+    color: var(--success);
+}
+
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--running .react-flow__edge-path {
+    stroke: var(--success);
+    stroke-width: 2;
+    stroke-dasharray: 8 6;
+    animation: starci-graph-dash var(--grammar-loop-spin) var(--grammar-loop-easing) infinite;
+}
+
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--wait {
+    color: var(--warning);
+}
+
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--wait .react-flow__edge-path {
+    stroke: var(--warning);
+    stroke-dasharray: none;
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .starci-graph .starci-graph-edge--kinded.starci-graph-edge--running .react-flow__edge-path {
+        animation: none;
+        stroke-dasharray: none;
+    }
+}
+
+/*
+ * A fork or merge bar of the spine layout: a thick neutral line across the gap between two rows. The branches of a fork leave it; the edges of a merge drop
+ * into it (each in its own kind's look) and its one neutral arrow leaves its middle into the target's top-mid.
+ */
+.starci-graph .react-flow__node-bar {
+    cursor: default;
+    pointer-events: none;
+}
+
+.starci-graph-bar {
+    position: relative;
+    box-sizing: border-box;
+    background: var(--starci-graph-line);
+    border-radius: var(--grammar-radius-pill);
+    color: var(--starci-graph-line);
+}
+
+.starci-graph-bar-stem {
+    position: absolute;
+    overflow: visible;
+}
+
+.starci-graph-bar-stem-line {
+    fill: none;
+    stroke: var(--starci-graph-line);
+    stroke-width: 1.5;
+}

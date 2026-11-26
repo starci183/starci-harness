@@ -1,6 +1,13 @@
 import { FLOW_NODE_HEIGHT, NODE_WIDTH, type Insets, type LayoutPort, type LinkEnds, type PortSide, type SizedNode } from "./layout.js"
 import { edgeStyleOf, normalizeStatus, type EdgeStyle } from "./shared/status.js"
-import type { FlowNode, FlowPort, FlowStatus, GraphDirection, GraphEdge } from "./types.js"
+import type { FlowNode, FlowPort, FlowStatus, GraphDirection, GraphEdge, GraphEdgeKind } from "./types.js"
+
+/**
+ * How a `FlowGraph` is laid out. `spine` (default): the longest run of plain and "yes" steps is one straight centred column, side roads stand in columns to
+ * its right, every edge attaches at the middle of a side with the fewest bends (`spine.ts`). `layered`: ELK's layered layout, left to right or top to
+ * bottom (`layout.ts`).
+ */
+export type FlowLayoutMode = "spine" | "layered"
 
 /** What a card draws beyond the 64px head: a row of chips, an agent row, a row of ports along the bottom (`TB`) or a column of them down the end side (`LR`). */
 export const CHIP_ROW = 24
@@ -31,6 +38,8 @@ export interface ResolvedEdge {
     readonly port: ResolvedPort | undefined
     /** An untaken branch of a decision: it carries the "skipped" words. */
     readonly branchSkipped: boolean
+    /** What the edge means (its own `kind`, else read from the edge): its look and, in the spine layout, the sides it attaches to. */
+    readonly kind: GraphEdgeKind
     /** The words on the line: its own label (a decision's port label too), and the skipped words of an untaken branch. */
     readonly pill: string | undefined
     /** Whether its ends are cards or diamonds, which have an entry port and a default exit port (a container has neither). */
@@ -52,6 +61,26 @@ export interface FlowModel {
 export const isDiamond = (node: FlowNode): boolean => node.shape === "diamond" && node.container === undefined
 
 const isBranch = (node: FlowNode): boolean => node.kind === "condition" || isDiamond(node)
+
+/** The mark a loop's edge carries before its words. */
+export const LOOP_MARK = "\u21bb"
+
+/** The kinds that run on down a column (out of the bottom-mid); every other forward kind turns to the side (out of the right-mid). */
+export const MAIN_KINDS: ReadonlySet<GraphEdgeKind> = new Set<GraphEdgeKind>(["ok", "yes", "parallel"])
+
+/**
+ * The kind of an edge: its own `kind`; else `loop` for a back edge and `timeout` for a fallback; out of a decision `yes` for its first port and `no` for the
+ * others; `parallel` when its source, not a decision, has two or more plain edges out; else `ok`.
+ */
+export const edgeKindOf = (edge: GraphEdge, source: FlowNode | undefined, port: ResolvedPort | undefined, ports: readonly ResolvedPort[], edges: readonly GraphEdge[]): GraphEdgeKind => {
+    if (edge.kind !== undefined) return edge.kind
+    if (edge.variant === "back") return "loop"
+    if (edge.variant === "fallback") return "timeout"
+    if (source !== undefined && (isBranch(source) || ports.length > 1)) return port === undefined || ports.indexOf(port) <= 0 ? "yes" : "no"
+    const plain = edges.filter((other) => other.source === edge.source && other.kind === undefined && other.variant !== "back" && other.variant !== "fallback")
+    return plain.length >= 2 && source?.container === undefined ? "parallel" : "ok"
+}
+
 /** A diamond leaves through its vertices: the main branch straight on in the flow (the end vertex), the others turning to the side (owner: "Chốt", the routing law). */
 const DIAMOND_SIDES: Readonly<Record<GraphDirection, readonly PortSide[]>> = {
     LR: ["EAST", "SOUTH", "NORTH"],
@@ -118,7 +147,8 @@ const containerMinimum = (node: FlowNode, direction: GraphDirection, hasBack: bo
  * An edge is drawn from the run unless it names a variant: it flows while its source runs, waits while its source waits, and when a branch has a taken
  * edge the others (with no variant of their own) are `skipped`.
  */
-export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdge[], direction: GraphDirection, skippedLabel?: string): FlowModel => {
+export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdge[], direction: GraphDirection, skippedLabel?: string, layout: FlowLayoutMode = "layered"): FlowModel => {
+    const spine = layout === "spine"
     const known = new Set(nodes.map((node) => node.id))
     // A node that says what it waits for is waiting, not running.
     const own = (node: FlowNode): FlowStatus => {
@@ -194,6 +224,12 @@ export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdg
             ...(own.length === 0 ? [{ id: OUT_PORT, side: portSide(false, direction, 0), at: portAt(portSide(false, direction, 0), true, 0, 1, width, height) }] : []),
             ...own.map((port, index) => ({ id: port.id, side: port.side, at: portAt(port.side, diamond, index, own.length, width, height) })),
         ]
+        // The spine layout draws no port pill inside a card (a port's words stand on its edge) and routes a loop's back edge itself, so a frame keeps no gutter.
+        if (spine) {
+            if (node.container !== undefined) return { id: node.id, ...containerMinimum(node, "TB", false), insets: containerInsets(node, false), ...place }
+            if (isDiamond(node)) return { id: node.id, width: DIAMOND_WIDTH, height: DIAMOND_HEIGHT, ...place }
+            return { id: node.id, width: NODE_WIDTH, height: cardHeight(node, 0, "TB"), ...place }
+        }
         if (node.container !== undefined) return { id: node.id, ...containerMinimum(node, direction, backIn.has(node.id)), insets: containerInsets(node, backIn.has(node.id)), ports: own.map((port, index) => ({ id: port.id, side: port.side, ...(direction === "LR" ? { at: { x: 0, y: CONTAINER_HEAD + 4 + index * EXIT_PITCH + EXIT_PITCH / 3 } } : {}) })), ...place }
         if (isDiamond(node)) return { id: node.id, width: DIAMOND_WIDTH, height: DIAMOND_HEIGHT, ports: fixed(DIAMOND_WIDTH, DIAMOND_HEIGHT, true), ...place }
         const width = cardWidth(own.length, direction)
@@ -221,10 +257,14 @@ export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdg
         const branchSkipped = edge.variant === "skipped" ? true : edge.variant === undefined && sourceIsBranch && taken.has(edge.source) && !derivedTaken(edge)
         const targetSkipped = edge.variant === undefined && statuses.get(edge.target) === "skipped"
         const variant = edge.variant ?? (branchSkipped || targetSkipped ? "skipped" : undefined)
-        // A decision's branch is named at the start of its edge; a card's port names its own branch inside the card.
-        const own_label = port === undefined ? edge.label : source !== undefined && (isDiamond(source) || source.container !== undefined) ? port.label : undefined
+        // A decision's branch is named at the start of its edge; a card's port names its own branch inside the card (in the spine layout, which draws no
+        // port pill, on its edge too).
+        const own_label = port === undefined ? edge.label : spine || (source !== undefined && (isDiamond(source) || source.container !== undefined)) ? (edge.label ?? port.label) : undefined
+        const kind = edgeKindOf(edge, source, port, own, usable)
         const words = [own_label, branchSkipped ? skippedLabel : undefined].filter((part): part is string => part !== undefined && part !== "")
-        resolved.push({ id, edge, style: edgeStyleOf(variant, statuses.get(edge.source), statuses.get(edge.target), hasRun), port, branchSkipped, pill: words.length === 0 ? undefined : words.join(" \u00b7 "), sourceIsCard: source?.container === undefined, targetIsCard: byId.get(edge.target)?.container === undefined })
+        // A loop's edge always says it loops: the mark before its words, or the mark alone.
+        const pill = kind === "loop" ? [LOOP_MARK, ...words].join(" ") : words.length === 0 ? undefined : words.join(" \u00b7 ")
+        resolved.push({ id, edge, style: edgeStyleOf(variant, statuses.get(edge.source), statuses.get(edge.target), hasRun), port, branchSkipped, kind, pill, sourceIsCard: source?.container === undefined, targetIsCard: byId.get(edge.target)?.container === undefined })
     }
     const links = resolved.map((item) => ({
         id: item.id,
@@ -233,7 +273,8 @@ export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdg
         ...(item.port === undefined ? (item.sourceIsCard ? { sourcePort: OUT_PORT } : {}) : { sourcePort: item.port.id }),
         ...(item.targetIsCard ? { targetPort: IN_PORT } : {}),
         ...(item.pill === undefined ? {} : { label: item.pill, labelAt: "TAIL" as const }),
-        ...(item.edge.variant === "back" ? { back: true } : {}),
+        ...(item.edge.variant === "back" || item.kind === "loop" ? { back: true } : {}),
+        kind: item.kind,
     }))
     return { statuses, ports, parents, sizes, links, edges: resolved }
 }

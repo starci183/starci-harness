@@ -1,4 +1,6 @@
 export { FlowGraph, type FlowGraphProps } from "./FlowGraph.js"
+export { FLOW_STEP_PARTS, FlowStepDrawer, type FlowStepDrawerProps, type FlowStepPart, type FlowStepSection } from "./FlowStepDrawer.js"
+export { BAR_PREFIX, COLUMN_PITCH, SPINE, layoutSpine } from "./spine.js"
 export { SchemaMap, type SchemaMapProps } from "./SchemaMap.js"
 export { FlowLegend, type FlowLegendProps } from "./shared/legend.js"
 export { GraphSkeleton, SKELETON_COLUMNS } from "./shared/skeleton.js"
@@ -16,6 +18,7 @@ export {
     layoutGraph,
     portKey,
     usableLinks,
+    type Bar,
     type Box,
     type FlowLayout,
     type Insets,
@@ -27,13 +30,13 @@ export {
     type PortSide,
     type SizedNode,
 } from "./layout.js"
-export { KIND_TONES, STATUS_TONE, edgeClassName, edgeStyleOf, findConcurrentRunning, isEdgeAnimated, kindTone, nodeAriaLabel, nodeClassName, normalizeKind, normalizeStatus, statusTone, tileTone } from "./shared/status.js"
+export { KIND_TONES, STATUS_TONE, edgeClassName, edgeKindClassName, edgeStyleOf, findConcurrentRunning, isEdgeAnimated, kindTone, nodeAriaLabel, nodeClassName, normalizeKind, normalizeStatus, statusTone, tileTone } from "./shared/status.js"
 export type { EdgeStyle, StepKind } from "./shared/status.js"
-export { cardHeight, isDiamond, portSide, resolveFlow } from "./model.js"
-export type { FlowModel, ResolvedEdge, ResolvedPort } from "./model.js"
-export { buildEntityNodes, buildFlowEdges, buildFlowNodes, buildSchemaEdges, entityHeight, schemaSizes, structureKey, visibleFields } from "./build.js"
-export type { EntityNodeData, EntityRfNode, FlowNodeData, FlowRfNode, StepEdgeData } from "./build.js"
-export { FLOW_STATUSES } from "./types.js"
+export { LOOP_MARK, MAIN_KINDS, cardHeight, edgeKindOf, isDiamond, portSide, resolveFlow } from "./model.js"
+export type { FlowLayoutMode, FlowModel, ResolvedEdge, ResolvedPort } from "./model.js"
+export { BAR_THICKNESS, buildBarNodes, buildEntityNodes, buildFlowEdges, buildFlowNodes, buildSchemaEdges, entityHeight, schemaSizes, structureKey, visibleFields } from "./build.js"
+export type { BarNodeData, BarRfNode, EntityNodeData, EntityRfNode, FlowNodeData, FlowRfNode, StepEdgeData } from "./build.js"
+export { FLOW_STATUSES, GRAPH_EDGE_KINDS } from "./types.js"
 export type {
     FlowChip,
     FlowContainer,
@@ -50,6 +53,7 @@ export type {
     GraphCanvasProps,
     GraphDirection,
     GraphEdge,
+    GraphEdgeKind,
     GraphEdgeVariant,
     GraphLinkComponent,
     GraphPosition,
