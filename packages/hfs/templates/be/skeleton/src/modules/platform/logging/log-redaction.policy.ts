@@ -22,7 +22,7 @@ const SECRET_ENDINGS = Object.freeze([
 
 /** True when `key` names a credential. */
 const isSecretKey = (key: string): boolean => {
-    const plain = key.toLowerCase().replace(/[^a-z0-9]/g, "")
+    const plain = key.toLowerCase().replaceAll(/[^a-z0-9]/g, "")
     return SECRET_ENDINGS.some((ending) => plain.endsWith(ending))
 }
 

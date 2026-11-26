@@ -34,8 +34,7 @@ const lineFormat = format((info) => {
 })
 
 /** Keeps a line only on the transport its level belongs to (info on `out`, warn and error on `err`). */
-const levelsFormat = (levels: ReadonlyArray<Level>) =>
-    format((info) => (levels.some((level) => level === info.level) ? info : false))()
+const levelsFormat = (levels: ReadonlyArray<string>) => format((info) => (levels.includes(info.level) ? info : false))()
 
 /** The two console transports: stdout and stderr keep every line, so `docker logs` reads them whatever Loki does. */
 const consoleTransports = (out: Writable, err: Writable): Array<Transport> => [
