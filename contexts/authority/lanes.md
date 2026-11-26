@@ -106,13 +106,9 @@ One verb gates and lands (PROJECT-BRANCH-2):
    it runs `app check --env prod --level dev` only and reports the findings. A new `lane gate` of the same lane first cancels the lane's
    running gate: its process tree is killed, its slot released, and the new gate prints `superseded by <sha>`. A merge conflict refuses
    `LANE_GATE_CONFLICT` with its files: resolve, commit, run it again.
-2. Green and pushed, `--land` lands the lane at once (core/lane/land-direct.ts): under the repository's dev lock (`<lanes>/_dev-push.lock`, the
-   harness's `_dev-push-harness.lock`) it fetches and merges the newest `origin/dev` into the lane; when dev moved since the gate's merge it
-   re-checks the merged tree (the app's `codegen` and `typecheck`, the harness CLI's typecheck) under the heavy governor, never the whole gate
-   again; then it squashes the lane into ONE commit on `dev` (parent `origin/dev`, the lane's tree; its message names the lane with its branch
-   and sha and carries a `Landed-lane: <lane> <sha>` trailer) and pushes it, never forced. It refuses `LANE_LAND_CONFLICT` with the files (merge
-   `origin/dev` in the lane, resolve, commit, run it again), `LANE_LAND_RED` with the re-check's failure and `LANE_LAND_PUSH`; nothing lands then,
-   and the lock is released in every case.
+2. Green and pushed, `--land` lands the lane at once as ONE squashed commit on `dev`, under the repository's dev lock, re-checked only when
+   dev moved since the gate, never forced: the rule, its refusals (`LANE_LAND_CONFLICT`, `LANE_LAND_RED`, `LANE_LAND_PUSH`) and its enforcer are
+   [project/branches.md](../project/branches.md) PROJECT-BRANCH-2, stated there once.
 3. After the push the landing stands, and what follows is reported, never thrown: the lane's status file (`<lanes>/_land-status/<lane>.json`,
    `starci lane status <lane>`) reads `landed` with the dev `sha` and the `migrations` it added; a harness landing that changed a published
    package publishes the dev line (`deps publish-dev`); and the app's dev checkout (`devSync.repos`), or after a harness publish every app's, is

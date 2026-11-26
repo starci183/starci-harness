@@ -133,6 +133,18 @@ export const pinRows = async (rows: readonly Planned[], all: readonly WorkspaceP
     })
 }
 
+/**
+ * The one publish of a packed tarball to the local registry, under the `local` tag and a build slot, read back before it counts: both
+ * `deps publish-local` (publishOne) and the dev line (publish-dev.ts) publish through it, so the command and its confirmation live once.
+ */
+export const publishLocalTarball = async (given: { readonly tarball: string; readonly dir: string; readonly name: string; readonly version: string; readonly port: number; readonly npmrc: string; readonly scratch: string }): Promise<void> => {
+    const { tarball, dir, name, version, port, npmrc, scratch } = given
+    const published = await withHeavySlot("build", `npm publish ${name}@${version}`, dir, {}, (held) => captureNpm(["publish", tarball, "--tag", LOCAL_TAG, "--provenance=false", "--userconfig", npmrc, ...registryFlags(port)], scratch, held.options))
+    if (published.exitCode !== 0) throw stepFailed(`npm publish of ${name}@${version} to ${registryUrl(port)}`, published)
+    const view = await captureNpm(["view", `${name}@${version}`, "version", ...registryFlags(port)], scratch)
+    if (view.exitCode !== 0 || view.stdout.trim() !== version) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${name}@${version} is not readable from ${registryUrl(port)} after publishing`)
+}
+
 /** Packs the package folder with its source digest stamped and publishes the tarball to the local registry as it is: the version in git, replacing the copy of that version the registry lists (an unpublish, then the publish). */
 const publishOne = async (given: { readonly pkg: WorkspacePackage; readonly root: string; readonly row: Planned; readonly port: number; readonly npmrc: string }): Promise<void> => {
     const { pkg, root, row, port, npmrc } = given
@@ -145,10 +157,7 @@ const publishOne = async (given: { readonly pkg: WorkspacePackage; readonly root
             const removed = await captureNpm(["unpublish", `${row.package}@${row.version}`, "--force", "--userconfig", npmrc, ...registryFlags(port)], scratch)
             if (removed.exitCode !== 0) throw stepFailed(`npm unpublish of ${row.package}@${row.version} from ${registryUrl(port)}`, removed)
         }
-        const published = await withHeavySlot("build", `npm publish ${row.package}`, pkg.dir, {}, (held) => captureNpm(["publish", local, "--tag", LOCAL_TAG, "--provenance=false", "--userconfig", npmrc, ...registryFlags(port)], scratch, held.options))
-        if (published.exitCode !== 0) throw stepFailed(`npm publish of ${row.package}@${row.version} to ${registryUrl(port)}`, published)
-        const view = await captureNpm(["view", `${row.package}@${row.version}`, "version", ...registryFlags(port)], scratch)
-        if (view.exitCode !== 0 || view.stdout.trim() !== row.version) throw new Refusal("PUBLISH_NOT_CONFIRMED", `${row.package}@${row.version} is not readable from ${registryUrl(port)} after publishing`)
+        await publishLocalTarball({ tarball: local, dir: pkg.dir, name: row.package, version: row.version, port, npmrc, scratch })
     } finally {
         rmSync(scratch, { recursive: true, force: true })
     }

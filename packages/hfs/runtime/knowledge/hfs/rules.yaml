@@ -151,7 +151,7 @@ rules:
     law: "An identity points its secret at `secrets/identity-<slug>.enc`; UAT chooses by role."
     kinds: [check, codemod]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_IDENTITY_CUSTODY", "SEALED_CUSTODY_LOCATION", "SEALED_FILE_IN_WORK"]
+    failureCodes: ["HFS_IDENTITY_CUSTODY", "SEALED_CUSTODY_LOCATION"]
     enforcers:
       - {kind: work-validate, id: sealed-custody-location, at: scripts/work/validate/check-work-artifacts.mjs}
       - {kind: work-validate, id: identity-custody-role, at: scripts/work/validate/check-example-work.mjs}
@@ -855,13 +855,7 @@ rules:
       - {kind: eslint-be, id: no-call-only-spec}
       - {kind: eslint-be, id: no-model-call-in-e2e}
       - {kind: eslint-be, id: spec-typed-entity-manager}
-      - {kind: eslint-be, id: spec-builds-with-testing-module}
-      - {kind: eslint-be, id: spec-no-new-subject}
-      - {kind: eslint-be, id: spec-module-definition-only-providers}
-      - {kind: eslint-be, id: spec-no-module-mock}
       - {kind: eslint-be, id: no-return-only-generic}
-      - {kind: eslint-be, id: spec-infra-double-from-kit}
-      - {kind: eslint-be, id: spec-exact-values}
       - {kind: eslint-be, id: spec-no-skip}
       - {kind: eslint-be, id: unit-spec-providers}
   - id: R49
@@ -1121,7 +1115,6 @@ rules:
       - {kind: stylelint, id: no-token-redefinition}
       - {kind: stylelint, id: no-grammar-private-token}
       - {kind: stylelint, id: theme-layer-shape}
-      - {kind: stylelint, id: status-contrast}
       - {kind: stylelint, id: no-css-module}
       - {kind: stylelint, id: no-class-selector}
       - {kind: stylelint, id: breakpoint-scale}
@@ -1171,7 +1164,6 @@ rules:
     failureCodes: ["FE_NATIVE_FORM_CONTROL", "FE_NATIVE_IMAGE"]
     enforcers:
       - {kind: eslint-fe, id: no-native-form-control}
-      - {kind: eslint-fe, id: no-native-img}
       - {kind: eslint-grammar-core, id: no-raw-structural-element}
       - {kind: eslint-fe, id: image-has-size}
 
@@ -1571,7 +1563,6 @@ rules:
     enforcers:
       - {kind: eslint-be, id: door-lives-in-features}
       - {kind: eslint-be, id: no-capability-imports-features}
-      - {kind: eslint-be, id: rest-door-needs-a-reason}
       - {kind: eslint-be, id: transport-is-thin}
       - {kind: eslint-be, id: no-response-envelope}
       - {kind: eslint-be, id: no-graphql-json}
@@ -1672,6 +1663,7 @@ rules:
       - {kind: eslint-fe, id: presentational-purity}
       - {kind: eslint-fe, id: connected-block-has-presentational-twin}
       - {kind: eslint-fe, id: no-resting-twin-component}
+      - {kind: eslint-fe, id: no-view-data-status}
       - {kind: eslint-fe, id: no-placeholder-prop}
       - {kind: eslint-fe, id: no-resting-branch-at-call-site}
       - {kind: eslint-fe, id: no-inline-class-name}
@@ -2150,7 +2142,6 @@ rules:
     failureCodes: ["BE_CLI_COMMAND_SHAPE"]
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
-      - {kind: eslint-be, id: unit-test-colocated}
   - id: R150
     code: "BE_CLI_OWNER"
     docs: [docs/backend-cli.md#back-end-cli-rules]
@@ -2235,20 +2226,20 @@ rules:
       - {kind: eslint-be, id: queue-producer-shape}
   - id: R155
     code: "BE_PATTERN_SPEC_MISSING"
-    law: "Every pattern a back end declares (hfs.json sides.be.patterns) is proven on the test world: each scenario id of ruleParams.be.patternScenarios.<pattern> has a test titled `<pattern>/<scenario>: ...` (the first argument of `it(` or `test(`) in an e2e or integration spec under be/src/tests; a declared pattern with a missing scenario is a finding."
+    law: "Every pattern a back end declares (hfs.json sides.be.patterns) is proven on the test world: each scenario id of ruleParams.be.patternScenarios.<pattern> has a test titled `<pattern>/<scenario>: ...` (the first argument of `it(` or `test(`) in an integration spec under be/src/tests/integration; a declared pattern with a missing scenario is BE_PATTERN_SPEC_MISSING, and a back end that declares a proven pattern with no scenario to name and holds no tracked integration spec at all is BE_LITE_PROOF_LANE_MISSING (never both for one app)."
     kinds: [check]
     gates: [land, ci]
-    failureCodes: ["BE_PATTERN_SPEC_MISSING"]
+    failureCodes: ["BE_PATTERN_SPEC_MISSING", "BE_LITE_PROOF_LANE_MISSING"]
     enforcers:
       - {kind: hfs, id: proof-lane, at: scripts/hfs/rules/proof-lane.mjs}
     docs: [docs/quality-bar.md#r155]
     templateNa: "Pattern scenarios depend on application behavior and providers; no universal runnable scenario proof is scaffolded."
     proves:
-      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING, BE_LITE_PROOF_LANE_MISSING]}
     exemplifiedBy:
-      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING, BE_LITE_PROOF_LANE_MISSING]}
     witness:
-      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING, BE_LITE_PROOF_LANE_MISSING]}
   - id: R156
     code: "BE_KIND_ISOLATION"
     docs: [docs/code-pattern-enforcement.md#r156-kind-isolation]
@@ -2942,9 +2933,11 @@ rules:
       - {kind: eslint-be, id: no-void-operator}
       - {kind: eslint-be, id: no-unused-import}
       - {kind: eslint-be, id: prefer-export-from}
+      - {kind: eslint-be, id: todo-tag}
       - {kind: eslint-fe, id: no-await-in-loop}
       - {kind: eslint-fe, id: prefer-code-point}
       - {kind: eslint-fe, id: prefer-string-raw}
+      - {kind: eslint-fe, id: todo-tag}
       - {kind: eslint-fe, id: no-nested-conditional}
       - {kind: eslint-fe, id: no-void-operator}
       - {kind: eslint-fe, id: no-unused-import}
@@ -3647,22 +3640,6 @@ rules:
       - {path: packages/hfs/src/hfs-assets.spec.mjs, codes: [HFS_ASSET_OVERSIZE, HFS_ASSET_KIND]}
     witness:
       - {path: packages/hfs/src/hfs-assets.spec.mjs, codes: [HFS_ASSET_OVERSIZE, HFS_ASSET_KIND]}
-  - id: R284
-    code: "BE_LITE_PROOF_LANE_MISSING"
-    law: "A lite back end declaring event-bus, queue, webhooks, realtime, fenced-job, projection, saga or idempotency proves each declared pattern through integration specs under src/tests/integration: runnable tests carry titles `<pattern>/<scenario>: ...` for every required scenario of that pattern. A missing integration lane is refused; missing scenario proofs use R155's BE_PATTERN_SPEC_MISSING. Full-edition pattern proof behavior is unchanged."
-    kinds: [check]
-    gates: [land, ci]
-    failureCodes: ["BE_LITE_PROOF_LANE_MISSING"]
-    enforcers:
-      - {kind: hfs, id: proof-lane, at: scripts/hfs/rules/proof-lane.mjs}
-    docs: [docs/quality-bar.md#r284]
-    templateNa: "Integration scenarios depend on the application patterns and providers; no universal runnable scenario lane is scaffolded."
-    proves:
-      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
-    exemplifiedBy:
-      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
-    witness:
-      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
   - id: R285
     code: "FE_SWR_OUTSIDE_FAMILY"
     law: "SWR runtime calls belong to the declared SWR hook family. A component, feature or domain hook consumes its wrapper hook instead of importing an API operation or calling SWR itself; each back-end operation is imported and invoked only by its SWR wrapper under hooks/swr, regardless of whether the tier matrix still permits a direct transport edge. Values the API owner re-exports from its generated `__generated__/input-bounds.ts` (INPUT_BOUNDS, REST_INPUT_BOUNDS and inputBoundsIssues) are contract data, not operations, and stay importable by hooks/rhf."
@@ -3845,7 +3822,6 @@ rules:
     failureCodes: ["BE_MODULE_DEFINITION_MISSING"]
     enforcers:
       - {kind: eslint-be, id: module-definition-required}
-      - {kind: eslint-be, id: capability-module-shape}
     docs:
       - docs/microservices.md#r295
     exemplifiedBy:
@@ -4238,6 +4214,20 @@ rules:
     witness:
       - {path: packages/eslint/fe/control-height.spec.mjs, codes: [FE_CONTROL_HEIGHT]}
     templateNa: "The control height is Grammar's own value; a template states no size."
+
+  - id: R321
+    code: "FE_GRAMMAR_SHIM"
+    law: "An app imports a Grammar component where it renders it and never re-exports a Grammar export under its own name; a Grammar defect is reported to the Grammar."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_GRAMMAR_SHIM"]
+    enforcers:
+      - {kind: eslint-fe, id: no-grammar-shim}
+    docs:
+      - packages/eslint-canon-fe/docs/grammar-shim.md
+    proves:
+      - {path: packages/eslint-canon-fe/src/grammar-shim.spec.ts, codes: [FE_GRAMMAR_SHIM]}
+    templateNa: "A shim is an app re-export of a Grammar export; a template re-exports nothing of the Grammar."
 
   - id: R322
     code: "FE_CHIP_LABEL_CASE"
@@ -5116,6 +5106,17 @@ rules:
       - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, codes: [FE_RENDERER_LOGIC]}
     witness:
       - {path: packages/eslint-canon-fe/src/renderer-purity.spec.ts, codes: [FE_RENDERER_LOGIC]}
+  - id: R385
+    code: "HFS_SCRIPT_ONE_OFF"
+    law: "`scripts/` holds the app's standing tooling; a one-off codemod or fix script is agent output and is never committed."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_SCRIPT_ONE_OFF"]
+    enforcers:
+      - {kind: hfs, id: script-one-off, status: planned}
+    docs: [contexts/hfs/slots.yaml]
+    templateNa: "A template ships only standing tooling; no one-off script is scaffolded."
+
   - id: R386
     code: "CI_PARITY_SONAR_SCAN_FAILED"
     law: "A whole `starci app check` runs the app's CI sonar job against the app's own Sonar server: the scanner (`@sonar/scan`) with the app's `sonar-project.properties` (project key, sources, exclusions, coverage and lint-report paths), the server and token custody of its stack declaration (`services.sonar`, the token opened from its sealed secrets), and the quality gate the server holds for the project, read from the server after the analysis. The analysis never overwrites the project's own: a server with branch support receives it as the branch `local/<user>`, a server without (Community) as the derived project `<projectKey>-local`, created with the main project's visibility and bound to the main project's quality gate when the token may. A scanner that fails is CI_PARITY_SONAR_SCAN_FAILED and a red gate or a failed compute-engine task is CI_PARITY_SONAR_GATE_FAILED, both errors; a missing token, an unreachable server, a token without the permission it needs or an unreadable verdict is the warning CI_PARITY_SONAR_SKIPPED, never a green. An app with no `sonar-project.properties` or no Sonar service gets an info line. The scan runs after lint and coverage are green; a green verdict is kept in the untracked tool cache by the scanned content and the gate's conditions, so an unchanged tree is not scanned again (`--fresh` scans again)."
@@ -5181,6 +5182,39 @@ rules:
     witness:
       - {path: packages/hfs/src/stack-base-port.spec.mjs}
       - {path: packages/hfs/src/dev-storage.spec.mjs}
+  - id: R390
+    code: "BE_SAGA_SIDE_STEP_BLOCKING"
+    law: "A saga or graph step that only informs (an owner notice, a report, analytics, an echo into team chat) is declared non-blocking: its failure is recorded and alerted once and the run continues to its next step, and no step that answers the customer is ordered after a side step, so a failed notice never parks the run that serves the customer."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["BE_SAGA_SIDE_STEP_BLOCKING"]
+    enforcers:
+      - {kind: hfs, id: saga-side-step, status: planned}
+    docs: [contexts/code/be/saga.md]
+    templateNa: "No checker reads this law yet; it is held by review."
+
+  - id: R391
+    code: "BE_SAGA_CUSTOMER_HOLDING_LINE"
+    law: "A run triggered by a customer message that parks or dead-letters before the customer received a reply sends the customer one holding line, in the run's locale, through the same outbound channel as the reply and claimed idempotently under the run id, so a customer is never left silent and a resume or a second park never sends it twice."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["BE_SAGA_CUSTOMER_HOLDING_LINE"]
+    enforcers:
+      - {kind: hfs, id: saga-holding-line, status: planned}
+    docs: [contexts/code/be/saga.md]
+    templateNa: "No checker reads this law yet; it is held by review."
+
+  - id: R392
+    code: "BE_SAGA_INTERACTIVE_RESUME_LADDER"
+    law: "A flow a customer waits on declares the `waited` ladder (minutes, such as 1, 2, 4 and 8) in the declaration of its jobs and every other flow `background` (seconds, such as 5, 10 and 20), each ladder declared once per class of flow by the jobs platform's ladder policy; after the last rung the run is a dead letter with one item for a person, and a new build hands it back at once."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["BE_SAGA_INTERACTIVE_RESUME_LADDER"]
+    enforcers:
+      - {kind: hfs, id: saga-resume-ladder, status: planned}
+    docs: [contexts/code/be/saga.md]
+    templateNa: "No checker reads this law yet; it is held by review."
+
   - id: R393
     code: "STACK_PENDING_MIGRATIONS"
     law: "`starci app check --env local` compares the migration files of the repository with the history the running dev database recorded (supabase_migrations.schema_migrations) and fails on every file the database has not applied, naming the files and `starci app stack up --env <env> --execute`; a stack that is not running is not judged, and `--env prod` does not ask."

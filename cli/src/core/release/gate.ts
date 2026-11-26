@@ -79,11 +79,14 @@ export const harnessGateSteps = (
     }
     const own = (dir: string): void => {
         const scripts = scriptsOf(dir)
-        if (scripts.typecheck !== undefined) steps.push({ dir, kind: "typecheck" })
+        const tested = dir === CLI_DIR ? level === "full" : scripts.test !== undefined
+        // A step the package's own `npm test` already runs (`npm run typecheck && npm run lint && ...`) runs once, inside that test.
+        const inTest = (script: string): boolean => tested && new RegExp(String.raw`\bnpm run ${script}\b`).test(scripts.test ?? "")
+        if (scripts.typecheck !== undefined && !inTest("typecheck")) steps.push({ dir, kind: "typecheck" })
         if (dir !== CLI_DIR && scripts.build !== undefined) steps.push({ dir, kind: "declarations" })
         if (scripts["bundles:check"] !== undefined) steps.push({ dir, kind: "bundles" })
-        if (level === "full" && scripts.lint !== undefined) steps.push({ dir, kind: "lint" })
-        if (dir === CLI_DIR ? level === "full" : scripts.test !== undefined) steps.push({ dir, kind: "test" })
+        if (level === "full" && scripts.lint !== undefined && !inTest("lint")) steps.push({ dir, kind: "lint" })
+        if (tested) steps.push({ dir, kind: "test" })
     }
     for (const pkg of plan.packages) {
         for (const dir of pkg.build) prepare(dir)

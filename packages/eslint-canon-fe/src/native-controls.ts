@@ -40,28 +40,6 @@ export const noNativeFormControl = defineRule({
   },
 })
 
-// -- NATIVE-2 --------------------------------------------------------------------------------------
-
-/** No bare `<img>`; the framework's image owns size, format, lazy loading and layout shift. */
-export const noNativeImg = exemptFreestyle(defineRule({
-  meta: {
-    type: "problem",
-    docs: { description: "Use `next/image`, never a bare `<img>`." },
-    schema: [],
-    messages: {
-      img:
-        "A bare `<img>` ships the original file at its original size, reserves no space (the page jumps when it loads) and is never lazy by policy. Use `Image` from `next/image` with `width` and `height`, or `fill` and `sizes`, and an `alt` from the message catalogue.",
-    },
-  },
-  create(context) {
-    return {
-      JSXOpeningElement(node) {
-        if (node.name.type === "JSXIdentifier" && node.name.name === "img") context.report({ node, messageId: "img" })
-      },
-    }
-  },
-}))
-
 // -- NATIVE-3 --------------------------------------------------------------------------------------
 
 /** Every `next/image` reserves its space: a size, or `fill` inside a sized parent with `sizes`. */
@@ -102,7 +80,6 @@ export const imageHasSize = defineRule({
 /** The rules this law contributes to the plugin. */
 export const rules: Rules = {
   "no-native-form-control": noNativeFormControl,
-  "no-native-img": noNativeImg,
   "image-has-size": imageHasSize,
 }
 

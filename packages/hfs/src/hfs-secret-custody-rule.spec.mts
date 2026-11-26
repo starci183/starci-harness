@@ -82,6 +82,13 @@ test('HFS_LITE_SECRET_CUSTODY: root env/custody entries and sealed files outside
   assert.ok(findings.every(item => item.code === 'HFS_LITE_SECRET_CUSTODY' && item.level === 'error'));
 });
 
+test('a root .env or .secrets/ file is refused once: R06 owns the path, the custody rule adds no second finding', t => {
+  const files = ['.env', '.secrets/ci.key'];
+  const root = tree(t, Object.fromEntries(files.map(file => [file, 'fixture'])));
+  const findings = sealedSecretFindings({ repoRoot: root, files, repo: app('lite'), resolver });
+  for (const file of files) assert.deepEqual(findings.filter(item => item.path === file).map(item => item.code), ['HFS_PLAINTEXT_SECRET'], file);
+});
+
 test('HFS_LITE_SECRET_CUSTODY: direct sealed stack members and ordinary source files pass', t => {
   const encrypted = 'ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]';
   const contents = {

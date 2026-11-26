@@ -315,7 +315,6 @@ const CATALOGUED_RULES = [
   "navigation-from-intl",
   "no-native-anchor",
   "no-hardcoded-route",
-  "no-native-img",
   "image-has-size",
   "outcome-kinds-exhaustive",
 ]

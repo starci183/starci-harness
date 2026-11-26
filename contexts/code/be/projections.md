@@ -42,4 +42,4 @@ the same recompute twice leaves one identical row, and dropping the table and re
 
 Why: idempotence and replayability are the two properties that make a read model safe to operate.
 
-Enforced by: R155 BE_PATTERN_SPEC_MISSING, R284 BE_LITE_PROOF_LANE_MISSING.
+Enforced by: R155 BE_PATTERN_SPEC_MISSING (and BE_LITE_PROOF_LANE_MISSING when no integration spec exists).

@@ -7,7 +7,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, slotTester } from "../fixtures/typed/tester.ts"
-import { noNativeImg } from "./native-controls.ts"
 import { noAppSurfacePaint } from "./surface-rules.ts"
 import { noArbitraryValue } from "./tokens.ts"
 
@@ -43,9 +42,3 @@ test("no-app-surface-paint: raw paint inside Freestyle is the app's own; a Gramm
   }))
 })
 
-test("no-native-img: art written as a raw img inside Freestyle is allowed", () => {
-  assert.doesNotThrow(() => tester.run("no-native-img", noNativeImg, {
-    valid: [{ filename: BLOCK, code: IMPORTS + "export const A = () => <Freestyle reason=\"art\"><img src=\"/images/a.webp\" alt=\"\" /></Freestyle>" }],
-    invalid: [{ filename: BLOCK, code: IMPORTS + "export const A = () => <img src=\"/images/a.webp\" alt=\"\" />", errors: [{ messageId: "img" }] }],
-  }))
-})

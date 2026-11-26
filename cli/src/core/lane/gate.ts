@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { Refusal } from "../../shared/errors.js"
 import { captureNpm, captureTool } from "../../shared/exec.js"
-import { captureGit, captureGitSync, currentBranch, repositoryRoot, trackedWorkChanges } from "../../shared/git.js"
+import { captureGitSync, currentBranch, repositoryRoot, trackedWorkChanges, gitOutcome as gitOut, mergeOrAbort } from "../../shared/git.js"
 import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { assertPosixSh } from "../../shared/posix-sh.js"
 import { withHeavySlot } from "../../harness/heavy.js"
@@ -63,10 +63,6 @@ export interface LaneGate {
     readonly cleanup: LandCleanup | null
 }
 
-const gitOut = async (cwd: string, args: readonly string[]): Promise<{ readonly ok: boolean; readonly out: string; readonly err: string }> => {
-    const run = await captureGit(args, cwd)
-    return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
-}
 
 /** The dev checkout this machine's local settings name for the repository of `root` (the dev sync's), when they name one. */
 const devSyncCheckoutOf = (root: string): string | undefined => {
@@ -87,12 +83,8 @@ const mergeRef = async (root: string, ref: string, say: (line: string) => void):
     const fetched = await gitOut(root, ["fetch", "-q", remote])
     if (!fetched.ok) throw new Refusal("LANE_GATE_FETCH", `git fetch ${remote}: ${fetched.err}`)
     const before = (await gitOut(root, ["rev-parse", "HEAD"])).out
-    const merge = await gitOut(root, ["merge", "--no-edit", ref])
-    if (!merge.ok) {
-        const files = (await gitOut(root, ["diff", "--name-only", "--diff-filter=U"])).out.split("\n").filter((file) => file !== "")
-        await gitOut(root, ["merge", "--abort"])
-        throw new Refusal("LANE_GATE_CONFLICT", files.length > 0 ? `merging ${ref} conflicts in ${files.join(", ")}: resolve it by hand, commit, then run lane gate again` : `git merge ${ref}: ${merge.err}`)
-    }
+    const merge = await mergeOrAbort(root, ref)
+    if (!merge.ok) throw new Refusal("LANE_GATE_CONFLICT", merge.files.length > 0 ? `merging ${ref} conflicts in ${merge.files.join(", ")}: resolve it by hand, commit, then run lane gate again` : `git merge ${ref}: ${merge.err}`)
     const after = (await gitOut(root, ["rev-parse", "HEAD"])).out
     say(before === after ? `${ref} is already merged` : `merged ${ref}: ${before.slice(0, 10)} -> ${after.slice(0, 10)}`)
     return { ref, before, after }

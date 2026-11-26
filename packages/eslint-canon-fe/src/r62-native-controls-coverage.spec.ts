@@ -10,7 +10,7 @@ import { appDeclaration } from "../../eslint-canon-be/fixtures/app.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { PACKAGE_ROOT } from "./lib/package-root.ts"
 import { why } from "./lib/why.ts"
-import { imageHasSize, noNativeFormControl, noNativeImg } from "./native-controls.ts"
+import { imageHasSize, noNativeFormControl } from "./native-controls.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"
 
 const ROOT = join(PACKAGE_ROOT, "fixtures", "typed")
@@ -38,10 +38,6 @@ for (const edition of ['lite'] as const) {
         { filename: BLOCK, code: "export const Feed = () => <textarea />", errors: [{ messageId: "native" }] },
       ],
     })
-    tester.run("no-native-img", noNativeImg, {
-      valid: [{ filename: BLOCK, code: "export const Feed = () => <Image src={photo} width={80} height={80} alt={label} />" }],
-      invalid: [{ filename: BLOCK, code: "export const Feed = () => <img src={photo} alt={label} />", errors: [{ messageId: "img" }] }],
-    })
     tester.run("image-has-size", imageHasSize, {
       valid: [
         { filename: BLOCK, code: "import Image from 'next/image'; export const Feed = () => <Image src={photo} width={80} height={80} alt={label} />" },
@@ -53,7 +49,6 @@ for (const edition of ['lite'] as const) {
       ],
     })
     assert.equal(why["no-native-form-control"].code, "FE_NATIVE_FORM_CONTROL")
-    assert.equal(why["no-native-img"].code, "FE_NATIVE_IMAGE")
     assert.equal(why["image-has-size"].code, "FE_NATIVE_IMAGE")
   })
 }

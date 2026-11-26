@@ -27,8 +27,7 @@ import { stagedSpecFindings } from '../runtime/scripts/hfs/rules/staged-specs.mj
 import { activeProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { DATA_MANIFEST, copyManifestOf, copyRepositoryDeclared, dataCopyFindings, dataInCodeFindings } from '../runtime/scripts/hfs/rules/data-copies.mjs';
 import { ADAPTER_DIR, ADAPTER_OUTPUTS, RAW_DIR, adapterDriftOf, adapterGuardFindings, isAdapterOutput, isAdapterRepository } from '../runtime/scripts/hfs/rules/data-adapter.mjs';
-import { HFS_BYPASS_MARKER, bypassMessage } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
-import { bypassesIn } from '../runtime/scripts/lib/bypass-markers.mjs';
+import { HFS_BYPASS_MARKER, bypassMessage, productBypassHits } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
 import { STACK_ROOT, idleJobs, readGateDeclarations } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
@@ -135,7 +134,7 @@ function bypassGuardFindings(cwd: string, files: readonly string[]): HygieneFind
   const idle = idleJobs(readGateDeclarations(doc).off);
   return files.flatMap((file): HygieneFinding[] => {
     const text = stagedText(cwd, file);
-    return text === null ? [] : bypassesIn(file, text, { idle }).map((hit: unknown) => ({ file, code: HFS_BYPASS_MARKER, message: bypassMessage(file, hit) }));
+    return text === null ? [] : productBypassHits(file, text, idle).map((hit: unknown) => ({ file, code: HFS_BYPASS_MARKER, message: bypassMessage(file, hit) }));
   });
 }
 
