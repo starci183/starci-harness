@@ -39,8 +39,8 @@ A section's `filter`, a list's or a region's, is ONE flat row in the order given
 the search each take a full line, and the selects follow by their look: a `compact` or `pill` select keeps its content width and shares a
 wrapping line with the next one, a `field` select takes a full line. A filter row's selects are `compact`. The row lays the peers out itself,
 so an app wraps them in no `Cluster` or `Grid` and gives them no width. The `filter` row is where a `Tabs kind="filter"` stands in a page
-or pane body (lint `starci-grammar/tabs-in-well` passes it there). Story `Surfaces/Section filter row (0.43.1)` (shot at
-1440 for one row and at 390 for the narrow step, compact and field selects).
+or pane body (lint `starci-grammar/tabs-in-well` passes it there). Story `Surfaces/Section filter row (0.43.1)` (one row wide
+and the narrow step, compact and field selects).
 
 ## Row edge tone
 A row that waits for the reader (a pending approval) or leads its list (the most recently opened) takes `edgeTone` (`RowEdgeTone`: `accent`, `success`, `warning`, `danger`): a

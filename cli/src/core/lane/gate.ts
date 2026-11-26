@@ -22,6 +22,7 @@ import type { LaneLanded } from "./land-direct.js"
 import { diskWarningLines } from "../../harness/disk-warning.js"
 import { commitCacheRecords, commitGenerated } from "../../harness/lane-generated.js"
 import { findingLines } from "../release/gate.js"
+import { noticesOf } from "../release/grammar-proof.js"
 import { cleanupLanded } from "../../harness/land-cleanup.js"
 import type { LandCleanup } from "../../harness/land-cleanup.js"
 
@@ -154,6 +155,7 @@ const gateHarness = async (given: { readonly root: string; readonly lane: string
     })
     const all = blockingFindings(run.stdout)
     const findings = all ?? []
+    for (const notice of noticesOf(run.stdout)) say(`NOTICE: ${notice}`)
     const verdict: GateVerdict = isOutOfMemory(run.exitCode, run.stderr) ? "oom" : all === undefined || (run.exitCode !== 0 && all.length === 0) ? "no-verdict" : findings.length === 0 ? "green" : "red"
     if (!push || verdict !== "green") return { exitCode: run.exitCode, verdict, findings, pushed: false }
     // The records the gate wrote into .cache/ ride with the lane's code (contexts/harness/check-cache.md), so the landing carries them to dev.

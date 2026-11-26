@@ -11,6 +11,7 @@ import { assertPosixSh } from "../../shared/posix-sh.js"
 import { installPackage, tail } from "../deps/packages.js"
 import { affectedBy } from "./affected.js"
 import type { Affected } from "./affected.js"
+import { grammarProofNoticesIn } from "./grammar-proof.js"
 import { isHarnessCheckout } from "./harness-checkout.js"
 import { bookOf, CACHED_STEPS, FORGED, hasGreen, isCachedKind, listVerifyRuns, loadPrimitives, readTreeFiles, treeKeys, verifyTrust, writeRecords } from "./check-cache.js"
 import type { KeyParts, VerifyRun } from "./check-cache.js"
@@ -418,14 +419,17 @@ export const checkVerb = defineVerb({
         const verdict = findings.length === 0 ? "green" : "red"
         const ran = gate.steps.filter((step) => step.ok === true || step.ok === false).length
         const reusedCount = gate.steps.filter((step) => step.ok === "reused").length
+        // A Grammar component changed without its story or its contract and context (contexts/grammars/contributing.md "Proof by reading"): a notice for the review, never red.
+        const notices = level === "dev" ? grammarProofNoticesIn(root, plan.changed) : []
         const skipped = gate.steps.filter((step) => step.ok === "skipped").length
         const lines = [
             ...gate.summary,
             `cache: ${cache.line}; ${String(reusedCount)} step(s) reused, ${String(written.files.length)} record file(s) written`,
             `${level} gate ${verdict}: ${String(ran)} step(s) ran, ${String(reusedCount)} reused, ${String(skipped)} skipped behind a red build`,
             ...findings.flatMap((finding) => findingLines(finding)),
+            ...notices.map((notice) => `notice ${notice}`),
         ]
-        const data: HarnessGate & { readonly cache: { readonly line: string; readonly written: readonly string[] } } = { ...gate, findings, verdict, cache: { line: cache.line, written: written.files } }
+        const data: HarnessGate & { readonly cache: { readonly line: string; readonly written: readonly string[] }; readonly notices: readonly string[] } = { ...gate, findings, verdict, cache: { line: cache.line, written: written.files }, notices }
         return { data, message: lines.join("\n"), exitCode: verdict === "green" ? 0 : 1 }
     },
 })

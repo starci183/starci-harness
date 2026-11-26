@@ -3,8 +3,8 @@ import * as G from '../common/index.js';
 import { Matrix, State, noop } from './fixtures.js';
 
 /**
- * IntervalChart: ranges on one scale, a point in each and one reference line. Each story draws a state, shot
- * at 1440 and at 390 (`npm run shoot`). The rows are generic (a measure, a low, a high and a point); nothing here is a product word.
+ * IntervalChart: ranges on one scale, a point in each and one reference line. Each story draws a state.
+ * The rows are generic (a measure, a low, a high and a point); nothing here is a product word.
  */
 const meta: Meta = { title: 'Navigation & Data/Interval chart', parameters: { layout: 'padded' } };
 export default meta;

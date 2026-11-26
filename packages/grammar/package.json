@@ -112,7 +112,6 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "eslint --flag unstable_native_nodejs_ts_config . && stylelint \"src/**/*.css\"",
-    "shoot": "node scripts/shoot.mts",
     "ext:demo": "vite ext-demo/graph"
   },
   "engines": {

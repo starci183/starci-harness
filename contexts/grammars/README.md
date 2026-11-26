@@ -131,7 +131,7 @@ name and may set nothing and take a family's default. Choice `theme.choose.owner
 | spacing, control height, target, rhythm | `--grammar-*` | Common | never an app's and never a family's |
 | avatar initials | the seed palette | the grammar | identity art, not a theming violation |
 
-No gate judges an app's colours; a family's defaults are looked at in the package's own stories (`npm run shoot`, [proof](../ui/proof.md) GRAMMAR-NO-TESTS).
+No gate judges an app's colours; a family's defaults are drawn by the package's own stories and read in review ([proof](../ui/proof.md) GRAMMAR-NO-TESTS).
 
 ## Reading order for an author
 

@@ -7,7 +7,7 @@ import { Matrix, State, noop } from './fixtures.js';
 /**
  * ScheduleGrid as a timeline: an entry that crosses columns (a span), with a progress fill, a milestone, dependency arrows, a
  * line for today, a collapsible group row and resize handles on both ends; and an entry dragged in from a list beside the grid.
- * Each story draws a state, shot at 1440 and at 390 (`npm run shoot`). Below 48rem of the
+ * Each story draws a state. Below 48rem of the
  * grid's width the table is an agenda.
  */
 const meta: Meta = { title: 'Navigation & Data/Schedule timeline', parameters: { layout: 'padded' } };

@@ -5,7 +5,7 @@ import { Matrix, State } from './fixtures.js';
 
 /**
  * Image, Video and Illustration: the media family. Every file is a small local fixture served at /media (never a remote host); each story
- * draws a state, shot at 1440 and at 390 (`npm run shoot`).
+ * draws a state.
  */
 const meta: Meta = { title: 'Media/Image, Video and Illustration', parameters: { layout: 'padded' } };
 export default meta;

@@ -50,9 +50,20 @@ slots:
     presence: forbidden
     holds: >-
       a spec, test, snapshot, test folder or test-runner config in the Grammar package, with no exception. The owner, 2026-11-26:
-      "xóa tests grammars và ghi rules chặt vì useless". A Grammar change is proven by looking: its storybook stories shot at 390 and
-      1440 in light and dark, and the UI audit of the app screens that use it
-    rule: contexts/ui/proof.md GRAMMAR-NO-TESTS; packages/grammar/README.md "No tests"
+      "xóa tests grammars và ghi rules chặt vì useless". A Grammar change is proven by its code, its stories, its contract row and
+      its family context, read in review
+    rule: contexts/ui/proof.md GRAMMAR-NO-TESTS; packages/grammar/README.md "No tests, no shots"
+  - id: never.grammar-shots
+    path:
+      - "packages/grammar/docs/**/*.{png,jpg,jpeg,webp}"
+      - "packages/grammar/{shots,reference-renders}/"
+      - "packages/grammar/**/{shoot,shots,screenshot,screenshots}.{ts,mts,cts,js,mjs,cjs}"
+    presence: forbidden
+    holds: >-
+      a screenshot of the Grammar, a folder of them or a script that takes them, with no exception. The owner, 2026-11-26:
+      "Grammar chụp hình làm gì code ra story dc r? Đọc code là dc mà? Bỏ vụ chụp hình đi, xoá luôn". The proof of a Grammar
+      change is its code and its stories, read in review
+    rule: contexts/ui/proof.md GRAMMAR-NO-TESTS; packages/grammar/README.md "No tests, no shots"
   - id: never.cli-js
     path: "cli/src/**/*.{js,mjs,cjs,jsx}"
     presence: forbidden
@@ -396,12 +407,10 @@ slots:
     rule: every package is TypeScript; hfs keeps its published paths, so its source is not under src/
   - id: packages.grammar-tools
     path:
-      - "packages/grammar/{capture-refs,svg-shot}.mts"
-      - packages/grammar/shoot.cts
       - "packages/grammar/scripts/*.mts"
       - "packages/grammar/scripts/lint/*.mts"
     presence: optional
-    holds: the grammar's build and capture tools (build stamp, clean, CSS copy, the static checks, the story shots of `npm run shoot`, reference and SVG shots), TypeScript typechecked by tsconfig.scripts.json
+    holds: the grammar's build tools (build stamp, clean, CSS copy, the static checks, the proximity audit, the media fixtures), TypeScript typechecked by tsconfig.scripts.json
     rule: every package is TypeScript
   - id: packages.grammar-codemods
     path:
@@ -451,11 +460,6 @@ slots:
     presence: optional
     holds: the page a lint rule's message links to; it names its owner in contexts/ and never restates the law
     rule: CONTRIB-4
-  - id: packages.verify-evidence
-    path: "packages/<name>/docs/verify/*.png"
-    presence: optional
-    holds: browser screenshots that prove a package's components render as specified, per family; never shipped (files lists dist only)
-    rule: CONTRIB-9 data is data
   - id: packages.presets
     path: ["packages/tsconfig/*.json", "packages/tsconfig/config.spec.ts"]
     presence: optional

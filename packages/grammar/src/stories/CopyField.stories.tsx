@@ -5,7 +5,7 @@ import * as G from '../common/index.js';
 /**
  * CopyField: a read-only value with its copy action inside the field, at the height of every single-line field. One story
  * per state (plain, masked, long value truncated in the middle, copied, failed, skeleton, with description), some with a
- * play only where the state needs a press (the copy); shot per family by `npm run shoot`.
+ * play only where the state needs a press (the copy).
  */
 const meta: Meta = {
   title: 'Forms/Copy field',

@@ -122,7 +122,7 @@ const preview: Preview = {
       },
     },
     grammarPalette: {
-      description: "neutral: HeroUI tokens (the shots); family: the family's own theme.css",
+      description: "neutral: HeroUI tokens; family: the family's own theme.css",
       toolbar: {
         title: 'Palette',
         icon: 'photo',

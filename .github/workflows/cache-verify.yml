@@ -44,4 +44,4 @@ jobs:
         run: node cli/dist/main.js check --release --fresh
       - name: Records the commit lacks (info)
         if: always()
-        run: git status --short -- .cache || true
+        run: git status --short -- .cache

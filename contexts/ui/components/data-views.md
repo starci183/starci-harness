@@ -11,7 +11,7 @@ Every bar-like data mark (`Meter` and its segments, `Progress` and its steps, `P
 `DonutChart` ring) is HeroUI v3 ProgressBar's own track: sm 4px, md 8px (the default), lg 12px, at the vendor's corner for that
 size (a quarter, a half, three quarters of `--radius`), never a full pill and never a height of the grammar's own; a donut's ring is
 the md track thick, its diameter a chart size (64, 120, 160). The steps are the `--grammar-bar-*` tokens (owner: `@starci/grammar`
-`src/common/ramps.css` "BARS"; story shots at 390 and 1440). Why: a bar is read against the vendor's own progress bars on the
+`src/common/ramps.css` "BARS"; drawn by the bar stories). Why: a bar is read against the vendor's own progress bars on the
 same screen, and a grammar-invented height reads as a second component. The empty track keeps the measures' one neutral
 (`--starci-core-track`, [toast-alert](toast-alert.md)), since the vendor's `--default` vanishes on a white theme.
 

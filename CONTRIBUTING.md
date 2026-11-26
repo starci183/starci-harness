@@ -34,7 +34,7 @@ inside a real project or this checkout's `.runtime/`. Do not add a test framewor
 ### CONTRIB-2 Packages keep their specs
 
 Each package under `packages/` proves itself with its own `node:test` specs (`npm test` in its folder), which CI runs. A
-rule change in a canon comes with the spec that holds it. The Grammar is exempt and keeps none, by the owner's order of 2026-11-26 ("xóa tests grammars và ghi rules chặt vì useless"): it is proven by looking, and the shape gate slot `never.grammar-tests` refuses a spec, test or runner config there ([contexts/ui/proof.md](contexts/ui/proof.md) GRAMMAR-NO-TESTS).
+rule change in a canon comes with the spec that holds it. The Grammar is exempt and keeps none, by the owner's order of 2026-11-26 ("xóa tests grammars và ghi rules chặt vì useless"): it takes no shots either (the owner, same day: "Bỏ vụ chụp hình đi, xoá luôn"): it is proven by its code, its stories and its contract, read in review, and the shape gate slots `never.grammar-tests` and `never.grammar-shots` refuse a spec, test, runner config or screenshot there ([contexts/ui/proof.md](contexts/ui/proof.md) GRAMMAR-NO-TESTS).
 
 ### CONTRIB-3 Test only what you changed
 
@@ -165,8 +165,8 @@ answer says add:
 4. **Do NIVO or Next need it now?** If not, it waits for beta.
 
 A Grammar component or prop then enters `@starci/grammar` only through
-[contexts/grammars/contributing.md](contexts/grammars/contributing.md): tier, budget, types, lint, knowledge, its stories shot in both
-families and modes at real widths, and the look reviewed by a person.
+[contexts/grammars/contributing.md](contexts/grammars/contributing.md): tier, budget, types, lint, knowledge, its stories in both
+families and modes, its contract row and family section, and the change reviewed by a person.
 
 When something is removed or replaced:
 

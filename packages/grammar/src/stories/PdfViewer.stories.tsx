@@ -9,7 +9,7 @@ import { buildFixturePdf, fixtureText } from './pdfFixture.js';
 /**
  * The PDF extension (`@starci/grammar/core/ext/pdf`): `PdfViewer` draws a generated two-page fixture (built in code, nothing copyrighted) to a
  * canvas with pdfjs. Page navigation, zoom, fit to width, download, a text highlight and a rect highlight; loading is all Skeleton and a
- * file that cannot be opened is a Grammar Alert. Use it ONLY to show a PDF document. Shot at 1440 and 390.
+ * file that cannot be opened is a Grammar Alert. Use it ONLY to show a PDF document.
  */
 const meta: Meta = { title: 'Navigation & Data/Pdf viewer', parameters: { layout: 'padded' } };
 export default meta;

@@ -5,7 +5,7 @@ import { BellGlyph, Matrix, State, noop } from "./fixtures.js"
 /*
  * The four states of a region (contexts/ui/loading.md): loading (a first read with no data: the ready structure as geometry),
  * content, error (a failed read has its own place and never reads as empty) and empty (the read finished with nothing). One story per
- * component draws them together, in both families, light and dark, at both widths (shot at 390 and 1440). A component with no
+ * component draws them together, in both families, light and dark. A component with no
  * empty answer of its own (a figures strip, a tile, a body) shows three.
  *
  * Loading is drawn from the rows the component was given (the block's same-shape placeholder), so each loading list below
