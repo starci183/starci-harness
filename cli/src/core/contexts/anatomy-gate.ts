@@ -81,7 +81,7 @@ export const engineOfRule = (rule: Pick<CatalogRule, "enforcers">): string => {
     const engines = new Set((rule.enforcers ?? []).map((enforcer) => engineOf(enforcer.kind)))
     if (engines.size === 0) return "review"
     if (engines.has("code") && engines.has("repo")) return "split"
-    return [...engines].sort().join("+")
+    return [...engines].sort((a, b) => a.localeCompare(b)).join("+")
 }
 
 /**
@@ -125,7 +125,7 @@ export const oneOwnerGaps = (catalog: Pick<Catalog, "rules" | "sharedEnforcers">
     return red
 }
 
-const sortedSet = (values: readonly string[]): string => [...new Set(values)].sort().join(", ")
+const sortedSet = (values: readonly string[]): string => [...new Set(values)].sort((a, b) => a.localeCompare(b)).join(", ")
 
 /**
  * Where this catalog and the runtime's disagree: a rule only one of them holds (the runtime's rules judged only by runtime-only kinds aside),

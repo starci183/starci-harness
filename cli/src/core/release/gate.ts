@@ -401,8 +401,8 @@ export const checkVerb = defineVerb({
         fresh: { kind: "boolean", summary: "ignore the harness check cache (.cache/check): run every step, rewrite the records, and report a committed record the run contradicts as HARNESS_CHECK_CACHE_FORGED (the nightly verify runs --level full --fresh)" },
     },
     run: async (context, flags) => {
-        if (flags.release === true && flags.level !== undefined && flags.level !== "full") throw new Refusal("CLI_USAGE", `--release is the full level; it takes no --level ${flags.level}`)
-        const level = flags.release === true ? "full" : (flags.level ?? "dev")
+        if (flags.release && flags.level !== undefined && flags.level !== "full") throw new Refusal("CLI_USAGE", `--release is the full level; it takes no --level ${flags.level}`)
+        const level = flags.release ? "full" : (flags.level ?? "dev")
         if (level !== "dev" && level !== "full") throw new Refusal("CLI_USAGE", `--level is dev or full, not "${level}"`)
         assertPosixSh("check")
         const root = await repositoryRoot(context.cwd)
@@ -411,7 +411,7 @@ export const checkVerb = defineVerb({
         const plan = await affectedBy(root, base ?? "", undefined)
         const all = listPackages(root)
         const scriptsOf = (dir: string): Readonly<Record<string, string>> => all.find((pkg) => pkg.relativeDir === dir)?.scripts ?? {}
-        const cache = await openGateCache(root, plan, level, flags.fresh === true, plan.head)
+        const cache = await openGateCache(root, plan, level, flags.fresh, plan.head)
         const gate = await runHarnessGate(root, plan, level, scriptsOf, runStep, context.progress, cache.reusable)
         const written = await cache.record(gate)
         const findings = [...gate.findings, ...cache.forged, ...written.contradicted]
@@ -436,7 +436,7 @@ export const releaseGateVerb = defineVerb({
     path: ["release", "gate"],
     summary: "renamed: use starci check (--level dev) or starci check --release (--level full); this deprecated spelling prints the rename and runs the same check",
     run: async (context, flags) => {
-        process.stderr.write(`${renamedGateNotice(flags.release === true ? "full" : flags.level)}\n`)
+        process.stderr.write(`${renamedGateNotice(flags.release ? "full" : flags.level)}\n`)
         return checkVerb.run(context, flags)
     },
 })

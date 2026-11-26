@@ -117,8 +117,8 @@ export const setYamlPreserving = (text: string, path: readonly string[], value: 
     const table = Array.from({ length: left.length + 1 }, () => new Array<number>(edited.length + 1).fill(0))
     for (let i = left.length - 1; i >= 0; i -= 1)
         for (let j = edited.length - 1; j >= 0; j -= 1) {
-            const row = table[i] as number[]
-            row[j] = left[i] === edited[j] ? ((table[i + 1] as number[])[j + 1] ?? 0) + 1 : Math.max((table[i + 1] as number[])[j] ?? 0, row[j + 1] ?? 0)
+            const row = table[i] ?? []
+            row[j] = left[i] === edited[j] ? (table[i + 1]?.[j + 1] ?? 0) + 1 : Math.max(table[i + 1]?.[j] ?? 0, row[j + 1] ?? 0)
         }
     const out: string[] = []
     let i = 0
@@ -128,7 +128,7 @@ export const setYamlPreserving = (text: string, path: readonly string[], value: 
             out.push(original[i] ?? "")
             i += 1
             j += 1
-        } else if (j < edited.length && (i >= left.length || ((table[i] as number[])[j + 1] ?? 0) >= ((table[i + 1] as number[])[j] ?? 0))) {
+        } else if (j < edited.length && (i >= left.length || (table[i]?.[j + 1] ?? 0) >= (table[i + 1]?.[j] ?? 0))) {
             out.push(edited[j] ?? "")
             j += 1
         } else i += 1
@@ -169,13 +169,14 @@ export const setupAlerts = async (root: string, env: string, options: { readonly
     const declared = fieldAt(environment, "monitoring.alerts.telegram.member")
     const member = options.member ?? (typeof declared === "string" && declared !== "" ? declared : "alerts")
     if (!/^[a-z][a-z0-9-]*$/.test(member)) throw new UsageError(`--member ${member} is no member name`)
-    const ownerText = options.owner ?? fieldAt(environment, "monitoring.alerts.telegram.owner")
+    const ownerField = options.owner ?? fieldAt(environment, "monitoring.alerts.telegram.owner")
+    const ownerText = typeof ownerField === "string" ? ownerField : ownerField === undefined ? undefined : JSON.stringify(ownerField)
     if (ownerText === undefined) throw new Refusal("ALERTS_OWNER_MISSING", `environments.${env}.monitoring.alerts.telegram.owner is not set: pass --owner @<your Telegram username>`)
     const owner = ownerUsernameOf(ownerText)
-    if (owner === null) throw new UsageError(`${String(ownerText)} is no Telegram username (@name: 5 to 32 letters, digits and underscores, a letter first)`)
+    if (owner === null) throw new UsageError(`${ownerText} is no Telegram username (@name: 5 to 32 letters, digits and underscores, a letter first)`)
     const memberFile = join(root, ".starcistacks", env, "secrets", `${member}.enc.yaml`)
     const keys = existsSync(memberFile) ? sealedKeyNames(readFileSync(memberFile, "utf8")) : []
-    let bot: string | null = null
+    let bot: string | null
     let tokenSealed = false
     if (options.token || !keys.includes(ALERT_BOT_KEYS.token)) {
         const token = (await seams.prompt(`${ALERT_BOT_KEYS.token} of ${env} (the token BotFather gave)`)).trim()
@@ -193,7 +194,7 @@ export const setupAlerts = async (root: string, env: string, options: { readonly
         }
     }
     // Written as the owner typed it, with its `@`; matched case-insensitively on the server.
-    const written = `@${String(ownerText).trim().replace(/^@/, "")}`
+    const written = `@${ownerText.trim().replace(/^@/, "")}`
     const prefix = ["environments", env, "monitoring", "alerts", "telegram"]
     let next = text
     if (declared !== member) next = setYamlPreserving(next, [...prefix, "member"], member)
