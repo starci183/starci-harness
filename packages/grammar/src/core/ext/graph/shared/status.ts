@@ -29,14 +29,17 @@ export const normalizeStatus = (status: FlowStatusInput | undefined): FlowStatus
 export const statusTone = (status: FlowStatus): GraphTone => STATUS_TONE[status]
 
 /** The six kinds a step can be; `trigger`, `execute` and `output` are the older names of `event`, `action` and `end`. */
-export type StepKind = "event" | "action" | "condition" | "ask" | "wait" | "end"
+export type StepKind = "event" | "action" | "condition" | "switch" | "ask" | "wait" | "parallel" | "call" | "end"
 
 const KIND_ALIASES: Readonly<Record<FlowKind, StepKind>> = {
     event: "event",
     action: "action",
     condition: "condition",
+    switch: "switch",
     ask: "ask",
     wait: "wait",
+    parallel: "parallel",
+    call: "call",
     end: "end",
     trigger: "event",
     execute: "action",
@@ -50,8 +53,11 @@ export const KIND_TONES: Readonly<Record<StepKind, GraphTone>> = {
     event: "accent",
     action: "success",
     condition: "warning",
+    switch: "warning",
     ask: "danger",
     wait: "default",
+    parallel: "default",
+    call: "info",
     end: "success",
 }
 

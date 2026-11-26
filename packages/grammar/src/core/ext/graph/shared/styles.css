@@ -485,3 +485,42 @@
     stroke: var(--starci-graph-line);
     stroke-width: 1.5;
 }
+
+/* A switch's cases: a case solid neutral, its default grey dots; the case the run took bold, its words after a check. Its split bar is hollow. */
+.starci-graph .starci-graph-edge--kind-case {
+    color: var(--starci-graph-line);
+}
+
+.starci-graph .starci-graph-edge--kind-case .react-flow__edge-path {
+    stroke: var(--starci-graph-line);
+    stroke-width: 1.5;
+    stroke-dasharray: none;
+}
+
+.starci-graph .starci-graph-edge--kind-default {
+    color: var(--muted);
+}
+
+.starci-graph .starci-graph-edge--kind-default .react-flow__edge-path {
+    stroke: var(--muted);
+    stroke-width: 1.5;
+    stroke-dasharray: 2 5;
+    stroke-linecap: round;
+}
+
+.starci-graph .starci-graph-edge--kind-case.starci-graph-edge--taken,
+.starci-graph .starci-graph-edge--kind-default.starci-graph-edge--taken {
+    color: var(--foreground);
+}
+
+.starci-graph .starci-graph-edge--kind-case.starci-graph-edge--taken .react-flow__edge-path,
+.starci-graph .starci-graph-edge--kind-default.starci-graph-edge--taken .react-flow__edge-path {
+    stroke: var(--foreground);
+    stroke-width: 3;
+    stroke-dasharray: none;
+}
+
+.starci-graph-bar[data-look="hollow"] {
+    background: var(--surface);
+    border: 1.5px solid var(--starci-graph-line);
+}

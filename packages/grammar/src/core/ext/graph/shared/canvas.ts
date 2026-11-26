@@ -7,7 +7,7 @@ import { ISLANDS_WIDTH, estimateLabel, layoutFlow, type Bar, type Box, type Flow
 import { GraphSkeleton } from "./skeleton.js"
 import { STYLE_RANK, dedupeRuns } from "./overlap.js"
 import { useGraphScheme } from "./scheme.js"
-import { clearOfControls, openView } from "./view.js"
+import { clearOfControls, openView, type OpenFit } from "./view.js"
 import { FlowZoom, zoomWords } from "./zoom.js"
 import type { GraphCanvasProps, GraphPosition, GraphPositions } from "../types.js"
 
@@ -67,6 +67,12 @@ export interface CanvasInput extends GraphCanvasProps {
      * nothing on a merge bar), and no shared stretch is cut short (`onceDrawn` is not run).
      */
     readonly routed?: boolean
+    /**
+     * The least zoom the first view and the fit button go down to, so a long graph keeps readable nodes and the person pans the rest (default 0.15 for the fit
+     * button, `LEAST_FIT` for the first view); `fitWidth` fits the frame's width only, never the height of a tall graph.
+     */
+    readonly leastZoom?: number
+    readonly fitWidth?: boolean
 }
 
 interface Placed {
@@ -121,7 +127,7 @@ const contentHeight = (layout: FlowLayout, sizes: readonly SizedNode[]): number 
 const OPEN_INSETS = { top: FIT_INSET, right: FIT_INSET, bottom: FIT_INSET, left: CONTROLS_ROOM } as const
 
 /** The first view, on every screen alike: the whole graph fitted (100% or less), centred (`openView`). */
-const FocusStep = ({ id }: { readonly id: string | undefined }): null => {
+const FocusStep = ({ id, fit }: { readonly id: string | undefined; readonly fit: OpenFit }): null => {
     const flow = useReactFlow()
     const store = useStoreApi()
     // Every node measured (xyflow's useNodesInitialized stays false for nodes given a width and height).
@@ -145,7 +151,7 @@ const FocusStep = ({ id }: { readonly id: string | undefined }): null => {
         opened.current = true
         const { x, y } = internal.internals.positionAbsolute
         const focus = { x, y, width: internal.measured.width ?? 0, height: internal.measured.height ?? 0 }
-        const centred = openView({ width, height }, flow.getNodesBounds(nodes.filter((each) => each.parentId === undefined)), focus, OPEN_INSETS)
+        const centred = openView({ width, height }, flow.getNodesBounds(nodes.filter((each) => each.parentId === undefined)), focus, OPEN_INSETS, fit)
         // The zoom buttons cover no step at the first view: a step under them is moved off the start edge or below the bottom, the focus kept in view.
         const dom = store.getState().domNode
         const buttons = dom?.querySelector(".starci-graph-zoom")?.getBoundingClientRect()
@@ -161,7 +167,7 @@ const FocusStep = ({ id }: { readonly id: string | undefined }): null => {
         void flow.setViewport(view)
         later.current = setTimeout(() => void flow.setViewport(view), 60)
         // Once per layout (the canvas is keyed by it), when its nodes and its frame are measured: a status change, a resize or a pan never moves it.
-    }, [ready, measured, id, flow, store])
+    }, [ready, measured, id, flow, store, fit])
     return null
 }
 
@@ -236,6 +242,7 @@ const Canvas = (props: CanvasInput): ReactElement => {
     if (ready === undefined) return h("div", { ...frame, "aria-busy": true }, h(GraphSkeleton))
 
     const merged = { ...ready.positions, ...known(moved, sizes), ...live }
+    const openFit: OpenFit = { ...(props.leastZoom === undefined ? {} : { least: props.leastZoom }), ...(props.fitWidth === true ? { widthOnly: true } : {}) }
     // While every node stands where ELK put it the edges run on the routes ELK gave them; once a person moves one, they are drawn between the handles.
     const arranged = Object.keys(known(moved, sizes)).length === 0 && Object.keys(live).length === 0
     const nodes = makeNodes({ positions: merged, boxes: ready.boxes, ports: ready.ports, ...(arranged && ready.bars !== undefined ? { bars: ready.bars } : {}) }, selected).map((node) => ({ ...node, draggable: editable }))
@@ -244,7 +251,7 @@ const Canvas = (props: CanvasInput): ReactElement => {
             ? null
             : h(FlowZoom, {
                   words: zoomWords(props.ariaLabelConfig as Readonly<Record<string, string>> | undefined),
-                  fitOptions: FIT_OPTIONS,
+                  fitOptions: props.leastZoom === undefined ? FIT_OPTIONS : { ...FIT_OPTIONS, minZoom: props.leastZoom },
                   ...(editable && props.resetLabel !== undefined ? { reset: { label: props.resetLabel, onPress: () => { commit(NO_POSITIONS) } } } : {}),
               })
 
@@ -294,7 +301,7 @@ const Canvas = (props: CanvasInput): ReactElement => {
                     ...(props.ariaLabelConfig === undefined ? {} : { ariaLabelConfig: props.ariaLabelConfig }),
                 },
                 h(Background, { gap: 22, size: 1.4, color: "var(--starci-graph-grid)" }),
-                interactive ? h(FocusStep, { id: props.focusId }) : null,
+                interactive ? h(FocusStep, { id: props.focusId, fit: openFit }) : null,
                 controls,
                 props.minimap === true && interactive ? h(MiniMap, { pannable: true, zoomable: true, className: "starci-graph-minimap", ...(props.minimapLabel === undefined ? {} : { ariaLabel: props.minimapLabel }) }) : null,
             ),

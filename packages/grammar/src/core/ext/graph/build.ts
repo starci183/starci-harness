@@ -4,7 +4,7 @@ import { ENTITY_HEAD_HEIGHT, ENTITY_ROW_HEIGHT, ENTITY_WIDTH, NODE_WIDTH, SCHEMA
 import { MAIN_KINDS, isDiamond, type FlowLayoutMode, type FlowModel, type ResolvedPort } from "./model.js"
 import { edgeClassName, edgeKindClassName, isEdgeAnimated, nodeAriaLabel, normalizeStatus, tileTone, type EdgeStyle } from "./shared/status.js"
 import type { BadgeTone } from "../../index.js"
-import type { FlowContainer, FlowKindTones, FlowNode, FlowStatus, FlowStatusLabels, GraphDirection, GraphEdge, GraphEdgeKind, GraphPosition, GraphTone, SchemaEntity, SchemaField } from "./types.js"
+import type { FlowContainer, FlowKindTones, FlowNode, FlowShape, FlowStatus, FlowStatusLabels, GraphDirection, GraphEdge, GraphEdgeKind, GraphPosition, GraphTone, SchemaEntity, SchemaField } from "./types.js"
 
 /** What a card, a diamond or a container node carries to its view. */
 export interface FlowNodeData extends Record<string, unknown> {
@@ -19,6 +19,8 @@ export interface FlowNodeData extends Record<string, unknown> {
     direction: GraphDirection
     /** The layout the node stands in: the spine layout gives every node its four midpoint handles and draws no port pill. */
     layout: FlowLayoutMode
+    /** The outline it is drawn in (`shapeOf`): a card, a diamond, a hexagon, a pill, a stadium, a rectangle or a call hexagon. */
+    shape: FlowShape
     selected: boolean
     width: number
     height: number
@@ -30,6 +32,9 @@ export interface BarNodeData extends Record<string, unknown> {
     width: number
     /** A merge bar's arrow: where along the bar it leaves, and how far below the bar the target's top stands. */
     stem: { readonly x: number; readonly length: number } | undefined
+    look: "solid" | "hollow"
+    /** How thick it is drawn: a solid bar `BAR_THICKNESS`, a hollow split bar twice that, so its outline reads. */
+    thickness: number
 }
 export type BarRfNode = Node<BarNodeData, "bar">
 
@@ -130,9 +135,10 @@ export const buildFlowNodes = (
         const height = isContainer ? (box?.height ?? size?.height ?? 0) : (size?.height ?? 0)
         const parentId = model.parents.get(node.id)
         const side = SIDES[context.direction]
+        const shape = model.shapes.get(node.id) ?? (isDiamond(node) ? "diamond" : "card")
         return {
             id: node.id,
-            type: isContainer ? "container" : isDiamond(node) ? "diamond" : "flow",
+            type: isContainer ? "container" : shape === "diamond" ? "diamond" : "flow",
             position: positions[node.id] ?? { x: 0, y: 0 },
             data: {
                 node,
@@ -143,6 +149,7 @@ export const buildFlowNodes = (
                 ports: model.ports.get(node.id) ?? [],
                 direction: context.direction,
                 layout: context.layout ?? "layered",
+                shape,
                 selected: node.id === context.selectedId,
                 width,
                 height,
@@ -195,23 +202,26 @@ export const buildFlowEdges = (model: FlowModel, nodes: readonly FlowNode[], lay
 }
 
 /** The Badge tone of a flow edge's words by its kind; `ok` and `parallel` take the tone of their run style. */
-const KIND_PILL_TONE: Readonly<Record<GraphEdgeKind, BadgeTone | undefined>> = { ok: undefined, parallel: undefined, yes: "success", no: "neutral", loop: "accent", timeout: "warning", refused: "danger", declined: "danger" }
+const KIND_PILL_TONE: Readonly<Record<GraphEdgeKind, BadgeTone | undefined>> = { ok: undefined, parallel: undefined, yes: "success", no: "neutral", loop: "accent", timeout: "warning", refused: "danger", declined: "danger", case: undefined, default: "neutral" }
 
 /** The xyflow nodes of the fork and merge bars: each a thin node on its line, under no step and never pressed. */
 export const buildBarNodes = (bars: readonly Bar[]): BarRfNode[] =>
-    bars.map((bar) => ({
+    bars.map((bar) => {
+        const thickness = bar.look === "hollow" ? 2 * BAR_THICKNESS : BAR_THICKNESS
+        return {
         id: bar.id,
         type: "bar" as const,
-        position: { x: bar.x, y: bar.y - BAR_THICKNESS / 2 },
+        position: { x: bar.x, y: bar.y - thickness / 2 },
         initialWidth: Math.max(bar.width, 1),
-        initialHeight: BAR_THICKNESS,
-        data: { width: Math.max(bar.width, 1), stem: bar.stemX === undefined || bar.stemTo === undefined ? undefined : { x: bar.stemX - bar.x, length: bar.stemTo - bar.y } },
+        initialHeight: thickness,
+        data: { width: Math.max(bar.width, 1), look: bar.look ?? "solid", thickness, stem: bar.stemX === undefined || bar.stemTo === undefined ? undefined : { x: bar.stemX - bar.x, length: bar.stemTo - bar.y } },
         draggable: false,
         connectable: false,
         selectable: false,
         focusable: false,
         zIndex: 3,
-    }))
+        }
+    })
 
 /** The xyflow nodes of a schema map. A node is named by its label, its description and its figure. */
 export const buildEntityNodes = (entities: readonly SchemaEntity[], positions: Readonly<Record<string, GraphPosition>>, direction: GraphDirection, selectedId: string | null): EntityRfNode[] =>

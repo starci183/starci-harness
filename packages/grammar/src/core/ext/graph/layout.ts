@@ -87,6 +87,8 @@ export interface Bar {
     /** A merge bar's arrow: from the bar at `stemX` down to the target's top at `stemTo`. */
     readonly stemX?: number
     readonly stemTo?: number
+    /** `solid` (a parallel fork, a join, a merge) or `hollow` (a switch's split bar: an outline only). Default solid. */
+    readonly look?: "solid" | "hollow"
 }
 
 /** The size of a label's box, from its words. */

@@ -42,7 +42,10 @@ export const BAR_PREFIX = "starci-bar:"
 /** The pitch of the columns. */
 export const COLUMN_PITCH = NODE_WIDTH + SPINE.columnGap
 
-const MAIN = new Set(["ok", "yes", "parallel"])
+const MAIN = new Set(["ok", "yes", "parallel", "case", "default"])
+/** The kinds that leave a fork or split bar: the branches of a parallel step and the cases of a switch. */
+const FANNED = new Set(["parallel", "case", "default"])
+const CASES = new Set(["case", "default"])
 
 type Point = readonly [number, number]
 
@@ -63,6 +66,9 @@ interface Leg {
     readonly to: string
     readonly main: boolean
     readonly parallel: boolean
+    /** A case of a switch: its fork bar is a hollow split bar, its default stands rightmost. */
+    readonly split: boolean
+    readonly isDefault: boolean
     /** A loop's edge, or an edge the layout breaks a cycle at. */
     back: boolean
 }
@@ -149,7 +155,7 @@ const layoutIsland = (tree: Tree, members: ReadonlyMap<string, readonly string[]
     }
     const fromLeaf = (id: string): string => (isLeaf(id) ? id : (exitOf.get(id) ?? id))
     const toLeaf = (id: string): string => (isLeaf(id) ? id : (entryOf.get(id) ?? id))
-    const legs: Leg[] = links.map((link) => ({ link, from: fromLeaf(link.source), to: toLeaf(link.target), main: MAIN.has(kindOf(link)), parallel: kindOf(link) === "parallel", back: isLoop(link) }))
+    const legs: Leg[] = links.map((link) => ({ link, from: fromLeaf(link.source), to: toLeaf(link.target), main: MAIN.has(kindOf(link)), parallel: FANNED.has(kindOf(link)), split: CASES.has(kindOf(link)), isDefault: kindOf(link) === "default", back: isLoop(link) }))
     const legOf = new Map(legs.map((leg) => [leg.link.id, leg] as const))
 
     // 2. A cycle that is not marked as a loop is broken at the edge that closes it (depth first, in the order given), which is drawn as a loop.
@@ -257,11 +263,11 @@ const layoutIsland = (tree: Tree, members: ReadonlyMap<string, readonly string[]
         const own = new Set(chain)
         for (let k = here ? 0 : 1; ; k += 1) if (!busy(base + k, from, to, own)) return base + k
     }
-    const fan = (targets: readonly string[], base: number, fork: string): void => {
-        // The spine's branch stands in the middle of an odd fan.
+    const fan = (targets: readonly string[], base: number, fork: string, keepOrder = false): void => {
+        // The spine's branch stands in the middle of an odd fan; a switch keeps its cases in their order (its default last, rightmost).
         const ordered = [...targets]
         const spineAt = ordered.findIndex((id) => onSpine.has(id))
-        if (spineAt >= 0 && ordered.length % 2 === 1) ordered.splice(Math.floor(ordered.length / 2), 0, ...ordered.splice(spineAt, 1))
+        if (!keepOrder && spineAt >= 0 && ordered.length % 2 === 1) ordered.splice(Math.floor(ordered.length / 2), 0, ...ordered.splice(spineAt, 1))
         ordered.forEach((id, index) => {
             place(chainFrom(id, true), base + index - (ordered.length - 1) / 2, fork)
         })
@@ -276,7 +282,9 @@ const layoutIsland = (tree: Tree, members: ReadonlyMap<string, readonly string[]
             if (base === undefined) continue
             const going = outs(id).filter((leg) => at(leg.to) > at(id))
             const parallel = going.filter((leg) => leg.parallel && ins(leg.to).length === 1 && (!lane.has(leg.to) || onSpine.has(leg.to)) && branchOf.get(leg.to) === undefined)
-            if (parallel.length >= 2) fan(parallel.map((leg) => leg.to), base, id)
+            const split = parallel.some((leg) => leg.split)
+            const fanned = split ? [...parallel.filter((leg) => !leg.isDefault), ...parallel.filter((leg) => leg.isDefault)] : parallel
+            if (fanned.length >= 2) fan(fanned.map((leg) => leg.to), base, id, split)
             for (const leg of going) {
                 if (lane.has(leg.to)) continue
                 const chain = chainFrom(leg.to, false)
@@ -611,7 +619,9 @@ const layoutIsland = (tree: Tree, members: ReadonlyMap<string, readonly string[]
             routes.set(link.id, { points: tidy([out, [out[0], y], [into[0], y], into]), end: "arrow" })
         }
         const l = Math.min(out[0], ...xs)
-        bars.push({ id: `${BAR_PREFIX}fork:${source}`, x: l, y, width: Math.max(out[0], ...xs) - l })
+        // A switch's cases leave a thin hollow split bar; a parallel step's branches a solid fork bar.
+        const split = list.some((link) => legOf.get(link.id)?.split === true)
+        bars.push({ id: `${BAR_PREFIX}fork:${source}`, x: l, y, width: Math.max(out[0], ...xs) - l, look: split ? "hollow" : "solid" })
     }
 
     // 11. The words of a forward edge stand beside its first segment, never on a bend: right of a line that leaves downwards, above one that leaves sideways
@@ -621,7 +631,9 @@ const layoutIsland = (tree: Tree, members: ReadonlyMap<string, readonly string[]
         if (route === undefined || link.label === undefined || link.label === "") continue
         const words = measure(link.label)
         const fits = (p: Point, q: Point): boolean => (p[0] === q[0] ? Math.abs(q[1] - p[1]) >= words.height + 8 : Math.abs(q[0] - p[0]) >= words.width + 2 * SPINE.labelGap)
-        const at = route.points.findIndex((point, index) => index > 0 && fits(route.points[index - 1] as Point, point))
+        // A branch of a fork or a case of a switch is named on its own drop from the bar (its first runs are the bar's, shared with its siblings).
+        const own = inFork.has(link.id) ? route.points.length - 1 : -1
+        const at = own > 0 ? own : route.points.findIndex((point, index) => index > 0 && fits(route.points[index - 1] as Point, point))
         const a = route.points[Math.max(0, at - 1)]
         const b = route.points[Math.max(1, at)]
         if (a === undefined || b === undefined) continue

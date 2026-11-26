@@ -330,3 +330,183 @@ export const StepDrawer: Story = {
   parameters: { grammar: { minHeight: '44rem' } },
   render: () => <StepDrawerDemo />,
 };
+
+/**
+ * A switch (a flat hexagon with its count badge, "4 ngả"): one exit at its bottom-mid into a thin hollow split bar, each case dropping straight down its own
+ * column with its words on its drop, the default ("khác") rightmost in grey dots; the case the run took is bold, its words after a check.
+ */
+export const Switch: Story = {
+  render: () => (
+    <Flow
+      label="Phân loại yêu cầu"
+      nodes={[
+        n('in', 'Yêu cầu mới', { kind: 'event', status: 'done' }),
+        {
+          id: 'kind',
+          label: 'Loại yêu cầu',
+          kind: 'switch',
+          count: '4 ngả',
+          status: 'done',
+          outputs: [{ id: 'refund', label: 'Hoàn tiền' }, { id: 'swap', label: 'Đổi hàng' }, { id: 'warranty', label: 'Bảo hành' }, { id: 'other', label: 'khác', isDefault: true }],
+        },
+        n('refund', 'Hoàn tiền', { status: 'skipped' }),
+        n('swap', 'Đổi hàng', { status: 'running' }),
+        n('warranty', 'Bảo hành', { status: 'skipped' }),
+        n('other', 'Chuyển nhân viên', { status: 'skipped' }),
+      ]}
+      edges={[
+        e('in', 'kind'),
+        e('kind', 'refund', { sourcePort: 'refund' }),
+        e('kind', 'swap', { sourcePort: 'swap', variant: 'taken' }),
+        e('kind', 'warranty', { sourcePort: 'warranty' }),
+        e('kind', 'other', { sourcePort: 'other' }),
+      ]}
+    />
+  ),
+};
+
+/**
+ * Every shape the spine layout reads from a step's kind, in one flow: an action a rounded card, an if a diamond, a switch a flat hexagon with its count
+ * badge and a hollow split bar, a wait a pill with a clock, a parallel step a square-cornered rectangle with solid fork and join bars, a step that runs
+ * another workflow a hexagon with a dashed outline, an end a stadium, a loop a dashed frame ("↻ … tối đa N lượt"). Ports stay at the middles of each box's sides.
+ */
+export const ShapesLegend: Story = {
+  render: () => (
+    <Frame>
+      <FlowGraph
+        label="Mọi hình của bước"
+        statusLabels={WORDS}
+        height="content"
+        legend={[
+          { label: 'Hành động', kind: 'action' },
+          { label: 'If', kind: 'condition', shape: 'diamond' },
+          { label: 'Switch', kind: 'switch' },
+          { label: 'Chờ', kind: 'wait' },
+          { label: 'Song song', kind: 'parallel' },
+          { label: 'Gọi workflow', kind: 'call' },
+          { label: 'Kết thúc', kind: 'end' },
+          { label: 'Vòng lặp', kind: 'loop' },
+          ...LEGEND.filter((item) => item.edge !== undefined),
+        ]}
+        nodes={[
+          n('act', 'Hành động (thẻ bo góc)', { kind: 'action' }),
+          ask('if', 'If (hình thoi)'),
+          { id: 'sw', label: 'Switch (lục giác dẹt)', kind: 'switch', count: '3 ngả', outputs: [{ id: 'a', label: 'Ngả A' }, { id: 'b', label: 'Ngả B' }, { id: 'else', label: 'khác', isDefault: true }] },
+          n('wait', 'Chờ (viên thuốc)', { kind: 'wait' }),
+          n('par', 'Song song (chữ nhật)', { kind: 'parallel' }),
+          n('p1', 'Nhánh 1'),
+          n('p2', 'Nhánh 2'),
+          { id: 'retry', label: 'Gọi lại', container: { kind: 'loop', childIds: ['call', 'ok'], description: 'tối đa 3 lượt' } },
+          n('call', 'Gọi workflow khác (lục giác nét đứt)', { kind: 'call' }),
+          ask('ok', 'Thành công?'),
+          n('end', 'Kết thúc (sân vận động)', { kind: 'end' }),
+        ]}
+        edges={[
+          e('act', 'if'),
+          e('if', 'sw', { sourcePort: 'yes' }),
+          e('if', 'retry', { sourcePort: 'no' }),
+          e('sw', 'wait', { sourcePort: 'a' }),
+          e('sw', 'par', { sourcePort: 'b' }),
+          e('sw', 'end', { sourcePort: 'else' }),
+          e('par', 'p1'),
+          e('par', 'p2'),
+          e('call', 'ok'),
+          e('ok', 'call', { sourcePort: 'no', kind: 'loop', label: 'Thử lại' }),
+          e('ok', 'end', { sourcePort: 'yes' }),
+          e('wait', 'end', { kind: 'timeout', label: 'Hết giờ' }),
+          e('p1', 'end'),
+          e('p2', 'end'),
+        ]}
+      />
+    </Frame>
+  ),
+};
+
+/** A 35-step run (25 on the spine, 5 ifs, a 2-step side road off each that meets the spine again), the run on its 16th step. */
+const longRun = (): { readonly nodes: FlowNode[]; readonly edges: GraphEdge[] } => {
+  const nodes: FlowNode[] = [];
+  const edges: GraphEdge[] = [];
+  const status = (index: number): FlowNode['status'] => (index < 15 ? 'done' : index === 15 ? 'running' : 'todo');
+  let previous: string | undefined;
+  for (let index = 0; index < 25; index += 1) {
+    const id = `s${String(index)}`;
+    const isIf = index % 5 === 2;
+    nodes.push(isIf ? ask(id, `Kiểm tra ${String(index + 1)}?`, { status: status(index) }) : n(id, `Bước ${String(index + 1)}`, { status: status(index), ...(index === 0 ? { kind: 'event' as const } : {}) }));
+    if (previous !== undefined) edges.push(e(previous, id, previous.startsWith('s') && nodes.find((node) => node.id === previous)?.shape === 'diamond' ? { sourcePort: 'yes' } : {}));
+    if (isIf) {
+      nodes.push(n(`${id}a`, `Xử lý ngoại lệ ${String(index + 1)}`, { status: 'skipped' }), n(`${id}b`, `Ghi chú ${String(index + 1)}`, { status: 'skipped' }));
+      edges.push(e(id, `${id}a`, { sourcePort: 'no' }), e(`${id}a`, `${id}b`), e(`${id}b`, `s${String(index + 2)}`));
+    }
+    previous = id;
+  }
+  return { nodes, edges };
+};
+
+/**
+ * A long run (35 steps): the cards keep their readable size (`FLOW_READABLE_ZOOM`, at least 210px wide), the first view fits the frame's width and starts at
+ * the running step, and the rest is panned; the canvas never shrinks the flow to fit its height.
+ */
+export const LongRun35: Story = {
+  render: () => {
+    const { nodes, edges } = longRun();
+    return (
+      <Frame>
+        <div style={{ blockSize: '40rem' }}>
+          <FlowGraph label="Chăm sóc lead" nodes={nodes} edges={edges} statusLabels={WORDS} skippedLabel="Bỏ qua" />
+        </div>
+      </Frame>
+    );
+  },
+};
+
+/** A 57-edge flow: a switch of four kinds of comment, eight steps for each, ifs, loops, timeouts and refusals into one hand-off, all meeting at one end. */
+const replies = (): { readonly nodes: FlowNode[]; readonly edges: GraphEdge[] } => {
+  const cases = [
+    { id: 'price', label: 'Hỏi giá' },
+    { id: 'praise', label: 'Khen' },
+    { id: 'complain', label: 'Chê' },
+    { id: 'spam', label: 'khác', isDefault: true },
+  ];
+  const nodes: FlowNode[] = [
+    n('in', 'Bình luận mới', { kind: 'event', status: 'done' }),
+    { id: 'kind', label: 'Loại bình luận', kind: 'switch', count: '4 ngả', status: 'done', outputs: cases },
+    n('handoff', 'Chuyển nhân viên', { kind: 'ask' }),
+    n('close', 'Đóng bình luận', { kind: 'end' }),
+  ];
+  const edges: GraphEdge[] = [e('in', 'kind'), e('handoff', 'close')];
+  cases.forEach((item, at) => {
+    const taken = at === 0;
+    const id = (step: number): string => `${item.id}${String(step)}`;
+    const state = (step: number): FlowNode['status'] => (taken ? (step < 5 ? 'done' : step === 5 ? 'running' : 'todo') : 'skipped');
+    for (let step = 1; step <= 8; step += 1) {
+      const label = `${item.label}: bước ${String(step)}`;
+      nodes.push(step === 3 ? ask(id(step), `${item.label}: tự trả lời được?`, { status: state(step) }) : step === 6 ? ask(id(step), `${item.label}: khách trả lời?`, { status: state(step) }) : n(id(step), label, { status: state(step) }));
+    }
+    edges.push(e('kind', id(1), { sourcePort: item.id, ...(taken ? { variant: 'taken' as const } : {}) }));
+    edges.push(e(id(1), id(2)), e(id(2), id(3)), e(id(3), id(4), { sourcePort: 'yes' }), e(id(4), id(5)), e(id(5), id(6)), e(id(6), id(7), { sourcePort: 'yes' }), e(id(7), id(8)));
+    edges.push(e(id(3), 'handoff', { sourcePort: 'no', label: 'Cần người' }));
+    edges.push(e(id(6), id(5), { sourcePort: 'no', kind: 'loop', label: 'Hỏi lại' }));
+    edges.push(e(id(8), 'close'));
+    edges.push(e(id(2), id(8), { kind: 'timeout', label: 'Quá 1 giờ' }));
+    edges.push(e(id(5), 'handoff', { kind: 'refused', label: 'Khách gắt' }));
+    if (at < 3) edges.push(e(id(7), 'close', { kind: 'declined', label: 'Khách thôi' }));
+  });
+  return { nodes, edges };
+};
+
+/**
+ * A 57-edge flow stays readable: past 20 steps every road the run did not take folds behind one "+N bước" pill on the edge into it (`collapse`), the spine
+ * and the steps the run reached stay drawn, and pressing a pill unfolds its road.
+ */
+export const Replies57: Story = {
+  render: () => {
+    const { nodes, edges } = replies();
+    return (
+      <Frame>
+        <div style={{ blockSize: '44rem' }}>
+          <FlowGraph label="Trả lời bình luận" nodes={nodes} edges={edges} statusLabels={WORDS} skippedLabel="Bỏ qua" legend={LEGEND} collapse={{ label: (count) => `+${String(count)} bước` }} />
+        </div>
+      </Frame>
+    );
+  },
+};

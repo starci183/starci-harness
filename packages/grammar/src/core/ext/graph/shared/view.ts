@@ -39,10 +39,21 @@ const axis = (frame: number, lead: number, trail: number, start: number, size: n
     return Math.min(lead - start, wanted)
 }
 
-/** The fitted view of `bounds` in a `frame` (screen pixels): the whole graph, centred, at 100% or less; centred on `focus` only below `LEAST_FIT`. */
-export const openView = (frame: { readonly width: number; readonly height: number }, bounds: ViewRect, focus: ViewRect | undefined, insets: ViewInsets): OpenView => {
-    const fit = Math.min((frame.width - insets.left - insets.right) / Math.max(1, bounds.width), (frame.height - insets.top - insets.bottom) / Math.max(1, bounds.height))
-    const zoom = Math.max(LEAST_FIT, Math.min(1, fit))
+/** How a graph opens: the least zoom it fits to (`LEAST_FIT` by default), and whether it fits its width only (a tall flow then scrolls down from its focus). */
+export interface OpenFit {
+    readonly least?: number
+    readonly widthOnly?: boolean
+}
+
+/**
+ * The fitted view of `bounds` in a `frame` (screen pixels): the whole graph, centred, at 100% or less; centred on `focus` when it does not fit at the least
+ * zoom (`fit.least`, `LEAST_FIT` by default). With `fit.widthOnly` (a flow) it fits the frame's width and lets a tall graph run on below, panned from its focus,
+ * so a long flow keeps readable cards instead of shrinking to fit its height.
+ */
+export const openView = (frame: { readonly width: number; readonly height: number }, bounds: ViewRect, focus: ViewRect | undefined, insets: ViewInsets, fit: OpenFit = {}): OpenView => {
+    const across = (frame.width - insets.left - insets.right) / Math.max(1, bounds.width)
+    const down = (frame.height - insets.top - insets.bottom) / Math.max(1, bounds.height)
+    const zoom = Math.max(fit.least ?? LEAST_FIT, Math.min(1, fit.widthOnly === true ? across : Math.min(across, down)))
     const scaled = (value: number): number => value * zoom
     return {
         x: axis(frame.width, insets.left, insets.right, scaled(bounds.x), scaled(bounds.width), focus === undefined ? undefined : scaled(focus.x + focus.width / 2)),
