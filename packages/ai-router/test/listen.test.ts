@@ -157,15 +157,27 @@ describe("AiRouterGatewayModule listen derived from the app port", () => {
     })
 
     test("an app already listening is read at once, and the offset is added", async (t) => {
-        const { server, port, freeApp, freeGateway } = await appServer(t)
-        await freeApp()
-        await bind(server, port)
-        const errors: unknown[] = []
-        const moduleRef = await compiled(t, { offset: 1 }, server, errors)
-        await freeGateway()
-        await moduleRef.init()
-        await served(port + 1)
-        assert.deepEqual(errors, [])
+        // The app's port comes from the OS (appServer binds 0); its +1 is held by a placeholder until the gateway binds it. Between that release
+        // and the gateway's bind, a server of another test process on this host (parallel gates run the same suite) can take the port: that
+        // attempt is the host's race, not the module's, so it is drawn again with a fresh pair of ports, at most five times.
+        for (let attempt = 1; ; attempt += 1) {
+            const { server, port, freeApp, freeGateway } = await appServer(t)
+            await freeApp()
+            await bind(server, port)
+            const errors: unknown[] = []
+            const moduleRef = await compiled(t, { offset: 1 }, server, errors)
+            await freeGateway()
+            await moduleRef.init()
+            await pause(20)
+            const raced = errors.length > 0 && errors.every((error) => error instanceof Error && /EADDRINUSE/.test(error.message))
+            if (raced && attempt < 5) {
+                await moduleRef.close()
+                continue
+            }
+            await served(port + 1)
+            assert.deepEqual(errors, [])
+            return
+        }
     })
 
     test("an explicit port still wins over the app's", async (t) => {
