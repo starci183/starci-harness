@@ -187,6 +187,13 @@ slots:
     holds: dependency updates, the pull request template and the issue forms
     rule: open source repository
 
+  # --- the committed check cache of the harness itself
+  - id: cache.check
+    path: ".cache/check/{build,types,declarations,bundles,lint,test}/*.jsonl"
+    presence: optional
+    holds: the harness check cache, one green verdict per CI node (a package, cli, app) and step under its content key, written by `starci check` and committed by `lane gate --push`; reused by the lane gate, the full gate and CI's plan, proved nightly by cache-verify.yml
+    rule: contexts/harness/check-cache.md
+
   # --- service images built from fork source
   - id: images.readme
     path: images/README.md

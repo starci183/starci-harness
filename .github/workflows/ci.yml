@@ -80,13 +80,19 @@ jobs:
       - name: Build the CLI
         working-directory: cli
         run: npx tsc -p tsconfig.build.json
+      # The FAST level (dev) reuses the harness check cache (contexts/harness/check-cache.md "GitHub CI"): a package whose every job step has a green
+      # record at the trusted base, under the key this commit computes, gets `cached: "true"` and its job runs no step. The commit's own records are
+      # only checked (a forged one fails this step). The FULL level (main) runs every package job: its job packs the tarball publish.yml ships.
       - name: The affected packages and jobs
         id: plan
         env:
           BASE: ${{ steps.base.outputs.base }}
+          LEVEL: ${{ steps.base.outputs.level }}
         run: |
           set -euo pipefail
-          node cli/dist/main.js release affected --base "$BASE" --json > affected.json
+          cache_base=""
+          if [ "$LEVEL" = dev ]; then cache_base="$BASE"; fi
+          node cli/dist/main.js release affected --base "$BASE" --cache-base "$cache_base" --json > affected.json
           node -e '
             const { data } = JSON.parse(require("fs").readFileSync("affected.json", "utf8"))
             for (const line of data.summary) console.log(line)
@@ -187,11 +193,18 @@ jobs:
             cli/package-lock.json
             packages/*/package-lock.json
             app/package-lock.json
+      - name: Reused from the harness check cache
+        if: matrix.cached == 'true'
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: echo "$PACKAGE: every step of this job has a green record at the trusted base under this commit's key (.cache/check); nothing runs"
       - name: Install and build ${{ matrix.package }} after the siblings it needs
+        if: matrix.cached != 'true'
         env:
           BUILD: ${{ matrix.build }}
         run: for dir in $BUILD; do (cd "$dir" && npm ci --no-audit --no-fund && npm run build --if-present); done
       - name: Declarations name .js
+        if: matrix.cached != 'true'
         env:
           PACKAGE: ${{ matrix.package }}
         run: |
@@ -199,18 +212,20 @@ jobs:
             echo "a built declaration imports a .ts specifier"; exit 1
           fi
       - name: Test ${{ matrix.package }}
+        if: matrix.cached != 'true'
         working-directory: ${{ matrix.package }}
         run: npm test
       # hfs's build (run by its test above) is the source of the runtime copies the canon packages bundle; a copy that
       # drifted from it, or a file in one that its runtime/bundle.json does not list, fails here.
       - name: Bundle copies match the hfs build
-        if: matrix.package == 'packages/hfs'
+        if: matrix.package == 'packages/hfs' && matrix.cached != 'true'
         working-directory: ${{ matrix.package }}
         run: npm run bundles:check
       # The tested bits are the bits that publish: the package is packed here, once, after its specs and checks, and publish.yml
       # publishes this tarball as it is (stamped with the commit, never rebuilt). A private package is never published.
       - name: Pack ${{ matrix.package }}
         id: pack
+        if: matrix.cached != 'true'
         working-directory: ${{ matrix.package }}
         run: |
           set -euo pipefail

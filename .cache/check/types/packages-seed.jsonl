@@ -1,0 +1,1 @@
+{"data":{"parts":{"format":"harness-check@1","reads":"e14c90dd70ae8706cd9e172656cd0fa844324d3743848a032dc6862382d81847","source":"9d2ab48323ea9a24b3ab043b9c1ebb1d39f441e367cf14c0320776a2ac9f95dc","steps":"1","tool":"node24 npm-"},"verdict":"green"},"findings":[],"hash":"43d47abb097463334e822bcdf024a2a8512f5d28726d871c735cc78e1b68a834","path":"packages/seed","step":"types"}

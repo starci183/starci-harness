@@ -103,9 +103,14 @@ export const trackedChanges = async (cwd: string): Promise<string[]> => {
 
 /** The committed check cache of an app: the records a gate writes back when it judges (contexts/project/check-cache.md); `app push` commits them, never a lane by hand. */
 export const CHECK_CACHE_DIR = ".starcistacks/cache/"
+/** The harness repository's own committed check cache (contexts/harness/check-cache.md): the harness gate writes it, `lane gate --push` commits it. */
+export const HARNESS_CACHE_DIR = ".cache/"
 
-/** Tracked changes that are work: `trackedChanges` without the gate's own cache records, which a gate rewrites after its push and which no lane edits or lands. */
-export const trackedWorkChanges = async (cwd: string): Promise<string[]> => (await trackedChanges(cwd)).filter((file) => !file.startsWith(CHECK_CACHE_DIR))
+/** Whether a repository path is a gate's own cache record (an app's or the harness's), never a lane's work. */
+export const isCacheRecordPath = (file: string): boolean => file.startsWith(CHECK_CACHE_DIR) || file.startsWith(HARNESS_CACHE_DIR)
+
+/** Tracked changes that are work: `trackedChanges` without the gates' own cache records, which a gate rewrites and `lane gate --push` commits, and which no lane edits by hand. */
+export const trackedWorkChanges = async (cwd: string): Promise<string[]> => (await trackedChanges(cwd)).filter((file) => !isCacheRecordPath(file))
 
 /** True when the ref exists locally (a branch, a remote-tracking branch or a tag). */
 export const refExists = async (cwd: string, ref: string): Promise<boolean> => gitSucceeds(cwd, ["rev-parse", "--verify", "--quiet", ref])

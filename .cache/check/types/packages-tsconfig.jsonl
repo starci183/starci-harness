@@ -1,0 +1,1 @@
+{"data":{"parts":{"format":"harness-check@1","reads":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","source":"77eb294c1be398336bd05b5e7bc0f295b5a6217b3eb04378dba0d026a25d7148","steps":"1","tool":"node24 npm-"},"verdict":"green"},"findings":[],"hash":"549c9e209d7883fef047856b13c535b5346b328922feb1c3e8b07cdd5612eb88","path":"packages/tsconfig","step":"types"}

@@ -1,0 +1,1 @@
+{"data":{"parts":{"format":"harness-check@1","reads":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","source":"24bf3558d0b85504d1e89132313f881443112e545c759aa4c5badf7cc89f927a","steps":"1","tool":"node24 npm-"},"verdict":"green"},"findings":[],"hash":"96aba7159ae5b8a17257246abfceb1d65cb3fc43a5b379816bdeec86ea7a45cd","path":"packages/ai-router","step":"types"}

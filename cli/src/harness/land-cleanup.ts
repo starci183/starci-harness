@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { CHECK_CACHE_DIR, mainCheckout, samePath } from "../shared/git.js"
+import { isCacheRecordPath, mainCheckout, samePath } from "../shared/git.js"
 import { isGeneratedContextsFile, laneTrees, liveContext, liveReasons } from "./install-janitor.js"
 import type { LaneTree, LiveContext } from "./install-janitor.js"
 import { loadSlotRules, releaseLaneSlots } from "./slots.js"
@@ -132,7 +132,7 @@ const treeAt = (dir: string, path: string): LaneTree | undefined => laneTrees(di
 const pathOf = (line: string): string => line.replace(/^\s*\S+\s+/u, "").replace(/^"|"$/gu, "")
 
 /** True for a change a landed worktree may lose: the check-cache records and the generated contexts files (the next gate rewrites them). */
-const isCacheChange = (line: string): boolean => pathOf(line).startsWith(CHECK_CACHE_DIR) || isGeneratedContextsFile(pathOf(line))
+const isCacheChange = (line: string): boolean => isCacheRecordPath(pathOf(line)) || isGeneratedContextsFile(pathOf(line))
 
 /**
  * Whether a reason the in-use guard gave passes by itself: a process working in the folder (the agent's own shell, a shot's browser), another removal, a slot or
