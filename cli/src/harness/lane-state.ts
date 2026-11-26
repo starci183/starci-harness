@@ -146,7 +146,7 @@ export const blockingFindings = (stdout: string): LaneFinding[] | undefined => {
             .map((finding) => ({
                 code: typeof finding.code === "string" ? finding.code : "",
                 path: typeof finding.path === "string" ? finding.path : "",
-                message: typeof finding.message === "string" ? finding.message.slice(0, 600) : "",
+                message: typeof finding.message === "string" ? finding.message.slice(0, 2400) : "",
             }))
     } catch {
         return undefined

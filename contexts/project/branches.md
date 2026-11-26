@@ -70,9 +70,14 @@ PROJECT-BRANCH-1 and PROJECT-BRANCH-2 are an app's: the harness repository has n
    contexts/README.md and packages/, the marker `release push` reads) or by `--profile harness`:
    - the gate is the harness FAST gate, `starci release gate --level dev --base <dev commit>`: the install, build and typecheck of the packages the
      batch changed and of every package that needs one of them (`release affected`, CI's plan), the CLI and the desktop app when affected, and the
-     cheap checks a publish needs (built declarations name `.js` only; `bundles:check` where a package has it). No test suite, no lint, no light
-     gates, no sonar: dev only reaches the local registry, and the tests are the release line's (item 4). A package's tests run on request (`npm test` in it) or at the train;
-     a test suite in the landing gate takes gigabytes under the RAM governor and holds every app build behind it;
+     cheap checks a publish needs (built declarations name `.js` only; `bundles:check` where a package has it), then the **package tests**: the
+     `npm test` of each of those packages that declares one, the same packages and the same command as CI's `package (...)` jobs on the push to
+     `dev`, each on a heavy `test` slot. A package spec the lane breaks is red in the gate, which refuses with the failing test names and the run's
+     last lines (`HARNESS_GATE_TEST`), and never first in dev's CI. The scope is the lane's diff and the packages that need a touched one, never every
+     package; a package without a `test` script is built and typechecked only, and a package's `test` script is its whole CI test command (the
+     Grammar's is its static checks, with no specs and no Storybook plays). The CLI's own suite, lint, the light gates and sonar stay at the train
+     (item 4): dev only reaches the local registry, and the CLI suite takes gigabytes under the RAM governor. Hotfix has no gate at all
+     ([authority/lanes.md](../authority/lanes.md) "Hotfix"), so it runs no package test;
    - the push of the squashed commit is `git push origin <sha>:dev` (there is no app hook);
    - one lanes folder serves every repository of the machine (its slots bound the machine), and each repository has its own dev lock (the harness's
      `_dev-push-harness.lock`).
