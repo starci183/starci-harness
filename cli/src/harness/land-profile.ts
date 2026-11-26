@@ -5,7 +5,7 @@ import { isHarnessCheckout } from "../core/release/harness-checkout.js"
 /**
  * What `lane gate` runs depends on the repository it lands on. An app (the default) is judged with its own pinned CLI (`app check --env prod --level dev`,
  * then `app push origin HEAD:<branch>`, whose pre-push hook runs the fast level once). The harness repository itself has no root install and no app hook: its
- * gate is the harness FAST gate (`release gate --level dev`: the build and typecheck of the packages the lane changed and of their dependents and the publish
+ * gate is the harness FAST gate (`starci check --level dev`: the build and typecheck of the packages the lane changed and of their dependents and the publish
  * checks, and each affected package's own `npm test` as CI's package jobs run it, never the CLI's suite) run by the lane's own CLI, and its push is a plain `git push origin HEAD:<branch>`.
  */
 export type LandProfileName = "app" | "harness"
@@ -34,14 +34,14 @@ export const MIGRATIONS_FOLDER = "db/migrations/"
 export const appCli = (wt: string): string => join(wt, "node_modules", "starci-harness", "dist", "main.js")
 
 /** The harness FAST gate's arguments, measured from `base`. */
-export const harnessGateArgs = (base: string): string[] => ["release", "gate", "--level", "dev", "--base", base, "--json"]
+export const harnessGateArgs = (base: string): string[] => ["check", "--level", "dev", "--base", base, "--json"]
 
 /** The profile of the harness repository: `cliMain` (the lane's own running CLI) runs the harness FAST gate in the tree, and a plain `git push` lands it. */
 export const harnessProfile = (cliMain: string): LandProfile => ({
     name: "harness",
     gate: (_wt, base) => ({ file: process.execPath, args: [cliMain, ...harnessGateArgs(base)] }),
     push: (_wt, ref) => ({ file: "git", args: ["push", "origin", `HEAD:${ref}`] }),
-    gateLabel: "release gate --level dev (the harness FAST gate)",
+    gateLabel: "check --level dev (the harness FAST gate)",
 })
 
 /**

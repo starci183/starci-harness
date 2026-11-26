@@ -5,11 +5,14 @@ import type { ServerOptions } from "@modules/platform/config"
 import type { DatabaseConnectionOptions } from "@modules/platform/database"
 import type { HttpOptions } from "@modules/platform/http"
 import type { HttpSecurityOptions } from "@modules/platform/http-security"
+import type { LoggingOptions } from "@modules/platform/logging"
 
 /** Everything the API needs from its environment, parsed by `api.env.ts` and handed to `AppModule.register`. */
 export interface ApiOptions {
     /** The HTTP listener. */
     readonly server: ServerOptions
+    /** Where log lines go besides stdout and stderr: Loki when LOKI_URL is declared. */
+    readonly logging: LoggingOptions
     /** The origin allowlist and rate limits. */
     readonly httpSecurity: HttpSecurityOptions
     /** What the outbound HTTP client trusts beyond Node's bundled certificate authorities. */

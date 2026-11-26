@@ -3,7 +3,7 @@
 // reuses a green row the gate already recorded for HEAD with the same command and an unchanged log; tags HEAD (annotated) and pushes the default
 // branch and the tag in ONE atomic push through the repository's hook (never --no-verify, `git push --dry-run --atomic` first); then writes the
 // URGENT record <git common dir>/starci-release/<HEAD>.urgent.json naming who (the caller's role), why (the reason), each check with its verdict and the
-// commit. The candidate CI is not waited for. The full gate runs later on the same tag (`release gate --backfill <tag>`, gate.mts), and the deploy
+// commit. The candidate CI is not waited for. The full gate runs later on the same tag (`app check --release --backfill <tag>`, gate.mts), and the deploy
 // safety floor (backup, migrate preview then execute, readiness, rollback) is never skipped (stack/urgent-floor.mts).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -79,7 +79,7 @@ function planOf(checks: readonly UrgentCheck[]): string[] {
 function annotateTag(ctx: VerbContext, { tag, head, role, reason, onHead, unpublished }: { tag: string; head: string; role: string; reason: string; onHead: boolean; unpublished: boolean }): { written: boolean; line: string } {
   const trailers = urgentTrailerBlock(role, reason);
   if (!onHead) {
-    git(ctx, ['tag', '-a', tag, '-m', `URGENT release ${tag} on ${head.slice(0, 12)} by ${role}: ${reason} (fast local checks only; back-fill: starci app release gate --backfill ${tag})`, '-m', trailers, head]);
+    git(ctx, ['tag', '-a', tag, '-m', `URGENT release ${tag} on ${head.slice(0, 12)} by ${role}: ${reason} (fast local checks only; back-fill: starci app check --release --backfill ${tag})`, '-m', trailers, head]);
     return { written: true, line: `tag trailers   ${tag}: Starci-Urgent, Starci-Urgent-Reason` };
   }
   const message = git(ctx, ['for-each-ref', '--format=%(contents)', `refs/tags/${tag}`]).stdout;
@@ -134,5 +134,5 @@ export async function releaseUrgentPush(ctx: VerbContext, config: ReleaseConfig,
     role, reason, trailers: trailers.written, ruling: URGENT_RULING, remote, branch, refs, pushed: true, checks: rows, backfill: null,
   };
   writeUrgent(common, record);
-  return { ok: true, lines: [...out, `pushed to ${remote}: ${refs.join(' ') || '(already there)'}`, `URGENT record written: ${path.join(common, `${head}.urgent.json`)}`, `back-fill later: starci app release gate --backfill ${chosen.tag} --execute (in a clean checkout of ${chosen.tag})`], data: { ...data, pushed: true, record: path.join(common, `${head}.urgent.json`) } };
+  return { ok: true, lines: [...out, `pushed to ${remote}: ${refs.join(' ') || '(already there)'}`, `URGENT record written: ${path.join(common, `${head}.urgent.json`)}`, `back-fill later: starci app check --release --backfill ${chosen.tag} --execute (in a clean checkout of ${chosen.tag})`], data: { ...data, pushed: true, record: path.join(common, `${head}.urgent.json`) } };
 }

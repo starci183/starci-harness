@@ -110,7 +110,7 @@ variable names, which must hold no relation in `public` yet (`DB_DRIFT_TARGET_NO
 both are spelled as `format_type` names (an enum matches an enum of the name the entity gives), or whose nullability differs; a column no
 entity maps is fine. Exit 0 is green, 1 is drift or a migration that does not apply to an empty database (`DB_DRIFT_MIGRATION_FAILED`),
 and 2 is no verdict: a host without Docker or without the app's packages gets `DB_DRIFT_NEEDS_DATABASE` (needs a database), never a
-green. An app with an entity list runs it as the `db-drift` row of `starci app release gate` and in the database step of its managed CI's
+green. An app with an entity list runs it as the `db-drift` row of `starci app check --release` and in the database step of its managed CI's
 build job.
 
 `database.adopt.legacyHistory: [<table>]` (in `.starcistacks/application-stacks.yaml`) names the legacy history tables of the tool that built the database; adopt leaves them, with their sequence, default, constraints and indexes, and the harness-owned seed receipts table out of the schema compare and lists them. `starci app db adopt [--db-url-env <NAME>] [--image <ref>] [--execute]` takes over a database another tool built (TypeORM's `synchronize`, a hosted
@@ -301,11 +301,12 @@ and execute it once, so twelve public names retain eleven families. Predictions 
 `sonar-project.properties`, the token from its sealed secrets, the quality gate the server holds for the project, as a `local/<user>` branch or the derived project
 `<projectKey>-local`; a scanner failure or red gate is an error, a missing token, server or permission the warning `CI_PARITY_SONAR_SKIPPED`); Codecov uploads keep their
 existing ownership and verdicts. `app check --staged` remains the separate pre-commit guard. Each family prints `<family>: <full|diff> (<reason>), checked n, reused n;
-findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). A red nightly `cache-verify.yml` (`app check --fresh`) refuses the release gate
-(`HFS_CHECK_CACHE_VERIFY_LOCKED`); `app release gate --full` runs its `app-check` row as `--fresh`. The release gate judges once, in its `app-check` row: the rows that command covers (`audit`, `format-check`, `typecheck`,
+findings n new, n known, n fixed`. Progress goes to stderr (`--quiet` silences it). The release is `app check --release` (`app release gate` is its deprecated
+spelling, which prints the rename): it reuses the committed cache while the newest `cache-verify.yml` (`app check --fresh`) is green, and a red or unreadable one
+(`HFS_CHECK_CACHE_VERIFY_LOCKED`) or an explicit `--fresh` runs its `app-check` row as `--fresh` instead of refusing; `--full` no longer means fresh. The release check judges once, in its `app-check` row: the rows that command covers (`audit`, `format-check`, `typecheck`,
 `build-be`, `build-fe`, `lint`, `db-lint`, `test`, `db-drift` under their default commands) run nothing and take its verdict for the same sha (the L4 record entry has `reused` and `reusedFrom`; `db-drift` runs when
 `app check` had no database, `CI_PARITY_DB_SKIPPED`), a red `app-check` row stops the gate, and what is left (the world layers, an app's own rows, Sonar on the main project, the record and the tag) runs, a heavy command
-through the governor the CLI hands in (`stackIo.heavy`, kind `test` or `build`) and never as a raw child. Contract: [contexts/project/check-cache.md](../../contexts/project/check-cache.md) "The operating procedure".
+through the governor the CLI hands in (`stackIo.heavy`, kind `test` or `build`) and never as a raw child. Contract: [contexts/project/check-cache.md](../../contexts/project/check-cache.md) "The operating procedure" and "The release".
 
 Every run is under the branch profile of the branch it judges (`branches` of `.starcistacks/application-stacks.yaml`, the harness's
 contexts/project/lint.md PROJECT-LINT-2): on a profile branch such as `dev` a gate set to `report` runs and records but its findings are marked

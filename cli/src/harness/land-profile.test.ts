@@ -28,7 +28,7 @@ void test("the harness checkout lands with the harness profile, any other reposi
 
 void test("the harness gates with the lane's own CLI at the FAST level from the lane's base and pushes with git", () => {
     const profile = harnessProfile("/cli/dist/main.js")
-    assert.deepEqual(profile.gate("/wt", "abc123"), { file: process.execPath, args: ["/cli/dist/main.js", "release", "gate", "--level", "dev", "--base", "abc123", "--json"] })
+    assert.deepEqual(profile.gate("/wt", "abc123"), { file: process.execPath, args: ["/cli/dist/main.js", "check", "--level", "dev", "--base", "abc123", "--json"] })
     assert.deepEqual(profile.push("/wt", "dev"), { file: "git", args: ["push", "origin", "HEAD:dev"] })
     assert.equal(appCli("/wt").replaceAll("\\", "/"), "/wt/node_modules/starci-harness/dist/main.js")
 })

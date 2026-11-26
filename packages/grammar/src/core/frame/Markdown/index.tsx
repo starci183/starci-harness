@@ -14,7 +14,7 @@ import { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame } from "../Markdow
 import { SidenoteTerm } from "../Sidenotes/index.js"
 import type { NoChildren } from "../../tier.js"
 import { CopyAction } from "./CopyAction.js"
-import { isExternalUrl, isSafeImage, isSafeLink } from "./urls.js"
+import { isExternalUrl, isSafeImage, isSafeLink } from "../../safeUrls.js"
 
 /** The words the rendered body speaks itself. Every one has an English default; pass them translated. */
 export type MarkdownLabels = {

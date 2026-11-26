@@ -3,7 +3,7 @@
 Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check`
 and the unit specs judge only what differs from the cache, on a developer host and in CI alike. `HFS_CHECK_CACHE_FORGED`
 is an error finding; `HFS_CHECK_CACHE_STALE` and `HFS_CHECK_CACHE_MISSING` only warn in CI. Every push carries
-the records of a real run, the release gate trusts them, and a nightly run proves the trust. The code is
+the records of a real run, the release check reuses them, and a nightly run proves the trust. The code is
 `packages/hfs/cache/`; the slot is `app.starcistacks.cache`. Its one rule is that a reused result is always the one a full
 run would produce now; whenever the cache cannot prove that, the step runs in full.
 
@@ -28,22 +28,32 @@ For a lane, a lead, an app session and CI alike:
    cache for an unportable install, and ends `gate: green for local (not pushable)` when only they remain. `--env prod` blocks them like every
    other finding: the cache is portable and warm and every pin is served by npm.
 2. The cache records a run writes are committed with the code it judged, by `starci app push` and the lane's landing, never by hand and never to turn a run green: a run whose only complaint is that its commit lacks the records it just wrote (`HFS_CHECK_CACHE_UNWARMED`) is green, the finding is info. Never edit a record by hand (`HFS_CHECK_CACHE_FORGED`).
-3. The managed pre-push hook, the managed CI (`ci.yml`, `cache-verify.yml`) and `starci app release gate` run `--env prod`. **Push with `npx --no-install starci app push [git push args]`: one round.** The hook cannot add a commit to a push under way, so a plain `git push` of a tree whose cache a real run changes is refused by the hook, whose run alone (`STARCI_PUSH_GATE=1`) makes `HFS_CHECK_CACHE_UNWARMED` an error, after the run wrote the records, and costs a commit and a second push (a third when the commit moved a record). `app push` runs that same `app check --env prod` first, commits the records it wrote as their own commit (`chore(cache): warm the check cache for <sha>`, never an amend, the commit hook runs), repeats the run until it writes nothing (three runs at most) and then runs `git push`, whose hook finds a warm cache. It refuses a tree with uncommitted work outside `.starcistacks/cache` (`HFS_PUSH_DIRTY_TREE`: the records would describe files the push does not carry) and a check red for any reason other than the cache, and it never bypasses a hook; the plain `git push` still works and is still judged by the hook. A push whose every ref is dev or a lane branch (the lane gate's `app push origin HEAD:lane/<lane>` is one) runs no check of its own first, since the hook's fast level needs no warm cache; when that hook instead ran its full gate and refused the push `HFS_CHECK_CACHE_UNWARMED` (the records its run wrote are in the tree), the verb reads that refusal and falls into the same round: check, commit the records, push again. It does so only for a push of the checked-out commit (`HEAD`, the branch, no refspec): the landing's squash (`<sha>:refs/heads/dev`) is another commit that no cache commit on `HEAD` can ride with, so it is refused with that reason (`cli/src/core/app/push.ts` `warmAndPush`). Push, and let
+3. The managed pre-push hook, the managed CI (`ci.yml`, `cache-verify.yml`) and the release check `starci app check --release` run `--env prod`. **Push with `npx --no-install starci app push [git push args]`: one round.** The hook cannot add a commit to a push under way, so a plain `git push` of a tree whose cache a real run changes is refused by the hook, whose run alone (`STARCI_PUSH_GATE=1`) makes `HFS_CHECK_CACHE_UNWARMED` an error, after the run wrote the records, and costs a commit and a second push (a third when the commit moved a record). `app push` runs that same `app check --env prod` first, commits the records it wrote as their own commit (`chore(cache): warm the check cache for <sha>`, never an amend, the commit hook runs), repeats the run until it writes nothing (three runs at most) and then runs `git push`, whose hook finds a warm cache. It refuses a tree with uncommitted work outside `.starcistacks/cache` (`HFS_PUSH_DIRTY_TREE`: the records would describe files the push does not carry) and a check red for any reason other than the cache, and it never bypasses a hook; the plain `git push` still works and is still judged by the hook. A push whose every ref is dev or a lane branch (the lane gate's `app push origin HEAD:lane/<lane>` is one) runs no check of its own first, since the hook's fast level needs no warm cache; when that hook instead ran its full gate and refused the push `HFS_CHECK_CACHE_UNWARMED` (the records its run wrote are in the tree), the verb reads that refusal and falls into the same round: check, commit the records, push again. It does so only for a push of the checked-out commit (`HEAD`, the branch, no refspec): the landing's squash (`<sha>:refs/heads/dev`) is another commit that no cache commit on `HEAD` can ride with, so it is refused with that reason (`cli/src/core/app/push.ts` `warmAndPush`). Push, and let
    CI judge. When CI fails, pull the failure and fix it. Don't repeat local full runs before a push.
 4. A bug in `app check` itself (a false finding, wrong env, a path the gate breaks) is fixed in the harness, never worked
    around in the app.
 5. `starci app check --fresh` is the escape hatch for a broken or suspect cache. It ignores the cache, judges everything
    again and rewrites the records. It is not for routine use.
 
-Release with `starci app release gate`: the `app-check` row is `app check --env prod`, diff-only against the warm cache (`--full` runs it as `app check --env prod --fresh`), and a red
-cache verify refuses the gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a green `cache-verify.yml` run clears it ([The nightly verify](#the-nightly-verify): a green run for the release's own sha does). With the cache trusted (no lock) and the committed cache matching the tree, the `app-check` row does
-almost no work: it reads the records and runs only what differs. The gate judges the work once, in that row:
+### The release
+
+`starci app check` is the one check command, and the release is its `--release` form: `starci app check --release [--execute] [--fresh]` runs every row of the
+release on a clean HEAD (the `app-check` row, the CI evidence for the sha, the cache-verify trust, the npm-only pins and locks, the prod stack render, the tag
+preconditions), then with `--execute` writes the L4 record and the annotated tag. `starci app release gate` is its deprecated spelling: it prints
+`renamed: use starci app check --release` and runs the same check with the same flags.
+
+The release reuses the cache by default. Its `app-check` row is `app check --env prod`, diff-only against the warm committed cache, trusted only while the newest
+cache verify of the default branch or of the release's own sha is green, or none has run yet ([The nightly verify](#the-nightly-verify)). A red or unreadable
+verify never refuses the release: the row runs as `app check --env prod --fresh` (every family recomputed, the records rewritten) and the plan line names the verify
+(`HFS_CHECK_CACHE_VERIFY_LOCKED`). Fresh runs only then, with an explicit `--fresh`, and in the nightly verify; `--full` is accepted, changes nothing and says so (it
+no longer means fresh). The L4 record keeps which it was (`cache: { use: diff|fresh, because, verify }`). With the cache trusted and the committed cache matching the tree, the `app-check` row does
+almost no work: it reads the records and runs only what differs. The check judges the work once, in that row:
 
 - **Reused rows.** A row `app check` already judges runs no command when the `app-check` row of the same run is green: `audit`, `format-check`, `typecheck`, `build-be`, `build-fe`, `lint`,
   `db-lint`, `test` (the unit specs, their merged coverage and its per-file threshold) and `db-drift`. The row carries that verdict for the same sha: its report line is
   `REUSED <row> (reused from app-check ...)`, and its L4 record entry holds `reused: true` and `reusedFrom` (the gate, the head, the `app-check` command, its log and the log's sha256). A row is reused
   only under its default command (`npm run <script>`, `npm audit`, `npx starci app db drift`); a row an app declares under the same name with another command runs. The drift row is also
-  judged by `app check` only on a host with a database, so when the `app-check` log carries `CI_PARITY_DB_SKIPPED` it runs. A red `app-check` row stops the gate before any other row; `--full` changes only how that row runs.
+  judged by `app check` only on a host with a database, so when the `app-check` log carries `CI_PARITY_DB_SKIPPED` it runs. A red `app-check` row stops the gate before any other row; fresh or diff changes only how that row runs.
 - **Real rows.** What `app check` does not judge stays a row: every row an app declares of its own (the world layers `test:integration`, `test:e2e` and `test:contract` are no default row: they run only on request, by hand, and no workflow or gate runs them: R12), and Sonar on the main project key
   (`app check` scans the derived `<projectKey>-local`; [Sonar and Codecov](#sonar-and-codecov)), then the L4 record and the annotated tag.
 - **Governed rows.** A real row that runs a heavy command (an npm script, a test runner, the Sonar scanner) is admitted by the heavy-command governor, never started as a raw child: a slot of the host-wide
@@ -145,12 +155,12 @@ state and stay out of git; `.starcistacks/cache/` holds results only. The journa
 |---|---|
 | no cache in the tree (a new app, first adoption) | full, and it writes the cache |
 | a fingerprint part a family reads differs from the cache's | full for the families that read it, and it rewrites their records |
-| `--fresh` (the escape hatch for a broken or suspect cache; `starci app release gate --full` runs its `app-check` row as `--fresh`, and the rows it covers still reuse that verdict) | full for the selected families, ignoring their records; it writes the refreshed records |
-| anything else, on a host or in CI, `starci app release gate` and the CI run a release waits for included | diff-only against the trusted cache (below) |
+| `--fresh` (the escape hatch for a broken or suspect cache; `starci app check --release --fresh` runs its `app-check` row as `--fresh`, as a red or unreadable cache verify does, and the rows it covers still reuse that verdict) | full for the selected families, ignoring their records; it writes the refreshed records |
+| anything else, on a host or in CI, `starci app check --release` under a green cache verify and the CI run a release waits for included | diff-only against the trusted cache (below) |
 
 ### The nightly verify
 
-The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) proves the trust every CI run and the release gate put in the committed cache. It is
+The managed `.github/workflows/cache-verify.yml` (slot `app.ci-cache-verify`) proves the trust every CI run and the release check put in the committed cache. It is
 sharded the way `ci.yml` is, so it fits the CI time of a large app: a matrix of jobs, one per family the cache holds records of (`hfs`, `secrets`, `format`, `db`,
 `wiring`, `types`, `test`, `build`) and the `lint` family once per side (`be`, `fe`, `packages`), each running
 `starci app check --env prod --fresh --gate <family> [--side <side>]` (`ciVerifyShards` of `packages/hfs/sync/ci-commands.mts`, the sides the lint matrix of `ci.yml` names). A job
@@ -160,10 +170,10 @@ timeouts of `ci.jobs`. The audit and the Sonar scan keep no record and are not s
 judged whole there, so the sharded unit run of `ci.yml` and its merge job (`--coverage-from`) have no counterpart; the test job is the longest one. The workflow runs every night on the
 default branch and on `workflow_dispatch` on any branch, for that branch's head (concurrency is per ref, so a dispatch on `dev` never waits for the night run of `main`).
 
-The release gate reads the verify runs that speak for the release (`packages/hfs/release/cache-verify-lock.mts`): those of the default branch and those of the release's own sha
-on any branch (`gh run list --commit <sha>`). The newest finished one decides. Green, or none yet, leaves the gate open; red or unreadable refuses it with
-`HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run. So a red verify of `main` is cleared for the release of a sha by a green dispatch of
-`cache-verify.yml` on the branch that holds that sha (`dev`, a candidate), while a newer red verify of `main` locks again, and a red verify of the sha itself locks it.
+The release check reads the verify runs that speak for the release (`packages/hfs/release/cache-verify-lock.mts`): those of the default branch and those of the release's own sha
+on any branch (`gh run list --commit <sha>`). The newest finished one decides. Green, or none yet, lets the check reuse the cache; red or unreadable makes it run fresh,
+naming the run (`HFS_CHECK_CACHE_VERIFY_LOCKED`), never refuse. So a red verify of `main` is cleared for the release of a sha by a green dispatch of
+`cache-verify.yml` on the branch that holds that sha (`dev`, a candidate), while a newer red verify of `main` locks the cache again, and a red verify of the sha itself locks it.
 A cancelled or skipped run is no verdict. A forged record stays an error finding. Times are printed, never stored.
 
 ## Layout and format
@@ -528,7 +538,7 @@ A prediction never passes or fails a run.
 A whole run also scans for real (`cache/sonar-scan-family.mts`): the app's CI sonar job, run against the app's own Sonar
 server, so a scanner crash or a red quality gate is found before the push. Nothing is stated by the harness: the project
 key, sources, exclusions and coverage and lint-report paths are those of the app's `sonar-project.properties`, the server
-and the token's custody those of its stack declaration (`services.sonar`, the same connection `app release gate` uses; the
+and the token's custody those of its stack declaration (`services.sonar`, the same connection `app check --release` uses; the
 token is opened from the app's sealed secrets and reaches the scanner through its environment alone, never an argument or
 a message), and the quality gate is the one the server holds for the project.
 
@@ -644,7 +654,7 @@ preset's merge one record at a time, so the parent holds about three times the r
   job records nothing) and the merge job judges the merged report with `--coverage-from`. The selectors are job selectors of CI and never
   `--fresh`: one plain run would serialize the families that CI runs in parallel. Every `app check` of the managed workflows and of the hook
   carries `--env prod`: `cache-verify.yml` runs `app check --env prod --fresh --gate <family>` as one job per family nightly and on dispatch, the managed pre-push hook runs `app check --env prod`, and
-  the release gate runs its `app-check` row diff-only against the warm cache unless `--full` is given, and the rows `app check` covers reuse that row's verdict ([The operating procedure](#the-operating-procedure)).
+  the release check (`app check --release`) runs its `app-check` row diff-only against the warm cache while the cache verify is green and fresh otherwise or with `--fresh`, and the rows `app check` covers reuse that row's verdict ([The operating procedure](#the-operating-procedure)).
 - **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full. Its first commit, a root commit that carries no cache,
   is pushed as it is (the bootstrap push of [branches.md](branches.md) PROJECT-BRANCH-1, `main` and `dev` at that commit): it pushes no record, so the push gate refuses nothing for it
   (`pristineFirstCommit`, `packages/hfs/cache/freshness.mts`), CI runs it in full, and the cache the hook's run wrote is the first commit on `dev`.
@@ -661,7 +671,7 @@ judged it, so a hand edit can cost time but never pass a file. Enforcement:
 forged fails the run; stale and missing warn in CI (report-only, the run is full or wider and still correct); a push
 whose cache a real run on its tree changes is refused at the pre-push hook (`HFS_CHECK_CACHE_UNWARMED`, an error in the hook's run alone and info in every other run;
 `HFS_CHECK_CACHE_UNPORTABLE`, an error everywhere; `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget (the pristine first commit, which carries no cache, is the one push it lets through); and a red
-or unreadable cache verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a newer green one, or one green for the release's sha, clears it.
+or unreadable cache verify makes the release check run fresh (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a newer green one, or one green for the release's sha, clears it.
 
 **Unwarmed is a fact about the commit, not a verdict on the code.** `HFS_CHECK_CACHE_UNWARMED` says the run computed what it had no valid record for and wrote it, and
 the commit does not hold those records yet. It is info in every run, exit code unaffected, so a lane, a developer or CI whose only complaint it is is green. It cannot

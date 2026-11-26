@@ -4189,13 +4189,13 @@ HFS_CHECK_CACHE_FILE_TOO_LARGE:
   kind: check-finding
 
 HFS_CHECK_CACHE_VERIFY_LOCKED:
-  title: "The nightly verify of the check cache locks the release gate"
-  title_vi: "Lần verify cache kiểm tra hằng đêm đang khóa cổng release"
-  meaning_vi: "Lần chạy `cache-verify.yml` hoàn tất mới nhất trên nhánh mặc định bị đỏ (chạy diff rồi chạy đầy đủ cho kết quả khác nhau) hoặc không đọc được, nên cổng release, vốn tin cache ấm, từ chối cho tới khi một lần verify xanh."
+  title: "The nightly verify of the check cache is red: the release check runs fresh"
+  title_vi: "Lần verify cache kiểm tra hằng đêm đang đỏ: lần kiểm release chạy fresh"
+  meaning_vi: "Lần chạy `cache-verify.yml` hoàn tất mới nhất trên nhánh mặc định (hoặc của chính sha release) bị đỏ hoặc không đọc được, nên `starci app check --release` không tin cache ấm: nó không từ chối mà chạy dòng app-check với `--fresh` (tính lại mọi family) cho tới khi một lần verify xanh."
   causes_vi:
     - "Một bản ghi cache trên main khác kết quả chạy đầy đủ (bước không xác định hoặc phần fingerprint thiếu)"
     - "`gh` chưa đăng nhập hoặc không đọc được các lần chạy"
-  nextStep_vi: "Sửa bản ghi hoặc bước mà lần verify nêu tên, dispatch `cache-verify.yml` trên nhánh chứa sha của release (dev hoặc candidate) cho tới khi xanh cho đúng sha đó; hoặc chủ dự án chạy cổng đầy đủ `starci app release gate --full`."
+  nextStep_vi: "Sửa bản ghi hoặc bước mà lần verify nêu tên, dispatch `cache-verify.yml` trên nhánh chứa sha của release (dev hoặc candidate) cho tới khi xanh cho đúng sha đó; trong lúc đó lần kiểm release vẫn chạy được, chỉ chậm hơn vì chạy fresh."
   owner: op-retry
   kind: check-finding
 

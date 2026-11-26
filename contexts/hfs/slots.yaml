@@ -379,6 +379,10 @@ ruleParams:
         - platform/http
       winston:
         - platform/logging
+      winston-loki:
+        - platform/logging
+      winston-transport:
+        - platform/logging
       node:async_hooks:
         - platform/logging
       nestjs-cls: []

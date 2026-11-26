@@ -196,6 +196,52 @@ void test("a failed package is reported and the rest of the line is published: o
     }
 })
 
+void test("every folder a row needs is installed before any is built or packed, so a pack that reads a later sibling finds its install; a failed install leaves out that row and what needs it", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "starci-publish-dev-"))
+    try {
+        const files = { record: join(folder, "dev-publish.json"), counter: join(folder, "dev-counter.json"), settings: join(folder, "local-settings.json") }
+        const plan = await planDevPublish({ nodes: NODES, changed: new Set(["@starci/eslint-canon-fe"]), order: ORDER, overlay: [], asked: asked(new Set(NODES.map((one) => `${one.name}@${one.version}`))) })
+        const byDir = new Map(NODES.map((one) => [one.dir, one]))
+        const packages = ORDER.map((dir) => workspacePackage(dir, folder, byDir.get(dir) ?? NODES[0] ?? node("x", dir, "0.0.0")))
+        const events: string[] = []
+        // eslint-canon-fe's pack reads packages/jest-preset (a sibling after it in the order), as its specs read eslint-canon-be's fixtures.
+        const needs = (dir: string): readonly string[] => (dir === "packages/eslint-canon-fe" ? ["packages/eslint-canon-fe", "packages/jest-preset"] : [dir])
+        const run = (failing: string | undefined): ReturnType<typeof executeDevPlan> =>
+            executeDevPlan({
+                plan, packages, order: ORDER, head: "f".repeat(40), needs,
+                requires: (name) => NODES.find((one) => one.name === name)?.requires ?? new Set<string>(),
+                io: {
+                    install: (pkg) => {
+                        events.push(`install ${pkg.relativeDir}`)
+                        return pkg.relativeDir === failing ? Promise.reject(new Error("npm ci failed:\nnpm error code ENOSPC")) : Promise.resolve()
+                    },
+                    build: (pkg) => {
+                        events.push(`build ${pkg.relativeDir}`)
+                        return Promise.resolve()
+                    },
+                    publish: (_pkg, row) => {
+                        assert.ok(events.includes("install packages/jest-preset"), `${row.package} is packed after every folder it needs is installed`)
+                        events.push(`publish ${row.package}`)
+                        return Promise.resolve()
+                    },
+                    files,
+                    say: () => undefined,
+                },
+            })
+        const green = await run(undefined)
+        const firstBuild = events.findIndex((event) => event.startsWith("build "))
+        assert.ok(events.slice(0, firstBuild).includes("install packages/jest-preset"), "the later sibling is installed before the first build")
+        assert.deepEqual(green.failed, [])
+        events.length = 0
+        const red = await run("packages/eslint-canon-fe")
+        assert.ok(!events.includes("build packages/eslint-canon-fe"), "a folder whose install failed is not built")
+        assert.deepEqual(red.failed.map((failure) => failure.package), ["@starci/eslint-canon-fe", "@starci/eslint-grammar-core", "@starci/eslint-grammar-offset-pop"])
+        assert.match(red.failed[0]?.reason ?? "", /install failed: .*ENOSPC/u)
+    } finally {
+        rmSync(folder, { recursive: true, force: true })
+    }
+})
+
 void test("two dev publishes never run at once: the second waits for the lock, a dead holder's lock is taken over", async () => {
     const folder = mkdtempSync(join(tmpdir(), "starci-publish-dev-lock-"))
     try {

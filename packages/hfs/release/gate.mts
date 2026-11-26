@@ -1,4 +1,4 @@
-// gate.mts - `starci app release gate`: the honest release gate. It runs the app's own gates on a clean HEAD and when all required gates pass it
+// gate.mts - `starci app check --release` (formerly `starci app release gate`): the honest release check. It runs the app's own gates on a clean HEAD and when all required gates pass it
 // writes the L4 record <git-common-dir>/starci-release/<HEAD sha>.l4.json (head, tag, per-gate log path and sha256) and creates the annotated tag.
 // The canon pre-push hook lets main and v* tags through only for a HEAD with that tag and that record. Nothing is pushed here (see push.mts).
 // The gate list comes from the optional `release:` block of .starcistacks/application-stacks.yaml, else from the app's managed package scripts.
@@ -50,7 +50,7 @@ export interface ChosenTag { tag: string; state: 'on-head' | 'taken' | 'free' }
 /** The facts known before a gate runs. */
 export interface Facts { head: string; chosen: ChosenTag; red: string[]; out: string[] }
 /** The options of one gate run. */
-export interface RunOptions { dir: string; platform: string; credentialNames: string[]; preface?: string; full?: boolean }
+export interface RunOptions { dir: string; platform: string; credentialNames: string[]; preface?: string; fresh?: boolean }
 
 export const RELEASE_CODE = 'RELEASE_CONFIG_INVALID';
 const SONAR_UNREACHABLE = 'SONAR_UNREACHABLE';
@@ -70,16 +70,17 @@ const WRAPPED = new Set(['npm', 'npx']);
 // Every row the managed CI runs, so a release that does not wait for its candidate CI (release.requireCi false) still ran them all locally:
 // fast (audit, format, typecheck), lint, test + coverage (the managed `test` script is the per-file floor), build, the database lint, and Sonar.
 /**
- * The cache use of the release gate (contexts/project/check-cache.md, "The release"): every row runs diff-only against the warm committed cache the
- * release commit carries, which main's CI verified and the nightly run watches. `--full` (an explicit opt-in) runs the `app-check` row as
- * `starci app check --env prod --fresh`: every family is recomputed from scratch and the records are rewritten, so the rows after it reuse what it just judged.
+ * The cache use of the release check (contexts/project/check-cache.md, "The release"): by default every row runs diff-only against the warm committed cache the
+ * release commit carries, trusted only while the newest cache verify of the default branch or of the release's own sha is green (or none has run yet,
+ * cache-verify-lock.mts). A red or unreadable verify, or an explicit `--fresh`, runs the `app-check` row as `starci app check --env prod --fresh`: every family
+ * is recomputed from scratch and the records are rewritten, so the rows after it reuse what it just judged. `--full` no longer means fresh.
  * The reuse is real (`coveredBy`): a row `app check` already judges runs no child and takes the verdict of the `app-check` row of the same run, on the same sha.
  */
 export const APP_CHECK_COMMAND: readonly string[] = ['npx', 'starci', 'app', 'check', '--env', 'prod'];
 const isAppCheck = (command: readonly string[]): boolean => command.length === APP_CHECK_COMMAND.length && command.every((word, index) => word === APP_CHECK_COMMAND[index]);
 
-/** The command a gate row runs: under `--full` the `app check --env prod` row gains `--fresh`, every other row is unchanged. */
-export const rowCommand = (command: readonly string[], full: boolean): readonly string[] => (full && isAppCheck(command) ? [...command, '--fresh'] : command);
+/** The command a gate row runs: in a fresh run the `app check --env prod` row gains `--fresh`, every other row is unchanged. */
+export const rowCommand = (command: readonly string[], fresh: boolean): readonly string[] => (fresh && isAppCheck(command) ? [...command, '--fresh'] : command);
 const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test'];
 // The world layers (integration, e2e and contract: `test:integration`, `test:e2e`, `test:contract`) are no default row of the gate: they run only when someone asks for
 // them (`npm run test:e2e`), never from a hook, a workflow, a lane or this gate (R12). A row an app declares of its own under `release.gates` stays its own choice.
@@ -427,10 +428,10 @@ async function execute(ctx: VerbContext, gate: Gate, argv: { command: string; ar
   return ctx.heavy({ kind, label: `release gate ${gate.name}`, cwd: ctx.cwd, argv: [argv.command, ...argv.args], env });
 }
 
-export async function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentialNames, preface = '', full = false }: RunOptions): Promise<GateRow> {
+export async function runGate(ctx: VerbContext, gate: Gate, { dir, platform, credentialNames, preface = '', fresh = false }: RunOptions): Promise<GateRow> {
   const log = path.join(dir, `${gate.name}.log`);
   const started = ctx.now();
-  const [command, args] = launch([...rowCommand(gate.command, full)], platform);
+  const [command, args] = launch([...rowCommand(gate.command, fresh)], platform);
   // The native scanner alone consumes Sonar credentials; ordinary gates cannot inherit or reintroduce them.
   const env = { ...ctx.env, ...(gate.provider ? gate.env : withoutCredentials(gate.env, credentialNames)) };
   const run = await execute(ctx, gate, { command, args }, env);
@@ -544,14 +545,16 @@ export function assertUnmoved(ctx: VerbContext, head: string): void {
   if (dirty.length > 0) throw failure('RELEASE_TREE_DIRTY', `the gates left ${dirty.length} changed or untracked path(s) (first: ${(dirty[0] as string).slice(0, 100)}): generated files differ from HEAD. Commit or ignore them properly, then rerun. No record.`);
 }
 
-function writeRecord(ctx: VerbContext, { head, tag, results, recordPath, requireCi, promotedFrom = null, gatesOff = [] }: { head: string; tag: string; results: GateRow[]; recordPath: string; requireCi: boolean; promotedFrom?: Record<string, unknown> | null; gatesOff?: { gate: string; reason: string }[] }): void {
+function writeRecord(ctx: VerbContext, { head, tag, results, recordPath, requireCi, promotedFrom = null, gatesOff = [], cache = null }: { head: string; tag: string; results: GateRow[]; recordPath: string; requireCi: boolean; promotedFrom?: Record<string, unknown> | null; gatesOff?: { gate: string; reason: string }[]; cache?: CachePlan['cache'] | null }): void {
   const record = {
-    schema: 'starci-app-l4-record/1', head, tag, createdAt: new Date(ctx.now()).toISOString(), producedBy: 'starci app release gate',
+    schema: 'starci-app-l4-record/1', head, tag, createdAt: new Date(ctx.now()).toISOString(), producedBy: 'starci app check --release',
     note: 'Every gate passed on a clean HEAD; every entry links its log and sha256.',
     ci: requireCi === true ? { required: true, note: 'starci app release push waits for the candidate CI of this sha (release.requireCi=true)' } : { required: false, note: CI_NOT_REQUIRED },
     ...(promotedFrom ? { promotedFrom } : {}),
     // A gate the app declares off is named in the record with its reason, never counted among the gates that passed.
     ...(gatesOff.length > 0 ? { gatesOff } : {}),
+    // Whether the app-check row reused the committed cache (diff) or recomputed every family (fresh), and why.
+    ...(cache ? { cache } : {}),
     gates: results,
   };
   fs.mkdirSync(path.dirname(recordPath), { recursive: true });
@@ -625,15 +628,33 @@ function backfillRed(ctx: VerbContext, { common, urgent, failed, openTicket }: {
   return { said, ticket: ticket ?? null };
 }
 
+/** What a release check does with the committed cache: `diff` reuses the trusted records, `fresh` recomputes every family; `because` says why. */
+export interface CachePlan { readonly fresh: boolean; readonly line: string; readonly cache: { readonly use: 'diff' | 'fresh'; readonly because: 'verify-green' | 'asked' | 'verify-locked' | 'verify-unread'; readonly verify: string | null } }
+
+/** The plan line `--full` adds: it is accepted, and it changes nothing. */
+export const FULL_NOTE = 'full           --full changes nothing: the release check always runs every row, and it no longer means --fresh (pass --fresh to recompute every family)';
+
 /**
- * `starci app release gate`: dry run prints the preconditions, the gate list, the head and the tag; --execute runs every gate and, only if required gates pass,
+ * The cache use of one release check (contexts/project/check-cache.md "The release"): `--fresh` recomputes every family and reads no verify; else the verify
+ * lock decides: open (green, or no verify yet) reuses the committed records diff-only, locked or unread runs fresh, never refuses.
+ */
+export function cachePlan(ctx: VerbContext, defaultBranch: string, head: string, options: { fresh?: boolean; readLock?: (ctx: VerbContext, defaultBranch: string, sha?: string) => VerifyLock }): CachePlan {
+  if (options.fresh === true) return { fresh: true, line: 'cache          fresh (--fresh): the app-check row runs `app check --env prod --fresh` (every family recomputed, the records rewritten); the rows it covers reuse that verdict', cache: { use: 'fresh', because: 'asked', verify: null } };
+  const lock = (options.readLock ?? readVerifyLock)(ctx, defaultBranch, head);
+  if (lock.state === 'open') return { fresh: false, line: `cache          diff-only against the committed cache; ${lock.line}`, cache: { use: 'diff', because: 'verify-green', verify: lock.line } };
+  return { fresh: true, line: `cache          fresh, the committed cache is not trusted: ${lock.line}; the app-check row runs \`app check --env prod --fresh\` and the rows it covers reuse that verdict`,
+    cache: { use: 'fresh', because: lock.state === 'locked' ? 'verify-locked' : 'verify-unread', verify: lock.line } };
+}
+
+/**
+ * `starci app check --release` (the deprecated `starci app release gate` runs it too): dry run prints the preconditions, the gate list, the head and the tag; --execute runs every gate and, only if required gates pass,
  * writes the L4 record and creates the annotated tag. options: { execute, source (the --sha ref), tagPrefix, platform, backfill, openTicket }.
  * With `backfill` (a tag pushed by `release push --urgent`, checked out at HEAD) the same full gate judges that commit: green writes its L4 record
  * (promotedFrom the urgent record) and marks the urgent record promoted, with no new tag and no push; red opens a fix ticket through `openTicket`.
  */
 export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, options: {
   execute?: boolean; source?: string | boolean | undefined; tagPrefix?: string | boolean | undefined; platform?: string; backfill?: string | boolean | undefined; openTicket?: unknown;
-  full?: boolean; readLock?: (ctx: VerbContext, defaultBranch: string, sha?: string) => VerifyLock;
+  fresh?: boolean; full?: boolean; readLock?: (ctx: VerbContext, defaultBranch: string, sha?: string) => VerifyLock;
 } = {}): Promise<VerbResult> {
   // The gates the app declares off (PROJECT-LINT-4) are not rows of this release, each named in the plan and in the L4 record; the build rows stay.
   const off = offRows(ctx.cwd, ctx.env as NodeJS.ProcessEnv);
@@ -656,28 +677,28 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
     reuses: appCheckRow ? config.gates.filter((gate) => gate !== appCheckRow && coveredBy(gate)).map((gate) => gate.name) : [], ...(urgent ? { backfill: urgent.tag } : {}) };
   if (urgent?.backfill?.state === 'promoted') return { ok: true, lines: [...plan, `back-fill already promoted ${urgent.tag} to ${urgent.backfill.l4}. Nothing to do.`], data: { ...base, red: [], executed: false, promoted: true } };
   if (facts.red.length > 0) return { ok: false, lines: [...plan, ...facts.red.map((item) => `RED: ${item}`), 'nothing was run.'], data: { ...base, red: facts.red, executed: false } };
-  // The gate trusts the warm cache unless the owner asked for the full gate; a red or unreadable nightly verify locks it until a green one.
-  const full = options.full === true;
-  const lock = full ? null : (options.readLock ?? readVerifyLock)(ctx, config.defaultBranch, facts.head);
-  plan.push(full ? 'cache          full gate (--full): the app-check row runs `app check --env prod --fresh` (every family recomputed, the records rewritten); the rows it covers reuse that verdict, as they do without --full' : `cache          diff-only against the committed cache; ${lock?.line ?? ''}`);
-  if (lock !== null && lock.state !== 'open') return { ok: false, lines: [...plan, `RED: ${lock.line}`, 'nothing was run.'], data: { ...base, red: [lock.line], executed: false, locked: true } };
-  if (options.execute !== true) return { ok: true, lines: [...plan, '', 'dry run: no gate was run, nothing written. preconditions OK.'], data: { ...base, red: [], executed: false } };
-  const results = await runAll(ctx, config, { dir, common, head: facts.head, platform: options.platform ?? process.platform, credentialNames, full });
+  // The check reuses the warm cache by default, trusted only while the cache verify is green (or none has run yet); a red or unreadable verify, or --fresh, runs fresh.
+  const { fresh, line: cacheLine, cache } = cachePlan(ctx, config.defaultBranch, facts.head, options);
+  plan.push(cacheLine);
+  if (options.full === true) plan.push(FULL_NOTE);
+  const data = { ...base, cache };
+  if (options.execute !== true) return { ok: true, lines: [...plan, '', 'dry run: no gate was run, nothing written. preconditions OK.'], data: { ...data, red: [], executed: false } };
+  const results = await runAll(ctx, config, { dir, common, head: facts.head, platform: options.platform ?? process.platform, credentialNames, fresh });
   const report = results.map(reportLine);
   const failed = results.filter((result) => !result.pass);
   if (failed.length > 0 && urgent) {
     const { said, ticket } = backfillRed(ctx, { common, urgent, failed, openTicket: options.openTicket });
-    return { ok: false, lines: [...plan, ...report, `gate(s) red: ${failed.map((item) => item.name).join(', ')}. No L4 record.`, said], data: { ...base, executed: true, results, promoted: false, ticket } };
+    return { ok: false, lines: [...plan, ...report, `gate(s) red: ${failed.map((item) => item.name).join(', ')}. No L4 record.`, said], data: { ...data, executed: true, results, promoted: false, ticket } };
   }
-  if (failed.length > 0) return { ok: false, lines: [...plan, ...report, `gate(s) red: ${failed.map((item) => item.name).join(', ')}. No L4 record, no tag.`], data: { ...base, executed: true, results } };
+  if (failed.length > 0) return { ok: false, lines: [...plan, ...report, `gate(s) red: ${failed.map((item) => item.name).join(', ')}. No L4 record, no tag.`], data: { ...data, executed: true, results } };
   assertUnmoved(ctx, facts.head);
-  writeRecord(ctx, { head: facts.head, tag: facts.chosen.tag, results, recordPath, requireCi: config.requireCi, gatesOff: off.entries, promotedFrom: urgent ? { record: `${facts.head}.urgent.json`, reason: urgent.reason, role: urgent.role, at: urgent.createdAt } : null });
+  writeRecord(ctx, { head: facts.head, tag: facts.chosen.tag, results, recordPath, requireCi: config.requireCi, gatesOff: off.entries, cache, promotedFrom: urgent ? { record: `${facts.head}.urgent.json`, reason: urgent.reason, role: urgent.role, at: urgent.createdAt } : null });
   if (urgent) {
     writeUrgent(common, { ...urgent, backfill: { state: 'promoted', at: new Date(ctx.now()).toISOString(), l4: recordPath } });
-    return { ok: true, lines: [...plan, ...report, `L4 record written: ${recordPath}`, `back-fill green: urgent release ${urgent.tag} is promoted to a normal L4 release (no re-release, no push)`], data: { ...base, executed: true, results, promoted: true } };
+    return { ok: true, lines: [...plan, ...report, `L4 record written: ${recordPath}`, `back-fill green: urgent release ${urgent.tag} is promoted to a normal L4 release (no re-release, no push)`], data: { ...data, executed: true, results, promoted: true } };
   }
   const created = facts.chosen.state !== 'on-head';
   if (created) git(ctx, ['tag', '-a', facts.chosen.tag, '-m', `release ${facts.chosen.tag}: required gates passed on ${facts.head.slice(0, 12)} (L4 record ${path.basename(recordPath)})`, facts.head]);
   const tagged = created ? `annotated tag ${facts.chosen.tag} created on ${facts.head.slice(0, 10)}` : `annotated tag ${facts.chosen.tag} already on ${facts.head.slice(0, 10)}`;
-  return { ok: true, lines: [...plan, ...report, `L4 record written: ${recordPath}`, tagged], data: { ...base, executed: true, results, tagCreated: created } };
+  return { ok: true, lines: [...plan, ...report, `L4 record written: ${recordPath}`, tagged], data: { ...data, executed: true, results, tagCreated: created } };
 }

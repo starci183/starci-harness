@@ -24,7 +24,7 @@ export const platformModules = (options: ApiOptions): Array<DynamicModule> => [
     ClockModule.register({ isGlobal: true }),
     RetryModule.register({ isGlobal: true }),
     IdsModule.register({ isGlobal: true }),
-    LoggingModule.register({ isGlobal: true }),
+    LoggingModule.register({ isGlobal: true, ...options.logging }),
     HttpModule.register({ isGlobal: true, ...options.http }),
     I18nModule.register({
         isGlobal: true,
