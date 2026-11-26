@@ -23,7 +23,15 @@ const Pipeline = () => {
     { id: 'new', title: 'New', count: rows('new').length, items: rows('new'), empty: <G.EmptyNotice message="Nothing new" /> },
     { id: 'talking', title: 'Talking', count: rows('talking').length, items: rows('talking'), empty: <G.EmptyNotice message="Nobody yet" />, dropHint: { title: 'Drop to start talking', detail: 'The customer hears from us today' } },
     { id: 'booked', title: 'Booked', count: rows('booked').length, items: rows('booked'), empty: <G.EmptyNotice message="Nothing booked" />, dropHint: { title: 'Drop to book', detail: 'We will ask when the customer comes' }, canDrop: () => G.boardNeedsData('booking') },
-    { id: 'won', title: 'Won', count: rows('won').length, items: rows('won'), empty: <G.EmptyNotice message="Nothing won" />, dropHint: { title: 'Drop to close' } },
+    {
+      id: 'won',
+      title: 'Won',
+      count: rows('won').length,
+      items: rows('won'),
+      empty: <G.EmptyNotice message="Nothing won" />,
+      dropHint: { title: 'Drop to close' },
+      canDrop: (move) => (move.fromColumnId === 'new' ? G.boardRefuse('Talk to the customer before closing') : G.boardAllow),
+    },
   ];
   return (
     <G.Board
@@ -80,6 +88,29 @@ export const KeyboardDrag: Story = {
     if (ada === null) return;
     ada.focus();
     await userEvent.keyboard('{Enter}');
+    await settle(200);
+  },
+};
+
+/**
+ * A drop on a stage that refuses: the stage is still a place the drag reaches (by finger, mouse, keyboard or screen reader), so it says no. The card
+ * stays where it was, and the reason is written in the stage for five seconds and announced.
+ */
+export const RefusedDrop: Story = {
+  render: () => <Pipeline />,
+  play: async ({ canvasElement }) => {
+    const bo = boxOf(canvasElement, '[data-grammar-row-id="bo"]');
+    const won = canvasElement.querySelectorAll('.starci-core-board-column')[3];
+    if (bo === null || won === undefined) return;
+    const transfer = new DataTransfer();
+    dragAt(bo, 'dragstart', transfer, 0, 0);
+    await settle();
+    dragAt(won, 'dragenter', transfer, 0, 0);
+    dragAt(won, 'dragover', transfer, 0, 0);
+    await settle();
+    dragAt(won, 'drop', transfer, 0, 0);
+    dragAt(bo, 'dragend', transfer, 0, 0);
+    won.scrollIntoView({ inline: 'start', block: 'nearest' });
     await settle(200);
   },
 };
