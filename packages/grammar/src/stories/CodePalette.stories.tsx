@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
 import * as G from '../common/index.js';
-import { Markdown } from '../core/ext/markdown/react/index.js';
+import { Markdown, useCodeTokens } from '../core/ext/markdown/react/index.js';
 import type { CodeToken, MarkdownTree } from '../core/ext/markdown/types.js';
 import '../core/ext/markdown/styles.css';
 
@@ -99,6 +99,82 @@ export const CodeBlockHighlighted: Story = {
     <G.Stack gap="section">
       <Themed theme="light"><G.CodeBlock code={EXCERPT} language="ts" path="src/products.ts" tokens={tokens(TS)} maxLines={4} note="tokens + maxLines (light)." /></Themed>
       <Themed theme="dark"><G.CodeBlock code={EXCERPT} language="ts" path="src/products.ts" tokens={tokens(TS)} maxLines={4} highlightLines={[[3, 4]]} note="tokens + maxLines (dark)." /></Themed>
+    </G.Stack>
+  ),
+};
+
+/** The DIFF rows above as `CodeBlock diff` takes them: `+` added, `-` deleted, space the same. */
+const DIFF_ROWS: readonly G.CodeDiffLine[] = DIFF.map(([sign, line]) => ({ kind: sign === '+' ? 'add' : sign === '-' ? 'del' : 'same', text: text([line]) }));
+
+/**
+ * The lesson CodeBlock in diff mode (`diff`, with Shiki's `tokens` for its rows): added rows on the inserted tint with `+`, removed rows on the
+ * deleted tint with `−`, the header counting both; a screen reader hears "Added:" or "Removed:" before each changed row. Then the same change
+ * from a unified diff string, folded. Light, then dark.
+ */
+export const CodeBlockDiff: Story = {
+  render: () => (
+    <G.Stack gap="section">
+      <Themed theme="light"><G.CodeBlock diff={DIFF_ROWS} language="ts" path="src/products.ts" tokens={tokens(DIFF.map(([, line]) => line))} note="diff rows + tokens (light)." /></Themed>
+      <Themed theme="dark"><G.CodeBlock diff={DIFF_ROWS} language="ts" path="src/products.ts" tokens={tokens(DIFF.map(([, line]) => line))} note="diff rows + tokens (dark)." /></Themed>
+      <Themed theme="dark">
+        <G.CodeBlock
+          diff={['--- a/src/products.ts', '+++ b/src/products.ts', '@@ -12,3 +12,3 @@', ...DIFF.map(([sign, line]) => `${sign}${text([line])}`)].join('\n')}
+          language="ts"
+          path="src/products.ts"
+          defaultCollapsed
+          note="A unified diff string, unhighlighted, folded (dark)."
+        />
+      </Themed>
+    </G.Stack>
+  ),
+};
+
+/** A block that highlights itself in the browser: `useCodeTokens` loads Shiki lazily; plain text until it is ready. */
+const LiveCode = ({ code, language, highlightLines }: { readonly code: string; readonly language: string; readonly highlightLines?: readonly G.CodeLineRange[] }) => {
+  const live = useCodeTokens(code, language);
+  return (
+    <G.CodeBlock
+      code={code}
+      language={language}
+      path={`live.${language}`}
+      {...(highlightLines === undefined ? {} : { highlightLines })}
+      {...(live === undefined ? {} : { tokens: live })}
+      note={live === undefined ? 'Plain text: Shiki is loading.' : 'Highlighted in the browser by useCodeTokens.'}
+    />
+  );
+};
+
+/** The same, for a diff: the tokens are made from `diffCode(diff)`, one per row. */
+const LiveDiff = ({ diff, language }: { readonly diff: G.CodeDiff; readonly language: string }) => {
+  const live = useCodeTokens(G.diffCode(diff), language);
+  return <G.CodeBlock diff={diff} language={language} path={`live.${language}`} {...(live === undefined ? {} : { tokens: live })} note="A diff highlighted in the browser." />;
+};
+
+const LIVE_DIFF = `@@ -1,5 +1,5 @@
+ export const getPrice = async (id: string) => {
+-  const price = await db.products.find(id)
++  const cached = await redis.get(\`price:\${id}\`)
++  if (cached !== null) return Number(cached)
+   return price
+ }`;
+
+/**
+ * Client highlighting with Shiki (`useCodeTokens` of `core/ext/markdown/react`): real Shiki in the browser, no hand-written tokens. TS with two
+ * marked lines, bash, a language Shiki does not ship (stays plain) and a diff. Light, then dark.
+ */
+export const CodeBlockClientShiki: Story = {
+  render: () => (
+    <G.Stack gap="section">
+      {(['light', 'dark'] as const).map((theme) => (
+        <Themed key={theme} theme={theme}>
+          <G.Stack gap="section">
+            <LiveCode code={EXCERPT} language="ts" highlightLines={[[3, 4]]} />
+            <LiveCode code={text(BASH)} language="bash" />
+            <LiveCode code={'not a real language\nstays plain text'} language="no-such-language" />
+            <LiveDiff diff={LIVE_DIFF} language="ts" />
+          </G.Stack>
+        </Themed>
+      ))}
     </G.Stack>
   ),
 };

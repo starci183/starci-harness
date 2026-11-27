@@ -268,3 +268,63 @@ export const IconSizes: Story = {
     </Matrix>
   ),
 };
+
+/** One step of a step-by-step list: done wears the status mark's check, the current step its number on accent, a pending step its number on neutral. */
+type StepPhase = 'done' | 'current' | 'pending';
+
+const StepTileOf = ({ step, phase, size }: { readonly step: number; readonly phase: StepPhase; readonly size?: G.IconTileProps['size'] }) =>
+  phase === 'done' ? <G.IconTile state="done" ariaLabel={`Bước ${String(step)}, đã xong`} /> : <G.IconTile step={step} tone={phase === 'current' ? 'accent' : 'neutral'} ariaLabel={`Bước ${String(step)}`} {...(size === undefined ? {} : { size })} />;
+
+const STEPS: ReadonlyArray<{ readonly title: string; readonly description: string }> = [
+  { title: 'Kết nối Zalo', description: 'Quét mã bằng điện thoại của cửa hàng' },
+  { title: 'Nhập bảng giá', description: 'Dán từ Excel hoặc chụp ảnh bảng giá' },
+  { title: 'Bật trả lời tự động', description: 'NIVO trả lời khách trong giờ mở cửa' },
+];
+
+/** The three moments of a 3-step list: at step 1, at step 2 (1 done), at step 3 (1 and 2 done). */
+const PHASES: ReadonlyArray<ReadonlyArray<StepPhase>> = [
+  ['current', 'pending', 'pending'],
+  ['done', 'current', 'pending'],
+  ['done', 'done', 'current'],
+];
+
+const StepList = ({ phases }: { readonly phases: ReadonlyArray<StepPhase> }) => (
+  <G.Stack gap="row">
+    {STEPS.map((step, index) => (
+      <G.Cluster key={step.title} gap="row" align="center" wrap={false}>
+        <StepTileOf step={index + 1} phase={phases[index] ?? 'pending'} />
+        <G.Stack gap="inline">
+          <G.Text role="label.item">{step.title}</G.Text>
+          <G.Text tone="muted">{step.description}</G.Text>
+        </G.Stack>
+      </G.Cluster>
+    ))}
+  </G.Stack>
+);
+
+/**
+ * (D) The step tile (owner 2026-11-27 "icon tile cũng hỗ trợ số trong mình chứ? để làm step by step"): `IconTile step={n}`, the number on the
+ * identity plate, tabular, as tall as the glyph. A 3-step list in each of its three moments: the current step accent, a pending step neutral, a
+ * finished step the status mark's check (`state="done"`). Then the row (40) and head (48) sizes, 1 to 12. Light, then dark.
+ */
+export const StepTiles: Story = {
+  render: () => (
+    <G.Stack gap="section">
+      {(['light', 'dark'] as const).map((theme) => (
+        <div key={theme} className={theme} data-theme={theme} style={{ background: 'var(--background)', color: 'var(--foreground)', padding: 16 }}>
+          <Matrix maxWidth={880}>
+            {PHASES.map((phases, index) => (
+              <State key={index} label={`${theme}: at step ${String(index + 1)} of 3`} direction="column">
+                <StepList phases={phases} />
+              </State>
+            ))}
+            <State label={`${theme}: step 1, 2, 9, 12 at the row (40) and head (48) sizes, accent and neutral`}>
+              {[1, 2, 9, 12].map((step) => <G.IconTile key={`r${String(step)}`} step={step} tone={step === 2 ? 'accent' : 'neutral'} />)}
+              {[1, 2, 9, 12].map((step) => <G.IconTile key={`h${String(step)}`} step={step} tone={step === 2 ? 'accent' : 'neutral'} size="head" />)}
+            </State>
+          </Matrix>
+        </div>
+      ))}
+    </G.Stack>
+  ),
+};

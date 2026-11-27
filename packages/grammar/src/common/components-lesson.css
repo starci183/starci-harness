@@ -126,6 +126,26 @@
     .starci-core-code-block-code [data-grammar-line-numbers="true"] .starci-core-code-line::before { min-inline-size: 4ch; margin-inline-end: var(--grammar-inset-card); font-variant-numeric: tabular-nums; }
     .starci-core-code-block-code .starci-core-code-line[data-grammar-line-highlighted="true"]::before { color: var(--grammar-code-fg); font-weight: var(--grammar-weight-medium); }
 
+    /*
+     * A diff (`diff` in place of `code`): an added row on the code palette's inserted tint, a removed row on its deleted tint, both across the
+     * whole width of the code; the sign in a 2ch gutter of its side's ink, never selected or copied. The words a screen reader says before a
+     * changed row (`Added: `) are visually hidden and never selected either. The tokens keep their Shiki inks, which reach AA on both tints.
+     */
+    .starci-core-code-block-code .starci-core-code-line[data-grammar-diff="add"] { background: var(--grammar-code-inserted-bg); }
+    .starci-core-code-block-code .starci-core-code-line[data-grammar-diff="del"] { background: var(--grammar-code-deleted-bg); }
+
+    .starci-core-code-diff-sign {
+        display: inline-block;
+        min-inline-size: 2ch;
+        margin-inline-end: var(--grammar-inline-gap);
+        color: var(--grammar-code-gutter);
+        user-select: none;
+    }
+
+    [data-grammar-diff="add"] > .starci-core-code-diff-sign { color: var(--grammar-code-inserted); font-weight: var(--grammar-weight-medium); }
+    [data-grammar-diff="del"] > .starci-core-code-diff-sign { color: var(--grammar-code-deleted); font-weight: var(--grammar-weight-medium); }
+    .starci-core-code-diff-kind { user-select: none; }
+
     .starci-core-code-block-note {
         padding: var(--grammar-row-gap) var(--grammar-inset-card);
         border-block-start: var(--grammar-border-edge);

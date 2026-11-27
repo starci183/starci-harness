@@ -52,6 +52,8 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
 | Shell | Common shell painted by `surface` and `separator`; the bar is a solid surface band with a full-width separator |
 | Page header | The same band as the bar: `surface` fill and a full-width 1px `separator` hairline at its bottom edge; page tabs stand on the hairline with the accent underline over it |
 | Page | Common's frame: the core band, the body in the measure and gutter a region step below it |
+| Code block | The lesson `CodeBlock` on the code palette (`--grammar-code-*`, never the brand): Shiki tokens through the css-variables theme, from the server (`highlightCode`) or lazily in the browser (`useCodeTokens` of the markdown ext; the core imports no Shiki); a `diff` tints added rows `inserted-bg` and removed rows `deleted-bg` with a +/− gutter and the row kind in hidden words, never colour only; `tokenSpans` of `MarkdownArticle` colours both |
+| Icon tile | Identity tile, status mark (B), subject tile (C) and step tile (D): `step={n}` puts the number (tabular, glyph-sized) on the identity plate and tone, named `Step N`; a step list wears accent for the current step, neutral for a pending one, the done status mark for a finished one |
 | Diagram | The diagram frame (`separator` edge, surface radius, `surface` fill); Mermaid drawn in the root's `surface`, `foreground`, `border` and `muted` tokens |
 
 ## Departures
