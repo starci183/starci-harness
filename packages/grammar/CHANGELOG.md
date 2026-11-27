@@ -2,6 +2,13 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.64.3 - 2026-11-27
+
+- Changed (h-grammar-graph-layout, owner 2026-11-27 "nothing overlaps"): `FlowGraph layout="layered"` is one ELK run (`layoutLayered`, `layered.ts`) that places every node and routes every edge, with no hand post-processing (the decision alignment, the hand back-edge router, the snapped and simplified routes are gone from it; `layoutFlow` keeps them for `MermaidDiagram`). Ports per branch row on the end side in row order; orthogonal routes 12 apart and 20 off nodes; centre labels with their own room; back edges given last and routed round the outside (`feedbackEdges`), dashed; a fixed seed and the model order.
+- Added: the canvas measures the drawn handles (`GraphCanvas` `portOf`) and lays out once more when a port stands more than 1px off the layout's guess, so every edge leaves its row's dot.
+- Changed: in the layered layout, the edges that leave one port for one target are one line (`mergeParallel`, strongest state, at most two short names); an edge out of a card's row carries no words, not even "skipped"; words longer than `NOTE_CHARS` (24) are a note and stay off the lines; the label room is the structure's words only, so a run update never relayouts.
+- Added: `findOverlaps`, `LAYERED_SPACING`, `NOTE_CHARS`, `mergeParallel`; demo stories `nivo-deposit`, `nivo-deposit-run`, `nivo-multi-post` (real NIVO workflows, zero overlaps).
+
 ## 0.64.0 - 2026-11-26
 
 - Changed (h-grammar-flowgraph-midpoint, owner 2026-11-26): `FlowGraph` lays a flow out on its spine by default (`layout: "spine"`, `layoutSpine` in `spine.ts`, its numbers `SPINE`). The longest path along plain and "yes" edges is one straight centred column; side roads stand in columns to its right at `spine + lane * (NODE_WIDTH + 80)` (`COLUMN_PITCH`); a parallel fork splits its branches evenly (`lane = i - (n - 1) / 2`); one layer is one row. Edges attach only at the middles of the sides (in at the top-mid or, for a loop, the left-mid; out at the bottom-mid, the right-mid for a side road, the left-mid for a loop) with the fewest bends: straight down a column, one bend into a side column or back into the spine, a U on the left for a loop, fork and join bars. Two edges into one node meet at a merge dot above it; three or more drop straight down their own columns into a merge bar over the target that carries the one neutral arrow; loops into one node gather in one left lane. Horizontal runs lie in the gaps between rows, `edgeSpacing` apart. Words stand beside the first segment of their edge, never on a bend. The spine always runs top to bottom; `layout: "layered"` keeps ELK's layout (`LR` or `TB`, ports on the cards).

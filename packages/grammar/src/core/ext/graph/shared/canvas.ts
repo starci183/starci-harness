@@ -1,7 +1,7 @@
 "use client"
 
 import { Background, MiniMap, ReactFlow, ReactFlowProvider, useReactFlow, useStore, useStoreApi, type Edge, type EdgeTypes, type Node, type NodeChange, type NodeTypes } from "@xyflow/react"
-import { createElement as h, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactElement, type ReactNode } from "react"
+import { createElement as h, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactElement, type ReactNode } from "react"
 import { structureKey } from "../build.js"
 import { ISLANDS_WIDTH, estimateLabel, layoutFlow, type Bar, type Box, type FlowLayout, type LayoutSettings, type LinkEnds, type Measure, type SizedNode } from "../layout.js"
 import { GraphSkeleton } from "./skeleton.js"
@@ -73,6 +73,62 @@ export interface CanvasInput extends GraphCanvasProps {
      */
     readonly leastZoom?: number
     readonly fitWidth?: boolean
+    /**
+     * Measure, don't guess: once the cards are drawn, where each handle really stands (xyflow's handle bounds) is read back, and when a port the layout was
+     * given stands more than a pixel off it, the graph is laid out once more with the measured ports, so every edge leaves exactly from its row's dot.
+     * `portOf` names the layout port of a handle id (undefined: not a port). Left out, nothing is measured.
+     */
+    readonly portOf?: (handleId: string) => string | undefined
+}
+
+/** The measured place of each port of each node, in the node's frame. */
+type MeasuredPorts = Readonly<Record<string, Readonly<Record<string, GraphPosition>>>>
+
+/** The sizes with each port moved to where its handle was measured, along its own side (an east port keeps the card's right edge and takes the measured y). */
+const withMeasured = (sizes: readonly SizedNode[], measured: MeasuredPorts): readonly SizedNode[] =>
+    Object.keys(measured).length === 0
+        ? sizes
+        : sizes.map((size) => {
+              const own = measured[size.id]
+              if (own === undefined || size.ports === undefined) return size
+              return {
+                  ...size,
+                  ports: size.ports.map((port) => {
+                      const at = own[port.id]
+                      if (at === undefined || port.at === undefined) return port
+                      const vertical = port.side === "EAST" || port.side === "WEST"
+                      return { ...port, at: vertical ? { x: port.at.x, y: Math.round(at.y) } : { x: Math.round(at.x), y: port.at.y } }
+                  }),
+              }
+          })
+
+/** Reads every drawn handle's centre back and reports the ports that stand more than a pixel off where the layout put them. */
+const PortProbe = ({ sizes, portOf, onMeasured }: { readonly sizes: readonly SizedNode[]; readonly portOf: (handleId: string) => string | undefined; readonly onMeasured: (ports: MeasuredPorts) => void }): null => {
+    const lookup = useStore((state) => state.nodeLookup)
+    useEffect(() => {
+        const parents = new Set(sizes.flatMap((size) => (size.parentId === undefined ? [] : [size.parentId])))
+        const found: Record<string, Record<string, GraphPosition>> = {}
+        let off = false
+        for (const size of sizes) {
+            // A frame's exits are placed from the layout itself: only a card's or a diamond's handles are read back.
+            if (parents.has(size.id) || size.ports === undefined) continue
+            const bounds = lookup.get(size.id)?.internals.handleBounds
+            if (bounds === undefined) return
+            const own: Record<string, GraphPosition> = {}
+            for (const handle of [...(bounds.source ?? []), ...(bounds.target ?? [])]) {
+                const port = handle.id === null || handle.id === undefined ? undefined : portOf(handle.id)
+                const given = port === undefined ? undefined : size.ports.find((candidate) => candidate.id === port)
+                if (port === undefined || given?.at === undefined) continue
+                const at = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 }
+                own[port] = at
+                const vertical = given.side === "EAST" || given.side === "WEST"
+                if (Math.abs((vertical ? at.y : at.x) - (vertical ? given.at.y : given.at.x)) > 1) off = true
+            }
+            found[size.id] = own
+        }
+        if (off) onMeasured(found)
+    }, [lookup, sizes, portOf, onMeasured])
+    return null
 }
 
 interface Placed {
@@ -174,10 +230,14 @@ const FocusStep = ({ id, fit }: { readonly id: string | undefined; readonly fit:
 const Canvas = (props: CanvasInput): ReactElement => {
     const anchor = useRef<HTMLDivElement | null>(null)
     const scheme = useGraphScheme(anchor)
-    const { sizes, links, rfEdges, makeNodes, nodeTypes, edgeTypes, label, direction = "LR", islands = "wrap", islandsWidth = ISLANDS_WIDTH, isLoading = false, emptyLabel, selectedId, onSelect, onNodePress } = props
+    const { links, rfEdges, makeNodes, nodeTypes, edgeTypes, label, direction = "LR", islands = "wrap", islandsWidth = ISLANDS_WIDTH, isLoading = false, emptyLabel, selectedId, onSelect, onNodePress } = props
     const editable = props.editable === true
     const interactive = props.interactive !== false
-    const key = `${structureKey(sizes, links, direction, islands, islandsWidth)}${props.routed === true ? ":routed" : ""}`
+    // The ports measured on the drawn cards, for the structure they were measured on (a new structure starts from the model's own ports again).
+    const base = `${structureKey(props.sizes, links, direction, islands, islandsWidth)}${props.routed === true ? ":routed" : ""}`
+    const [measuredPorts, setMeasuredPorts] = useState<{ readonly base: string; readonly ports: MeasuredPorts } | undefined>(undefined)
+    const sizes = useMemo(() => (measuredPorts?.base === base ? withMeasured(props.sizes, measuredPorts.ports) : props.sizes), [props.sizes, measuredPorts, base])
+    const key = sizes === props.sizes ? base : `${structureKey(sizes, links, direction, islands, islandsWidth)}${props.routed === true ? ":routed" : ""}`
     const [placed, setPlaced] = useState<Placed | undefined>(undefined)
     const [own, setOwn] = useState<string | null>(null)
     const [ownMoved, setOwnMoved] = useState<GraphPositions>(NO_POSITIONS)
@@ -302,6 +362,7 @@ const Canvas = (props: CanvasInput): ReactElement => {
                 },
                 h(Background, { gap: 22, size: 1.4, color: "var(--starci-graph-grid)" }),
                 interactive ? h(FocusStep, { id: props.focusId, fit: openFit }) : null,
+                props.portOf === undefined || !arranged ? null : h(PortProbe, { sizes, portOf: props.portOf, onMeasured: (ports: MeasuredPorts) => { setMeasuredPorts((current) => (current?.base === base && current.ports === ports ? current : { base, ports })) } }),
                 controls,
                 props.minimap === true && interactive ? h(MiniMap, { pannable: true, zoomable: true, className: "starci-graph-minimap", ...(props.minimapLabel === undefined ? {} : { ariaLabel: props.minimapLabel }) }) : null,
             ),

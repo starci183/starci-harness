@@ -1,4 +1,5 @@
 import { FLOW_NODE_HEIGHT, NODE_WIDTH, type Insets, type LayoutPort, type LinkEnds, type PortSide, type SizedNode } from "./layout.js"
+import { STYLE_RANK } from "./shared/overlap.js"
 import { edgeStyleOf, normalizeKind, normalizeStatus, type EdgeStyle } from "./shared/status.js"
 import type { FlowNode, FlowPort, FlowShape, FlowStatus, GraphDirection, GraphEdge, GraphEdgeKind } from "./types.js"
 
@@ -45,6 +46,46 @@ export interface ResolvedEdge {
     /** Whether its ends are cards or diamonds, which have an entry port and a default exit port (a container has neither). */
     readonly sourceIsCard: boolean
     readonly targetIsCard: boolean
+    /** Its own words, without the run's (its label or a diamond's port label; none for a note too long for a line), and whether a run can draw it skipped. */
+    readonly words?: string | undefined
+    readonly mayBeSkipped?: boolean
+    /** The ids of the edges drawn as this one: the edges that leave one port for one target (`mergeParallel`); just its own id when it stands alone. */
+    readonly merged?: readonly string[]
+}
+
+/**
+ * The most characters an edge's words have on a line in the layered layout: a branch's name ("có", "quá hạn", "không duyệt"). Longer words are a note (a
+ * refusal's reason, "Bị từ chối: ..."): the step's status or its drawer says it, never a pill across a line.
+ */
+export const NOTE_CHARS = 24
+
+/** A two-word cap for the words of edges drawn as one: more, or any note, and the line carries none (the step's drawer lists every outcome). */
+const MERGED_WORDS = 2
+
+/**
+ * The edges that leave one port of one node for one target (an action's "done", "declined" and "refused" outcomes that all go on to the same step) are
+ * drawn as ONE line: each would otherwise be routed on top of the others with its words stacked on it. The line takes the strongest state of its edges
+ * (a taken one wins) and the first edge's id; its words are theirs when they are at most two short names ("có sự kiện · quá hạn"), else none.
+ */
+export const mergeParallel = (items: readonly ResolvedEdge[], skippedLabel?: string): ResolvedEdge[] => {
+    const groups = new Map<string, ResolvedEdge[]>()
+    for (const item of items) {
+        const key = [item.edge.source, item.port?.id ?? "", item.edge.target, item.edge.variant === "back" || item.kind === "loop" ? "back" : ""].join("\u0000")
+        groups.set(key, [...(groups.get(key) ?? []), item])
+    }
+    return [...groups.values()].map((group): ResolvedEdge => {
+        const first = group[0] as ResolvedEdge
+        if (group.length === 1) return { ...first, merged: [first.id] }
+        const strongest = group.reduce((best, item) => ((STYLE_RANK[item.style] ?? 3) > (STYLE_RANK[best.style] ?? 3) ? item : best), first)
+        const names = [...new Set(group.flatMap((item) => (item.words === undefined ? [] : [item.words])))]
+        const allNamed = group.every((item) => item.words !== undefined)
+        const words = allNamed && names.length <= MERGED_WORDS ? names.join(" \u00b7 ") : undefined
+        const branchSkipped = group.every((item) => item.branchSkipped)
+        const marks = first.kind === "loop" ? [LOOP_MARK] : []
+        const parts = [words, branchSkipped ? skippedLabel : undefined].filter((part): part is string => part !== undefined && part !== "")
+        const pill = marks.length > 0 ? [...marks, ...parts].join(" ") : parts.length === 0 ? undefined : parts.join(" \u00b7 ")
+        return { ...strongest, id: first.id, kind: first.kind, port: first.port, branchSkipped, pill, words, mayBeSkipped: group.some((item) => item.mayBeSkipped === true), merged: group.map((item) => item.id) }
+    })
 }
 
 export interface FlowModel {
@@ -268,7 +309,7 @@ export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdg
     for (const edge of usable) if (edge.variant === "taken" || derivedTaken(edge)) taken.add(edge.source)
 
     const counted = new Map<string, number>()
-    const resolved: ResolvedEdge[] = []
+    const items: ResolvedEdge[] = []
     for (const edge of usable) {
         const base = edge.id ?? `${edge.source}->${edge.target}`
         const count = counted.get(base) ?? 0
@@ -285,24 +326,39 @@ export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdg
         // A decision's branch is named at the start of its edge; a card's port names its own branch inside the card (in the spine layout, which draws no
         // port pill, on its edge too).
         const own_label = port === undefined ? edge.label : spine || (source !== undefined && (isDiamond(source) || source.container !== undefined)) ? (edge.label ?? port.label) : undefined
+        // The layered layout keeps a note off the lines: words longer than a branch's name (a refusal's reason) belong to the step's status or drawer.
+        const named = own_label === undefined || own_label === "" || (!spine && own_label.length > NOTE_CHARS) ? undefined : own_label
         const kind = edgeKindOf(edge, source, port, own, usable, shapes.get(edge.source) === "hexagon")
-        const words = [own_label, branchSkipped ? skippedLabel : undefined].filter((part): part is string => part !== undefined && part !== "")
+        // A branch that leaves a card's row says nothing on its line in the layered layout: the row names it, and the card dims the row the run did not take.
+        const rowEdge = !spine && port !== undefined && own_label === undefined
+        const words = [named, branchSkipped && !rowEdge ? skippedLabel : undefined].filter((part): part is string => part !== undefined && part !== "")
         // A loop's edge always says it loops: the mark before its words, or the mark alone.
         const style = edgeStyleOf(variant, statuses.get(edge.source), statuses.get(edge.target), hasRun)
         // The case of a switch the run took carries the check before its words.
         const marks = kind === "loop" ? [LOOP_MARK] : (kind === "case" || kind === "default") && style === "taken" ? [CHECK_MARK] : []
         const pill = marks.length > 0 ? [...marks, ...words].join(" ") : words.length === 0 ? undefined : words.join(" \u00b7 ")
-        resolved.push({ id, edge, style, port, branchSkipped, kind, pill, sourceIsCard: source?.container === undefined, targetIsCard: byId.get(edge.target)?.container === undefined })
+        items.push({ id, edge, style, port, branchSkipped, kind, pill, sourceIsCard: source?.container === undefined, targetIsCard: byId.get(edge.target)?.container === undefined, words: named, mayBeSkipped: sourceIsBranch && !rowEdge && skippedLabel !== undefined })
     }
-    const links = resolved.map((item) => ({
-        id: item.id,
-        source: item.edge.source,
-        target: item.edge.target,
-        ...(item.port === undefined ? (item.sourceIsCard ? { sourcePort: OUT_PORT } : {}) : { sourcePort: item.port.id }),
-        ...(item.targetIsCard ? { targetPort: IN_PORT } : {}),
-        ...(item.pill === undefined ? {} : { label: item.pill, labelAt: "TAIL" as const }),
-        ...(item.edge.variant === "back" || item.kind === "loop" ? { back: true } : {}),
-        kind: item.kind,
-    }))
+    const resolved: ResolvedEdge[] = spine ? items : mergeParallel(items, skippedLabel)
+    /** The words the layered layout reserves room for: the structure's own (the loop mark, the case check, the skipped words a branch may get), never the run's, so a run update never moves the graph. */
+    const reserved = (item: ResolvedEdge): string | undefined => {
+        const marks = item.kind === "loop" ? [LOOP_MARK] : item.kind === "case" || item.kind === "default" ? [CHECK_MARK] : []
+        const words = [item.words, item.mayBeSkipped ? skippedLabel : undefined].filter((part): part is string => part !== undefined && part !== "")
+        if (words.length === 0 && marks.length === 0) return undefined
+        return marks.length > 0 ? [...marks, ...words].join(" ") : words.join(" \u00b7 ")
+    }
+    const links = resolved.map((item) => {
+        const label = spine ? item.pill : reserved(item)
+        return {
+            id: item.id,
+            source: item.edge.source,
+            target: item.edge.target,
+            ...(item.port === undefined ? (item.sourceIsCard ? { sourcePort: OUT_PORT } : {}) : { sourcePort: item.port.id }),
+            ...(item.targetIsCard ? { targetPort: IN_PORT } : {}),
+            ...(label === undefined ? {} : { label, labelAt: spine ? ("TAIL" as const) : ("CENTER" as const) }),
+            ...(item.edge.variant === "back" || item.kind === "loop" ? { back: true } : {}),
+            kind: item.kind,
+        }
+    })
     return { statuses, shapes, ports, parents, sizes, links, edges: resolved }
 }

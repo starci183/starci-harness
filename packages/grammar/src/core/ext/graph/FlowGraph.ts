@@ -4,6 +4,7 @@ import { Handle, Position, type NodeProps, type NodeTypes } from "@xyflow/react"
 import { createElement as h, isValidElement, useEffect, useMemo, useState, type CSSProperties, type ElementType, type ReactElement, type ReactNode } from "react"
 import { POSITION_OF, buildBarNodes, buildFlowEdges, buildFlowNodes, containerKind, type BarRfNode, type FlowRfNode } from "./build.js"
 import { layoutSpine } from "./spine.js"
+import { layoutLayered } from "./layered.js"
 import { foldFlow, type FlowCollapse } from "./collapse.js"
 import type { CanvasLayout } from "./shared/canvas.js"
 import { Badge, IconTile, InlineStatus, Text, type IconSource } from "../../index.js"
@@ -11,7 +12,7 @@ import { focusStep } from "./shared/status.js"
 import { useLayoutDirection } from "./shared/phone.js"
 import { GraphCanvas, type Placement } from "./shared/canvas.js"
 import { FlowLegend } from "./shared/legend.js"
-import { PORT_COLUMN, PORT_ROW_TB, entrySide, resolveFlow, type FlowLayoutMode, type ResolvedPort } from "./model.js"
+import { IN_PORT, OUT_PORT, PORT_COLUMN, PORT_ROW_TB, entrySide, resolveFlow, type FlowLayoutMode, type ResolvedPort } from "./model.js"
 import { StepEdge } from "./shared/StepEdge.js"
 import { badgeTone, findConcurrentRunning, markState, nodeClassName, statusTone } from "./shared/status.js"
 import type { FlowChip, FlowKindTones, FlowLegendItem, FlowNode, FlowStatus, FlowStatusLabels, GraphCanvasProps, GraphEdge, GraphLinkComponent } from "./types.js"
@@ -259,6 +260,12 @@ const EDGE_TYPES = { step: StepEdge }
 
 const SPINE_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutSpine(sizes, links, settings)
 
+/** The layered layout: one ELK run places the nodes and routes every edge, final as given (see `layered.ts`). */
+const LAYERED_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutLayered(sizes, links, settings)
+
+/** The layout port a card's handle stands for: its entry, its default exit, or a row's port (`port:<id>`, the id the card renders). */
+const portOfHandle = (handle: string): string | undefined => (handle === "in" ? IN_PORT : handle === "out" ? OUT_PORT : handle.startsWith("port:") ? handle.slice("port:".length) : undefined)
+
 const isProduction = (): boolean => typeof process !== "undefined" && process.env.NODE_ENV === "production"
 
 /**
@@ -318,7 +325,7 @@ export const FlowGraph = (props: FlowGraphProps): ReactElement => {
         nodeTypes,
         edgeTypes: EDGE_TYPES,
         onNodePress: press,
-        ...(layout === "spine" ? { runLayout: SPINE_LAYOUT, routed: true, leastZoom: FLOW_READABLE_ZOOM, fitWidth: true } : {}),
+        ...(layout === "spine" ? { runLayout: SPINE_LAYOUT, routed: true, leastZoom: FLOW_READABLE_ZOOM, fitWidth: true } : { runLayout: LAYERED_LAYOUT, routed: true, portOf: portOfHandle }),
         ...(footer === undefined ? {} : { footer }),
     })
 }
