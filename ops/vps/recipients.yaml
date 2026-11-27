@@ -30,7 +30,7 @@ servers:
 # harness, a server or a backup key (the policy refuses either). An app without an entry deploys from the owner machine or the server.
 apps:
   nivoos-lite:
-    ci: age138u6dmh8z6ptgtd5ukk8arfcnx9r7ec780nlpr5s5yl2z3m6vunqncm6mu
+    ci: age1rzu93xfhr4gv58elpqvkjm6wernq9unet8zj24sc9x4yp5zrhcsqm6zpct
   starci-next:
     ci: age1r5sg06278pzgfhus06xa5u3z60veulyn9weh0dtukzkeeh5khseqjzz0wj
 # The recipient set each environment's rule and members hold, exactly: `harness`, `server` (the server whose key the environment records as

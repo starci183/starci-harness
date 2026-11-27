@@ -41,7 +41,7 @@ test('the shipped policy is the harness repository\'s ops/vps/recipients.yaml, a
   assert.match(shipped.harness, /^age173qf/u);
   assert.deepEqual(shipped.environments.dev, ['harness']);
   assert.deepEqual(shipped.otherwise, ['server', 'backup', 'ci']);
-  assert.match(shipped.apps['nivoos-lite']?.ci ?? '', /^age138u6/u, 'NIVO deploys from CI with its own key');
+  assert.match(shipped.apps['nivoos-lite']?.ci ?? '', /^age1rzu93xfhr4/u, 'NIVO deploys from CI with its own key (rotated 2026-11-27)');
   assert.equal(shipped.enforce, false, 'R451 warns until the owner-approved migration completes');
   assert.ok(Object.values(shipped.servers).every((server) => server.enforce !== true), 'no server blocks yet');
 });
