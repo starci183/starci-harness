@@ -18,7 +18,7 @@ const MODES: StepCardModeLabels = { ask: 'Hỏi trước', studio: 'Studio', man
 
 /** A stand-in for the canvas: the card's border and a dot where its handle stands. */
 const Frame = ({ rows = 0, children }: { readonly rows?: number; readonly children: ReactNode }) => (
-  <div style={{ inlineSize: STEP_CARD.width, blockSize: stepCardHeight(rows), border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface)' }}>{children}</div>
+  <div style={{ display: 'flex', boxSizing: 'border-box', inlineSize: STEP_CARD.width, blockSize: stepCardHeight(rows), border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface)' }}>{children}</div>
 );
 const port = () => <span style={{ position: 'absolute', insetBlockStart: '50%', insetInlineEnd: -4, inlineSize: 8, blockSize: 8, borderRadius: 4, background: 'var(--foreground)', transform: 'translateY(-50%)' }} />;
 const Row = ({ children }: { readonly children: ReactNode }) => <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start' }}>{children}</div>;

@@ -163,15 +163,15 @@ const row = (item: StepCardRow, index: number, renderPort: StepCardProps["render
  * right edge (`renderPort`); its height is `stepCardHeight(rows)`. During a run or a replay the row the run took lights up and the others dim
  * (`StepCardRow.state`), and a parallel branch shows its own done or error mark.
  *
- * It is the card's inside only: the canvas that holds it draws the border, the selection, the run status on the border and the handles, and passes the
- * port of each row. Import `@starci/grammar/core/ext/graph.css` once.
+ * It is the card's inside only: the canvas that holds it gives the frame its size (`STEP_CARD.width` by `stepCardHeight(rows)`, border included), draws
+ * the border, the selection, the run status on the border and the handles, and passes the port of each row; the card fills that frame. Import `@starci/grammar/core/ext/graph.css` once.
  */
 export const StepCard = (props: StepCardProps): ReactElement => {
     const { kind, title, subtitle, icon, mode, modeLabels, rows = [], renderPort } = props
     const badge = mode === undefined || mode === "auto" || modeLabels === undefined ? undefined : modeLabels[mode]
     return h(
         "span",
-        { className: "starci-step-card", "data-kind": kind, "data-rows": rows.length > 0 ? String(rows.length) : undefined, style: { inlineSize: STEP_CARD.width, minBlockSize: stepCardHeight(rows.length) } },
+        { className: "starci-step-card", "data-kind": kind, "data-rows": rows.length > 0 ? String(rows.length) : undefined },
         h(
             "span",
             { className: "starci-step-card-head" },

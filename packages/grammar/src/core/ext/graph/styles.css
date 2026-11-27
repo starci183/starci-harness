@@ -543,8 +543,10 @@
 
     position: relative;
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     box-sizing: border-box;
+    inline-size: 100%;
     min-inline-size: 0;
 }
 
