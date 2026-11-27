@@ -1,16 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
-import { FlowGraph, STEP_CARD, StepCard, stepCardHeight, type FlowNode, type FlowStatusLabels, type GraphEdge, type StepCardModeLabels, type StepCardRow } from '../core/ext/graph/index.js';
+import { FlowGraph, STEP_CARD, StepCard, StepWire, WireLegend, stepCardHeight, type FlowNode, type FlowStatusLabels, type GraphEdge, type StepCardModeLabels, type StepCardRow } from '../core/ext/graph/index.js';
 import '../core/ext/graph/styles.css';
 
 /**
- * THE STEP CARD (0.64.2, the owner's node design 2026-11-27). Every card is 200 x 96 with the step's glyph on its kind's tinted tile; the mode badge sits at
+ * THE STEP CARD (0.64.2; 0.64.7 the approved canvas: 196 x 96, a kind line over the name, the start node's triggers, row ports on the right edge, the wire).
+ * Every card is 196 x 96 with the step's glyph on its kind's tinted tile; the mode badge sits at
  * the bottom-right (auto none, "Hỏi trước" amber, "Studio" purple, "Tự làm" grey). A control step lists its ways out as rows (8px by 12px, a 0.5px seam
  * above each, the first too), each with its tone's dot and its own port on the right edge; during a replay the taken row lights up and the others fade.
  * The border, the run status on it and the handles are the canvas's: each story draws a plain frame and a dot where the canvas's handle goes.
  * Proof is by reading (GRAMMAR-NO-TESTS): each story names what to look at.
  */
-const meta: Meta = { title: 'Graph/Step card (0.64.2)', parameters: { layout: 'padded' } };
+const meta: Meta = { title: 'Graph/Step card (0.64.7)', parameters: { layout: 'padded' } };
 export default meta;
 type Story = StoryObj;
 
@@ -114,5 +115,69 @@ export const InFlowGraph: Story = {
     ];
     const edges: readonly GraphEdge[] = [{ source: 'ask', target: 'kind' }, { source: 'kind', target: 'remind', variant: 'taken' }];
     return <div style={{ maxInlineSize: 900 }}><FlowGraph label="Lượt chạy" nodes={nodes} edges={edges} statusLabels={WORDS} height="content" /></div>;
+  },
+};
+
+/** Look at (0.64.7, the approved canvas): every card 196 x 96 with the kind line over the name and one line under the head; the start node the same size, its danger ring and its triggers one per line, whole; the badge in the corner. */
+export const CanvasCards: Story = {
+  render: () => (
+    <Row>
+      <Frame>
+        <StepCard
+          kind="trigger"
+          title="Khởi động"
+          triggers={[
+            { id: 'pick', label: 'Khách chọn giờ cọc' },
+            { id: 'paid', label: 'SePay báo tiền về' },
+            { id: 'hand', label: 'Chạy tay' },
+          ]}
+        />
+      </Frame>
+      <Frame><StepCard kind="ai" kindLabel="AI" title="Soạn QR cọc" subtitle="VietQR · 40% giá · mã lịch" /></Frame>
+      <Frame><StepCard kind="action" kindLabel="Hành động" title="Gửi QR" subtitle="Trả lời đúng kênh khách nhắn" mode="ask" modeLabels={MODES} /></Frame>
+      <Frame><StepCard kind="wait" kindLabel="Chờ sự kiện" title="Chờ tiền về" subtitle="sepay.payment.paid · tối đa 30 phút" /></Frame>
+      <Frame><StepCard kind="ai" kindLabel="AI" title="Cảm ơn khách" subtitle="Tin xác nhận và giờ hẹn" mode="studio" modeLabels={MODES} /></Frame>
+      <Frame><StepCard kind="end" kindLabel="Kết thúc" title="Kết thúc: thiếu tiền" subtitle="Chuyển người xử lý" mode="manual" modeLabels={MODES} /></Frame>
+    </Row>
+  ),
+};
+
+/** Look at: a wire is straight between two side midpoints; its start dot hollow with its centre on the source's border, its V open (stroke only) with its point on the target's border; a row's wire takes the row's colour (main green, warning amber, else grey dashes); the legend sits bottom right. */
+export const Wires: Story = {
+  render: () => (
+    <div style={{ position: 'relative', inlineSize: 520, blockSize: 220, border: '1px solid var(--border)', borderRadius: 8 }}>
+      <svg width={520} height={220} style={{ position: 'absolute', inset: 0 }} aria-hidden>
+        <rect x={20} y={20} width={120} height={60} rx={10} fill="var(--surface)" stroke="var(--border)" />
+        <rect x={162} y={20} width={120} height={60} rx={10} fill="var(--surface)" stroke="var(--border)" />
+        <StepWire points={[{ x: 140, y: 50 }, { x: 162, y: 50 }]} />
+        <rect x={340} y={20} width={120} height={40} rx={10} fill="var(--surface)" stroke="var(--border)" />
+        <rect x={340} y={80} width={120} height={40} rx={10} fill="var(--surface)" stroke="var(--border)" />
+        <rect x={340} y={140} width={120} height={40} rx={10} fill="var(--surface)" stroke="var(--border)" />
+        <StepWire points={[{ x: 282, y: 40 }, { x: 311, y: 40 }, { x: 311, y: 40 }, { x: 340, y: 40 }]} tone="main" />
+        <StepWire points={[{ x: 282, y: 60 }, { x: 318, y: 60 }, { x: 318, y: 100 }, { x: 340, y: 100 }]} tone="warning" />
+        <StepWire points={[{ x: 282, y: 75 }, { x: 325, y: 75 }, { x: 325, y: 160 }, { x: 340, y: 160 }]} tone="else" />
+      </svg>
+      <WireLegend label="Màu đường nối" items={[{ tone: 'main', label: 'đủ' }, { tone: 'warning', label: 'thiếu' }, { tone: 'else', label: 'quá hạn' }]} />
+    </div>
+  ),
+};
+
+/** Look at: a step graph (every node a step card) is laid out compact: one main row, every centre on one line, a column every 218px, no words on a wire; a branch's other ways stack above and below. */
+export const CanvasGraph: Story = {
+  render: () => {
+    const nodes: readonly FlowNode[] = [
+      { id: 'start', label: 'Khởi động', card: { kind: 'trigger', triggers: [{ id: 'pick', label: 'Khách chọn giờ cọc' }, { id: 'hand', label: 'Chạy tay' }] } },
+      { id: 'qr', label: 'Soạn QR cọc', card: { kind: 'ai', kindLabel: 'AI', subtitle: 'VietQR · 40% giá' } },
+      { id: 'send', label: 'Gửi QR', card: { kind: 'action', kindLabel: 'Hành động', subtitle: 'Trả lời đúng kênh', mode: 'ask', modeLabels: MODES } },
+      { id: 'check', label: 'Đủ tiền?', kind: 'switch', card: { kind: 'branch', subtitle: 'Rẽ nhánh · 3 đường', rows: [{ id: 'ok', label: 'tiền ≥ cọc → đủ', tone: 'main' }, { id: 'low', label: 'tiền < cọc → thiếu', tone: 'warning' }, { id: 'late', label: 'còn lại → quá hạn', tone: 'else' }] }, outputs: [{ id: 'ok', label: 'đủ' }, { id: 'low', label: 'thiếu' }, { id: 'late', label: 'quá hạn' }] },
+      { id: 'paid', label: 'Đã cọc', card: { kind: 'action', kindLabel: 'Hành động', subtitle: 'Lịch hẹn chuyển Đã cọc' } },
+      { id: 'notify', label: 'Báo nhóm', card: { kind: 'action', kindLabel: 'Hành động', subtitle: 'Nhóm Telegram chủ tiệm' } },
+      { id: 'release', label: 'Nhả chỗ', card: { kind: 'action', kindLabel: 'Hành động', subtitle: 'Trả giờ cho khách khác' } },
+    ];
+    const edges: readonly GraphEdge[] = [
+      { source: 'start', target: 'qr' }, { source: 'qr', target: 'send' }, { source: 'send', target: 'check' },
+      { source: 'check', target: 'paid', sourcePort: 'ok' }, { source: 'check', target: 'notify', sourcePort: 'low' }, { source: 'check', target: 'release', sourcePort: 'late' },
+    ];
+    return <div style={{ maxInlineSize: 1328 }}><FlowGraph label="Sơ đồ" layout="layered" nodes={nodes} edges={edges} statusLabels={WORDS} height="content" /></div>;
   },
 };

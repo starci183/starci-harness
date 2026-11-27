@@ -1,8 +1,8 @@
 "use client"
 
-import { Panel, useReactFlow, type FitViewOptions } from "@xyflow/react"
+import { Panel, useReactFlow, useStore, type FitViewOptions } from "@xyflow/react"
 import { createElement as h, type ReactElement } from "react"
-import { IconButton } from "../../../index.js"
+import { Button, IconButton } from "../../../index.js"
 import { TablerArrowsMaximize, TablerMinus, TablerPlus, TablerRefresh } from "../../../leaf/Icon/tabler.js"
 
 /** The words of the zoom buttons, in the app's language. */
@@ -52,5 +52,34 @@ export const FlowZoom = ({ words, onFit, fitOptions, reset }: { readonly words: 
             onFit: onFit ?? (() => void flow.fitView(fitOptions)),
             ...(reset === undefined ? {} : { reset }),
         }),
+    )
+}
+
+export interface ZoomBarProps {
+    /** The words: zoom in, zoom out, and the fit button's word ("Vừa khung"), which the bar follows with the zoom in percent ("Vừa khung · 76%"). */
+    readonly words: ZoomWords
+    /** How the fit button fits (the canvas's own fit options: the whole graph in the frame). */
+    readonly fitOptions?: FitViewOptions
+    /** Replaces xyflow's fit (a canvas that fits clear of its own controls). */
+    readonly onFit?: () => void
+}
+
+/** The zoom as a whole percent, read from the canvas so the bar follows the wheel, the pinch and the fit. */
+const zoomPercent = (state: { readonly transform: readonly [number, number, number] }): number => Math.round(state.transform[2] * 100)
+
+/**
+ * The zoom bar of a workflow graph (the approved canvas, 2026-11-27): one row at the bottom left inside the frame, "+", "−" and the fit button that names
+ * the zoom ("Vừa khung · 76%"), every part whole (the row takes its content's width, never cut by the frame). It reads xyflow's store, so it stands inside
+ * a `ReactFlow` (in a `Panel`, or the app's own controls group).
+ */
+export const ZoomBar = ({ words, fitOptions, onFit }: ZoomBarProps): ReactElement => {
+    const flow = useReactFlow()
+    const percent = useStore(zoomPercent)
+    return h(
+        "div",
+        { className: "starci-graph-zoom-bar", role: "group", "aria-label": words.fit },
+        h(IconButton, { key: "in", size: "sm", source: TablerPlus, label: words.zoomIn, onPress: () => void flow.zoomIn() }),
+        h(IconButton, { key: "out", size: "sm", source: TablerMinus, label: words.zoomOut, onPress: () => void flow.zoomOut() }),
+        h(Button, { key: "fit", size: "sm", onPress: onFit ?? (() => void flow.fitView(fitOptions)), children: `${words.fit} · ${String(percent)}%` }),
     )
 }

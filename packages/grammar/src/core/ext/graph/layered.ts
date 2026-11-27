@@ -15,28 +15,39 @@ import type { GraphDirection, GraphPosition } from "./types.js"
  *    runs through them. An edge out of a port carries no words (the row names the branch; see `resolveFlow`).
  * 4. **Back edges round the outside.** A loop's body returning to its head, a wait's retry: ELK breaks the cycle at the edge (it is given last, flagged
  *    `back`) and routes it round the nodes in a lane of its own (`feedbackEdges`); the graph draws it dashed.
- * 5. **Deterministic.** The same nodes, sizes, ports and edges give the same layout (a fixed seed, the model order kept); the canvas runs it again only when
+ * 5. **A step graph is compact** (`density: "steps"`, the owner's canvas): `LAYERED_STEP_SPACING`, the main road on one row, no words on a wire.
+ * 6. **Deterministic.** The same nodes, sizes, ports and edges give the same layout (a fixed seed, the model order kept); the canvas runs it again only when
  *    that structure changes, never on a run update.
  */
 
 /** The room between two nodes of one layer, between two layers, between an edge and a node, between two parallel edges, and round a label. */
 export const LAYERED_SPACING = { nodeNode: 40, betweenLayers: 72, edgeNode: 20, edgeEdge: 12, label: 6, components: 48 } as const
 
+/**
+ * The room of a workflow step graph (`density: "steps"`, the owner's canvas 2026-11-27): 22px between two columns of cards (a 196px card, so a column every
+ * 218px), 40px between two cards of one column (a branch's rows stacked 136px apart), and the turns of a branch's wires inside the 22px gap, 5px apart.
+ */
+export const LAYERED_STEP_SPACING = { nodeNode: 40, betweenLayers: 22, edgeNode: 6, edgeEdge: 5, label: 6, components: 48 } as const
+
+type Spacing = { readonly [K in keyof typeof LAYERED_SPACING]: number }
+
 const ELK_DIRECTION: Readonly<Record<GraphDirection, string>> = { LR: "RIGHT", TB: "DOWN" }
 
-const options = (direction: GraphDirection): LayoutOptions => ({
+const options = (direction: GraphDirection, density: "roomy" | "steps" = "roomy"): LayoutOptions => {
+    const spacing: Spacing = density === "steps" ? LAYERED_STEP_SPACING : LAYERED_SPACING
+    return {
     "elk.algorithm": "layered",
     "elk.direction": ELK_DIRECTION[direction],
     "elk.edgeRouting": "ORTHOGONAL",
     "elk.randomSeed": "1",
-    "elk.spacing.nodeNode": String(LAYERED_SPACING.nodeNode),
-    "elk.layered.spacing.nodeNodeBetweenLayers": String(LAYERED_SPACING.betweenLayers),
-    "elk.spacing.edgeNode": String(LAYERED_SPACING.edgeNode),
-    "elk.layered.spacing.edgeNodeBetweenLayers": String(LAYERED_SPACING.edgeNode),
-    "elk.spacing.edgeEdge": String(LAYERED_SPACING.edgeEdge),
-    "elk.layered.spacing.edgeEdgeBetweenLayers": String(LAYERED_SPACING.edgeEdge),
-    "elk.spacing.edgeLabel": String(LAYERED_SPACING.label),
-    "elk.spacing.labelNode": String(LAYERED_SPACING.label),
+    "elk.spacing.nodeNode": String(spacing.nodeNode),
+    "elk.layered.spacing.nodeNodeBetweenLayers": String(spacing.betweenLayers),
+    "elk.spacing.edgeNode": String(spacing.edgeNode),
+    "elk.layered.spacing.edgeNodeBetweenLayers": String(spacing.edgeNode),
+    "elk.spacing.edgeEdge": String(spacing.edgeEdge),
+    "elk.layered.spacing.edgeEdgeBetweenLayers": String(spacing.edgeEdge),
+    "elk.spacing.edgeLabel": String(spacing.label),
+    "elk.spacing.labelNode": String(spacing.label),
     "elk.spacing.portPort": "8",
     "elk.edgeLabels.inline": "false",
     "elk.layered.edgeLabels.sideSelection": "ALWAYS_UP",
@@ -44,16 +55,21 @@ const options = (direction: GraphDirection): LayoutOptions => ({
     "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
     "elk.layered.cycleBreaking.strategy": "DEPTH_FIRST",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-    "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+    // A step graph keeps its main road on one straight row: Brandes-Koepf, balanced, puts a chain of cards (their entry and exit ports at the middles of
+    // their sides) on one line and centres a branch's other ways above and below it; any other graph keeps network simplex.
+    ...(density === "steps"
+        ? { "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF", "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED" }
+        : { "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX" }),
     "elk.layered.nodePlacement.favorStraightEdges": "true",
     // A back edge runs round the nodes in a lane of its own, never through a column.
     "elk.layered.feedbackEdges": "true",
     "elk.layered.mergeEdges": "false",
     "elk.separateConnectedComponents": "true",
-    "elk.spacing.componentComponent": String(LAYERED_SPACING.components),
+    "elk.spacing.componentComponent": String(spacing.components),
     "elk.json.edgeCoords": "ROOT",
     "elk.padding": "[top=0,left=0,bottom=0,right=0]",
-})
+    }
+}
 
 /** elkjs is a CommonJS bundle that sets `default` on its constructor; under Node the import is that constructor's module object, under a bundler the constructor itself. */
 const Elk: typeof ElkModule = (ElkModule as unknown as { readonly default?: typeof ElkModule }).default ?? ElkModule
@@ -78,7 +94,7 @@ const elkPorts = (node: SizedNode): ElkPort[] | undefined => {
     })
 }
 
-const elkNode = (tree: Tree, id: string, direction: GraphDirection): ElkNode => {
+const elkNode = (tree: Tree, id: string, direction: GraphDirection, density: "roomy" | "steps"): ElkNode => {
     const node = tree.byId.get(id)
     if (node === undefined) return { id }
     const kids = tree.kids.get(id) ?? []
@@ -90,12 +106,12 @@ const elkNode = (tree: Tree, id: string, direction: GraphDirection): ElkNode => 
         id,
         ...(isContainer ? {} : { width: node.width, height: node.height }),
         ...(ports === undefined ? {} : { ports }),
-        ...(isContainer ? { children: kids.map((kid) => elkNode(tree, kid, direction)) } : {}),
+        ...(isContainer ? { children: kids.map((kid) => elkNode(tree, kid, direction, density)) } : {}),
         layoutOptions: {
             ...constraint,
             ...(isContainer
                 ? {
-                      ...options(direction),
+                      ...options(direction, density),
                       "elk.padding": `[top=${String(insets?.top ?? 16)},left=${String(insets?.left ?? 16)},bottom=${String(insets?.bottom ?? 16)},right=${String(insets?.right ?? 16)}]`,
                       "elk.nodeSize.constraints": "MINIMUM_SIZE",
                       "elk.nodeSize.minimum": `(${String(node.width)},${String(node.height)})`,
@@ -146,7 +162,7 @@ const tidy = (points: readonly Point[]): Point[] => {
  * a route is in the canvas frame. The same input always gives the same layout, rounded to whole pixels.
  */
 export const layoutLayered = async (nodes: readonly SizedNode[], links: readonly LinkEnds[], settings: LayoutSettings = {}): Promise<FlowLayout> => {
-    const { direction = "LR", measure = estimateLabel } = settings
+    const { direction = "LR", measure = estimateLabel, density = "roomy" } = settings
     engine ??= new Elk()
     const tree = treeOf(nodes)
     const placed = usableLinks(nodes, links).filter((link) => !isAncestor(tree, link.source, link.target) && !isAncestor(tree, link.target, link.source))
@@ -155,11 +171,12 @@ export const layoutLayered = async (nodes: readonly SizedNode[], links: readonly
     const nested = tree.kids.size > 0
     const root: ElkNode = {
         id: "root",
-        layoutOptions: { ...options(direction), ...(nested ? { "elk.hierarchyHandling": "INCLUDE_CHILDREN" } : {}) },
-        children: tree.roots.map((id) => elkNode(tree, id, direction)),
+        layoutOptions: { ...options(direction, density), ...(nested ? { "elk.hierarchyHandling": "INCLUDE_CHILDREN" } : {}) },
+        children: tree.roots.map((id) => elkNode(tree, id, direction, density)),
         edges: ordered.map((link, index) => {
             const id = link.id ?? `e${String(index)}`
-            const words = link.label === undefined || link.label === "" ? undefined : measure(link.label)
+            // A step graph's wires carry no words (its rows say them), so no label widens a gap.
+            const words = density === "steps" || link.label === undefined || link.label === "" ? undefined : measure(link.label)
             return {
                 id,
                 sources: [link.sourcePort !== undefined && hasPort(tree, link.source, link.sourcePort) ? portKey(link.source, link.sourcePort) : link.source],

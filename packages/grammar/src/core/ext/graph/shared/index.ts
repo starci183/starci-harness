@@ -4,7 +4,8 @@
  */
 export { GraphCanvas, measureLabel, type CanvasInput, type Placement } from "./canvas.js"
 export { LEAST_FIT, clearOfControls, openView, type OpenFit, type OpenView, type ViewInsets, type ViewRect } from "./view.js"
-export { FlowZoom, ZoomButtons, zoomWords, type ZoomButtonsProps, type ZoomWords } from "./zoom.js"
+export { FlowZoom, ZoomBar, ZoomButtons, zoomWords, type ZoomBarProps, type ZoomButtonsProps, type ZoomWords } from "./zoom.js"
+export { StepWire, WIRE, WireLegend, type StepWireProps, type WireLegendItem, type WireLegendProps } from "./wire.js"
 export { FlowLegend, type FlowLegendProps } from "./legend.js"
 export { GraphSkeleton, SKELETON_COLUMNS } from "./skeleton.js"
 export { StepEdge, backRoute, roundedPath } from "./StepEdge.js"

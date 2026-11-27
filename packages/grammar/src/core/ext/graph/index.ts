@@ -19,10 +19,12 @@ export {
     type StepCardRow,
     type StepCardRowState,
     type StepCardRowTone,
+    type StepCardTrigger,
 } from "./StepCard.js"
-export { LAYERED_SPACING, findOverlaps, layoutLayered, type Overlap, type OverlapKind } from "./layered.js"
+export { LAYERED_SPACING, LAYERED_STEP_SPACING, findOverlaps, layoutLayered, type Overlap, type OverlapKind } from "./layered.js"
 export { SchemaMap, type SchemaMapProps } from "./SchemaMap.js"
 export { FlowLegend, type FlowLegendProps } from "./shared/legend.js"
+export { StepWire, WIRE, WireLegend, ZoomBar, type StepWireProps, type WireLegendItem, type WireLegendProps, type ZoomBarProps } from "./shared/index.js"
 export { GraphSkeleton, SKELETON_COLUMNS } from "./shared/skeleton.js"
 export {
     ENTITY_HEAD_HEIGHT,

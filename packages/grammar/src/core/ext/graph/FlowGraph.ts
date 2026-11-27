@@ -190,6 +190,8 @@ const makeNodeTypes = (Link: ElementType | undefined): NodeTypes => {
                 ...(cardSub === undefined ? {} : { subtitle: cardSub }),
                 ...(icon === undefined ? {} : { icon }),
                 ...(card.mode === undefined ? {} : { mode: card.mode }),
+                ...(card.kindLabel === undefined ? {} : { kindLabel: card.kindLabel }),
+                ...(card.triggers === undefined ? {} : { triggers: card.triggers }),
                 ...(card.modeLabels === undefined ? {} : { modeLabels: card.modeLabels }),
                 ...(card.rows === undefined ? {} : { rows: card.rows }),
             }),
@@ -279,6 +281,9 @@ const SPINE_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutSpine(sizes
 /** The layered layout: one ELK run places the nodes and routes every edge, final as given (see `layered.ts`). */
 const LAYERED_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutLayered(sizes, links, settings)
 
+/** A graph of step cards only is a workflow step graph: laid out compact, its main road on one row, no words on a wire (`density: "steps"`). */
+const STEPS_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutLayered(sizes, links, { ...settings, density: "steps" })
+
 /** The layout port a card's handle stands for: its entry, its default exit, or a row's port (`port:<id>`, the id the card renders). */
 const portOfHandle = (handle: string): string | undefined => (handle.startsWith("port:") ? handle.slice("port:".length) : undefined)
 
@@ -341,7 +346,7 @@ export const FlowGraph = (props: FlowGraphProps): ReactElement => {
         nodeTypes,
         edgeTypes: EDGE_TYPES,
         onNodePress: press,
-        ...(layout === "spine" ? { runLayout: SPINE_LAYOUT, routed: true, leastZoom: FLOW_READABLE_ZOOM, fitWidth: true } : { runLayout: LAYERED_LAYOUT, routed: true, portOf: portOfHandle }),
+        ...(layout === "spine" ? { runLayout: SPINE_LAYOUT, routed: true, leastZoom: FLOW_READABLE_ZOOM, fitWidth: true } : { runLayout: nodes.length > 0 && nodes.every((node) => node.card !== undefined) ? STEPS_LAYOUT : LAYERED_LAYOUT, routed: true, portOf: portOfHandle }),
         ...(footer === undefined ? {} : { footer }),
     })
 }

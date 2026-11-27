@@ -1,7 +1,7 @@
 "use client"
 
 import { createElement as h, type ReactElement, type ReactNode } from "react"
-import { IconTile, InlineStatus, Text, type IconSource } from "../../index.js"
+import { Icon, IconTile, InlineStatus, Text, type IconSource } from "../../index.js"
 import type { IconTileTone } from "../../leaf/IconTile/index.js"
 
 /**
@@ -53,12 +53,29 @@ export interface StepCardRow {
     readonly stateLabel?: string
 }
 
+/** One way a workflow starts, listed on its `trigger` card: its words (whole, wrapping, never cut) and its own glyph. */
+export interface StepCardTrigger {
+    readonly id: string
+    readonly label: string
+    readonly icon?: IconSource
+}
+
 export interface StepCardProps {
     readonly kind: StepCardKind
+    /**
+     * The small muted line over the name that says what kind of step it is, in the app's words ("Hành động", "AI", "Chờ sự kiện", "Kết thúc"). A control
+     * step (with `rows`) draws none: its subtitle says its kind and its count of ways.
+     */
+    readonly kindLabel?: string
     /** The step's name: one line, cut with an ellipsis (the full name is its tooltip). */
     readonly title: string
-    /** The muted line under the name: what it does, or for a control step its kind and count of ways ("Nếu · 2 đường", "Lặp · tối đa 5 vòng · vòng 2/5"). */
+    /**
+     * One line under the head: what the step does ("VietQR · 40% giá · mã lịch"), cut with an ellipsis. For a control step it sits under the name in the
+     * head and says its kind and count of ways ("Nếu · 2 đường", "Lặp · tối đa 5 vòng · vòng 2/5").
+     */
     readonly subtitle?: string
+    /** The ways a `trigger` card starts the workflow, one per line under its name, whole and never cut (the owner's start node). */
+    readonly triggers?: readonly StepCardTrigger[]
     /** The step's own glyph, over the kind's (a node's package icon). */
     readonly icon?: IconSource
     /** How the step runs; `auto` or left out draws no badge. */
@@ -75,10 +92,11 @@ export interface StepCardProps {
 }
 
 /**
- * The geometry of the card, in graph units (px at zoom 1), for the canvas's layout: every card is `width` wide; a step without rows is `height` tall; a
- * control step is its head (`head`) plus one `row` per way out (`stepCardHeight`), each row the 8px block padding, a 16px line and its 0.5px seam.
+ * The geometry of the card, in graph units (px at zoom 1), for the canvas's layout (the owner's canvas, 2026-11-27: 196 by 96, a column every 218px with
+ * 22px between cards): every card is `width` wide, the start node too; a step without rows is `height` tall; a control step is its 40px head (`head`) plus
+ * one `row` per way out (`stepCardHeight`), each row the 8px block padding, a 16px line and its 0.5px seam (a switch of three is 136 tall).
  */
-export const STEP_CARD = { width: 200, height: 96, head: 64, row: 32.5 } as const
+export const STEP_CARD = { width: 196, height: 96, head: 40, row: 32 } as const
 
 /** The height a card draws at: 96, or the head plus its rows for a control step (never less than 96). */
 export const stepCardHeight = (rows: number): number => (rows === 0 ? STEP_CARD.height : Math.max(STEP_CARD.height, STEP_CARD.head + rows * STEP_CARD.row))
@@ -142,36 +160,53 @@ export const STEP_CARD_GLYPHS: Readonly<Record<StepCardKind, IconSource>> = {
 /** The core status mark of a parallel branch's own state. */
 const ROW_MARK = { done: "done", running: "running", error: "error" } as const
 
-/** One way out: a dot in its tone, its words (cut with an ellipsis, the full words its tooltip), a parallel branch's state, and the app's port at the right edge. */
+/**
+ * One way out: its words (cut with an ellipsis, the full words its tooltip), a parallel branch's state, and on the right edge at the row's middle its port:
+ * a hollow dot in the row's tone centred on the border (the dot the row's wire starts from), holding the app's handle.
+ */
 const row = (item: StepCardRow, index: number, renderPort: StepCardProps["renderPort"]): ReactElement => {
     const mark = item.state === "done" || item.state === "running" || item.state === "error" ? ROW_MARK[item.state] : undefined
     return h(
         "span",
         { key: item.id, className: "starci-step-card-row", "data-tone": item.tone, "data-state": item.state, "data-row": item.id, title: item.label },
-        h("span", { className: "starci-step-card-row-dot", "aria-hidden": true }),
         h("span", { className: "starci-step-card-row-label" }, h(Text, { role: "caption", overflow: "truncate" }, item.label)),
         mark === undefined ? null : h("span", { className: "starci-step-card-row-state" }, h(InlineStatus, { state: mark, label: item.stateLabel ?? "" })),
-        renderPort === undefined ? null : h("span", { className: "starci-step-card-row-port" }, renderPort(item, index)),
+        h("span", { className: "starci-step-card-row-port" }, h("span", { className: "starci-step-card-row-dot", "aria-hidden": true }), renderPort === undefined ? null : renderPort(item, index)),
     )
 }
 
+/** A trigger's own line on the start card: its glyph in the trigger tone and its words, whole. */
+const trigger = (item: StepCardTrigger): ReactElement =>
+    h(
+        "span",
+        { key: item.id, className: "starci-step-card-trigger" },
+        h("span", { className: "starci-step-card-trigger-glyph", "aria-hidden": true }, h(Icon, { source: item.icon ?? STEP_CARD_GLYPHS.trigger, usage: "text" })),
+        h("span", { className: "starci-step-card-trigger-label starci-type-caption" }, item.label),
+    )
+
 /**
- * The card of one step of a workflow graph (the owner's node design, 2026-11-27): every card is 200 wide and 96 tall (`STEP_CARD`), the step's glyph on
- * its kind's tinted tile (`STEP_CARD_KIND_TONE`, `STEP_CARD_GLYPHS`), its name on one line and a muted line under it, and the mode badge at the
- * bottom-right corner (`ask` amber, `studio` purple, `manual` grey; `auto` none). A control step (`branch`, `loop`, `parallel`) lists its ways out
- * under the head, one row each with an 8px by 12px padding and a 0.5px seam above every row (the first too), its tone's dot and its own output port on the
- * right edge (`renderPort`); its height is `stepCardHeight(rows)`. During a run or a replay the row the run took lights up and the others dim
- * (`StepCardRow.state`), and a parallel branch shows its own done or error mark.
+ * The card of one step of a workflow graph (the owner's node design and canvas, 2026-11-27): every card is 196 wide and 96 tall (`STEP_CARD`), the start
+ * node too. Its head is the step's glyph on its kind's tinted tile (`STEP_CARD_KIND_TONE`, `STEP_CARD_GLYPHS`) beside a small muted kind line
+ * (`kindLabel`: "Hành động", "AI", "Chờ sự kiện") over the name; one muted line under the head says what it does (`subtitle`); the mode badge stands at the
+ * bottom-right corner (`ask` amber, `studio` purple, `manual` grey; `auto` none).
+ *
+ * - **The start node** (`trigger`) has a danger ring and lists every way the workflow starts under its name (`triggers`), one per line, whole and wrapping.
+ * - **A control step** (`branch`, `loop`, `parallel`) keeps a 40px head (its name and the subtitle that says its kind and count of ways) and lists its ways
+ *   out under it, one row each with an 8px by 12px padding and a 0.5px seam above every row (the first too); each row's port is a hollow dot in its tone
+ *   on the right edge at the row's middle (`renderPort` puts the app's handle in it); its height is `stepCardHeight(rows)`. During a run or a replay the row
+ *   the run took lights up and the others dim (`StepCardRow.state`), and a parallel branch shows its own done or error mark.
  *
  * It is the card's inside only: the canvas that holds it gives the frame its size (`STEP_CARD.width` by `stepCardHeight(rows)`, border included), draws
- * the border, the selection, the run status on the border and the handles, and passes the port of each row; the card fills that frame. Import `@starci/grammar/core/ext/graph.css` once.
+ * the border, the selection, the run status on the border and the handles; the card fills that frame. Import `@starci/grammar/core/ext/graph.css` once.
  */
 export const StepCard = (props: StepCardProps): ReactElement => {
-    const { kind, title, subtitle, icon, mode, modeLabels, rows = [], renderPort } = props
+    const { kind, kindLabel, title, subtitle, triggers = [], icon, mode, modeLabels, rows = [], renderPort } = props
     const badge = mode === undefined || mode === "auto" || modeLabels === undefined ? undefined : modeLabels[mode]
+    const control = rows.length > 0
+    const sub = subtitle === undefined || subtitle === "" ? null : h(Text, { role: "label.field", overflow: "truncate" }, subtitle)
     return h(
         "span",
-        { className: "starci-step-card", "data-kind": kind, "data-rows": rows.length > 0 ? String(rows.length) : undefined },
+        { className: "starci-step-card", "data-kind": kind, "data-rows": control ? String(rows.length) : undefined, "data-mode": badge === undefined ? undefined : mode },
         h(
             "span",
             { className: "starci-step-card-head" },
@@ -179,11 +214,14 @@ export const StepCard = (props: StepCardProps): ReactElement => {
             h(
                 "span",
                 { className: "starci-step-card-text", title },
+                !control && kindLabel !== undefined && kindLabel !== "" ? h("span", { className: "starci-step-card-kind starci-type-caption" }, kindLabel) : null,
                 h(Text, { role: "label.item", overflow: "truncate" }, title),
-                subtitle === undefined || subtitle === "" ? null : h(Text, { role: "label.field", overflow: "truncate" }, subtitle),
+                control ? sub : null,
             ),
         ),
-        rows.length === 0 ? null : h("span", { className: "starci-step-card-rows" }, rows.map((item, index) => row(item, index, renderPort))),
+        triggers.length > 0 ? h("span", { className: "starci-step-card-triggers" }, triggers.map(trigger)) : null,
+        !control && triggers.length === 0 && sub !== null ? h("span", { className: "starci-step-card-line" }, sub) : null,
+        control ? h("span", { className: "starci-step-card-rows" }, rows.map((item, index) => row(item, index, renderPort))) : null,
         badge === undefined ? null : h("span", { className: "starci-step-card-mode starci-type-caption", "data-mode": mode }, badge),
     )
 }

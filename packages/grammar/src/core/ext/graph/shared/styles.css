@@ -651,3 +651,101 @@
 
     stroke: var(--foreground);
 }
+
+/*
+ * The wire of a workflow step graph (`StepWire`, owner "Bổ sung 3" and the approved canvas, 2026-11-27): the line in the graph's line colour, 1.5 wide; the
+ * start dot hollow on the surface and the open V stroke-only, both in the wire's colour and width. A row's tone sets the stroke inline (`STEP_CARD_EDGE`).
+ */
+.starci-graph-wire {
+    --starci-graph-wire-stroke: var(--muted);
+    --starci-graph-wire-width: 1.5px;
+
+    pointer-events: none;
+}
+
+.starci-graph-wire[data-run="taken"] {
+    --starci-graph-wire-stroke: var(--success);
+}
+
+.starci-graph-wire[data-run="untaken"] {
+    opacity: var(--grammar-opacity-faded);
+}
+
+.starci-graph-wire-line {
+    fill: none;
+    stroke: var(--starci-graph-wire-stroke);
+    stroke-width: var(--starci-graph-wire-width);
+    stroke-linecap: round;
+}
+
+.starci-graph-wire-dot {
+    fill: var(--surface);
+    stroke: var(--starci-graph-wire-stroke);
+    stroke-width: var(--starci-graph-wire-width);
+}
+
+.starci-graph-wire-arrow {
+    fill: none;
+    stroke: var(--starci-graph-wire-stroke);
+    stroke-width: var(--starci-graph-wire-width);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* The wire legend: bottom right inside the frame, a small bordered note on the surface; each entry a 16px stroke in its tone's look and its words. */
+.starci-graph-wire-legend {
+    position: absolute;
+    inset-block-end: 0.5rem;
+    inset-inline-end: 0.75rem;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+    list-style: none;
+    color: var(--foreground);
+    background: var(--surface);
+    border: var(--grammar-border-edge);
+    border-radius: var(--grammar-radius-sm);
+}
+
+.starci-graph-wire-legend-item {
+    --starci-graph-wire-legend-tone: var(--muted);
+
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+}
+
+.starci-graph-wire-legend-item:is([data-tone="main"], [data-tone="stop"]) {
+    --starci-graph-wire-legend-tone: var(--success);
+}
+
+.starci-graph-wire-legend-item[data-tone="warning"] {
+    --starci-graph-wire-legend-tone: var(--warning);
+}
+
+.starci-graph-wire-legend-item[data-tone="back"] {
+    --starci-graph-wire-legend-tone: var(--danger);
+}
+
+.starci-graph-wire-legend-swatch {
+    inline-size: 1rem;
+    border-block-start: calc(var(--grammar-hairline) * 2) solid var(--starci-graph-wire-legend-tone);
+}
+
+.starci-graph-wire-legend-swatch[data-dashed="true"] {
+    border-block-start-style: dashed;
+}
+
+/* The zoom bar: one row at the bottom left, "+", "−" and "Vừa khung · N%", each whole (the row takes its content's width). */
+.starci-graph-zoom-bar {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.25rem;
+    inline-size: max-content;
+    white-space: nowrap;
+}

@@ -123,6 +123,12 @@ export interface LayoutSettings {
     readonly width?: number
     /** Measures the words of an edge label so ELK can reserve their room. Default `estimateLabel`; the graph passes one that reads the page's font. */
     readonly measure?: Measure
+    /**
+     * How tight `layoutLayered` packs the graph. `roomy` (default): `LAYERED_SPACING`, words on edges. `steps`: a workflow step graph as the owner's canvas
+     * draws it (2026-11-27): `LAYERED_STEP_SPACING` (a column every card width plus 22px), the main road on one straight row (Brandes-Koepf, balanced), a
+     * branch's other ways stacked above and below it, and no words on any wire (a branch's meaning is its row and its colour).
+     */
+    readonly density?: "roomy" | "steps"
 }
 
 const ELK_DIRECTION: Readonly<Record<GraphDirection, string>> = { LR: "RIGHT", TB: "DOWN" }

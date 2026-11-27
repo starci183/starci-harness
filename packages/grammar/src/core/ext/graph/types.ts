@@ -1,6 +1,6 @@
 import type { AriaLabelConfig } from "@xyflow/react"
 import type { ComponentType, ReactNode } from "react"
-import type { StepCardKind, StepCardMode, StepCardModeLabels, StepCardRow } from "./StepCard.js"
+import type { StepCardKind, StepCardMode, StepCardModeLabels, StepCardRow, StepCardTrigger } from "./StepCard.js"
 
 /**
  * Where a node of a workflow run stands, exactly six states: `done`, `running` (the only active one on a path: green (success), a spinner, its outgoing edge flows),
@@ -93,7 +93,11 @@ export interface FlowWait {
  */
 export interface FlowStepCard {
     readonly kind: StepCardKind
+    /** The small kind line over the name, in the app's words ("Hành động", "Chờ sự kiện"). */
+    readonly kindLabel?: string
     readonly subtitle?: string
+    /** A `trigger` card's ways to start, one per line, whole. */
+    readonly triggers?: readonly StepCardTrigger[]
     readonly mode?: StepCardMode
     readonly modeLabels?: StepCardModeLabels
     readonly rows?: readonly StepCardRow[]

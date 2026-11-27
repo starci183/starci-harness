@@ -236,7 +236,8 @@ One ELK `layered` run places every node and routes every edge (`layoutLayered`, 
 4. **Notes off the lines.** Words longer than `NOTE_CHARS` (24, a branch's name) are a note (a refusal's reason, "Bị từ chối: ..."): the step's status or its drawer says it, never a pill on a line.
 5. **Parallel edges are one line** (`mergeParallel`): the edges that leave one port for one target (an action's "xong", "không duyệt" and "bị từ chối" that all go on to the same step) are drawn once, in the strongest state of the group (a taken one wins), with the first edge's id and their words when they are at most two short names ("có sự kiện · quá hạn"), else none.
 6. **Back edges round the outside, dashed.** A loop's body returning to its head or a wait's retry is given to ELK last, flagged back; ELK breaks the cycle there and routes it round the nodes in a lane of its own (`feedbackEdges`).
-7. **Deterministic.** A fixed seed and the model order: the same nodes, sizes, ports and edges give the same layout, and the canvas runs it again only when that structure changes. Disconnected parts are packed by ELK (48 apart).
+7. **A step graph is compact** (`density: "steps"`, the owner's approved canvas 2026-11-27; `FlowGraph` picks it when every node is a step card, NIVO's canvas passes it): `LAYERED_STEP_SPACING`, 22 between two columns (a 196 card, so a column every 218), 40 within a column, 6 between an edge and a node, 5 between parallel edges; Brandes-Koepf placement, balanced, so the main road is ONE row (every centre on one line, every wire a straight run between two side midpoints) and a branch's other ways stack above and below it; and no words on any wire (a branch's meaning is its card's row and its colour, the wire legend says the colours). The start node reports the same size as the cards.
+8. **Deterministic.** A fixed seed and the model order: the same nodes, sizes, ports and edges give the same layout, and the canvas runs it again only when that structure changes. Disconnected parts are packed by ELK (48 apart).
 
 `findOverlaps(sizes, links, layout)` lists every overlap of a laid-out drawing (node on node, edge through a node, label on a node, a line or a label, two edges along one line unless they share a port); the demo stories `nivo-deposit`, `nivo-deposit-run` and `nivo-multi-post` (two real NIVO workflows) put it on `window.graphOverlaps`, empty.
 
@@ -269,24 +270,38 @@ Read-only by default. `editable` lets a person drag the nodes; ELK gives the fir
 `StepCard` (0.64.2, the owner's node design 2026-11-27) is the card of one step of a workflow graph, for a canvas that draws its own nodes (NIVO's
 `steps` graph): the canvas keeps the border, the selection, the run status on the border and the handles; the card draws everything inside.
 
-- **One size.** Every card is `STEP_CARD.width` (200) wide and `STEP_CARD.height` (96) tall; a control step is its head (64) plus one row per way out
-  (`stepCardHeight(rows)`, `STEP_CARD.row` 32.5 each), never under 96.
+- **One size** (0.64.7, the approved canvas). Every card is `STEP_CARD.width` (196) wide and `STEP_CARD.height` (96) tall, the start node too; a control
+  step is its 40px head (`STEP_CARD.head`) plus one 32px row per way out (`stepCardHeight(rows)`: a switch of three is 136), never under 96.
+- **Content.** The head is the kind's tile beside a small muted kind line (`kindLabel`, the app's words: "Hành động", "AI", "Chờ sự kiện", "Kết thúc")
+  over the name; one muted line under the head says what the step does (`subtitle`). A control step's head is its name over its subtitle ("Rẽ nhánh · 3
+  đường") with no kind line.
+- **Start node.** `kind: "trigger"` draws a danger ring and lists `triggers` (`StepCardTrigger`: words and an optional glyph) one per line under its
+  name, whole and wrapping, never cut.
 - **Kind.** `kind` is `trigger`, `action`, `ai`, `wait`, `branch`, `approval`, `code`, `end`, `loop`, `parallel` or `join`: its glyph
   (`STEP_CARD_GLYPHS`, or the app's `icon`) on its tinted tile (`STEP_CARD_KIND_TONE`), the name on one line, a muted `subtitle`.
 - **Mode badge**, bottom-right (in the head's corner on a control step): `auto` none, `ask` amber, `studio` purple (the graph's own
   `--starci-graph-studio*` pair: HeroUI has no purple), `manual` grey; the words are the app's `modeLabels`.
 - **Rows.** A `branch` (an if: exactly two rows; a switch: three or more, the last the "else"), a `loop` (three: the body, its stop
   condition, its limit; the subtitle says "vòng k/N" in a run) and a `parallel` (one row per branch) list their ways out. Each row is 8px by 12px
-  (the spacing scale has no 14), a 0.5px seam above it, the first row too, its tone's dot, its words, and its own port on the right edge: the app's
-  handle, passed by `renderPort(row, index)`. The tone sets the dot and the row's edge (`STEP_CARD_EDGE`, `STEP_CARD_DASH`): `main` solid green,
+  (the spacing scale has no 14), a 0.5px seam above it, the first row too, its words, and its own port on the right edge at the row's middle: a 10px
+  hollow dot ringed in the row's tone, its centre on the border (the dot the row's wire starts from), holding the app's handle passed by
+  `renderPort(row, index)`. The tone sets the dot and the row's edge (`STEP_CARD_EDGE`, `STEP_CARD_DASH`): `main` solid green,
   `warning` solid amber, `else` grey dashes, `back` (a loop's body, which returns) red dashes, `stop` green, `branch` neutral.
 - **Replay.** `row.state`: `taken` lights the row in its tone, `dimmed` fades it; `done`, `running` and `error` show a parallel branch's own
   `InlineStatus` with the app's `stateLabel`.
 
-In `FlowGraph`, a node's `card` (`FlowStepCard`: `kind`, `subtitle`, `mode`, `modeLabels`, `rows`) draws its inside as the same `StepCard`: the node is a
-card whatever its kind, at least the step card's height, its run status still on the top edge; the app passes each row's `state`.
+- **Wire** (`StepWire`, 0.64.7, "Bổ sung 3"): the one look of a step graph's wire for a canvas that draws its own edges: the rounded orthogonal line from
+  `points` (side midpoint to side midpoint), a hollow start dot (`WIRE.dot`) centred on the source's border, an open V (`WIRE.arrow`, stroke only, the
+  wire's colour and width) whose point touches the target's border; `tone` is the row's (`STEP_CARD_EDGE`), `run` `taken` green or `untaken` faded. No
+  words on a wire. `WireLegend` (`items`: a tone and the app's word) is the small legend of those colours at the bottom right inside the frame, drawn
+  only for a graph with a control step.
+- **Zoom bar** (`ZoomBar`, 0.64.7): one row at the bottom left inside the frame, "+", "−" and the fit button that names the zoom ("Vừa khung · 76%"),
+  every part whole; it reads xyflow's store, so it stands inside the `ReactFlow`.
 
-Stories `Graph/Step card (0.64.2)`: `Kinds`, `Branches`, `LoopAndParallel`, `Replay`, `InFlowGraph`.
+In `FlowGraph`, a node's `card` (`FlowStepCard`: `kind`, `kindLabel`, `subtitle`, `triggers`, `mode`, `modeLabels`, `rows`) draws its inside as the
+same `StepCard`; a graph whose every node is a card is laid out compact (`density: "steps"`).
+
+Stories `Graph/Step card (0.64.7)`: `Kinds`, `Branches`, `LoopAndParallel`, `Replay`, `InFlowGraph`, `CanvasCards`, `Wires`, `CanvasGraph`.
 
 ## SchemaMap
 

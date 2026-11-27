@@ -564,11 +564,12 @@
     --starci-graph-studio-ink: oklch(84% 0.1 300);
 }
 
+/* The head: the kind's tile beside the kind line over the name (the canvas: 8px by 10px round the card's inside). */
 .starci-step-card-head {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem 0;
     min-inline-size: 0;
 }
 
@@ -579,12 +580,72 @@
     min-inline-size: 0;
 }
 
+/* The small kind line over the name ("Hành động", "AI", "Chờ sự kiện"), muted. */
+.starci-step-card-kind {
+    overflow: hidden;
+    color: var(--muted);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* What the step does: one line under the head (the mode badge sits below it, in the corner). */
+.starci-step-card-line {
+    display: flex;
+    padding: 0.25rem 0.75rem 0;
+    min-inline-size: 0;
+}
+
+/* The start node: a danger ring over the frame's border, and its triggers one per line, whole and wrapping, each with its glyph in the danger ink. */
+.starci-step-card[data-kind="trigger"] {
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 calc(var(--grammar-hairline) * 1.5) var(--danger);
+}
+
+.starci-step-card-triggers {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.25rem 0.75rem 0.5rem;
+    min-inline-size: 0;
+}
+
+.starci-step-card-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-inline-size: 0;
+}
+
+.starci-step-card-trigger-glyph {
+    display: inline-flex;
+    flex: none;
+    color: var(--danger);
+}
+
+
+.starci-step-card-trigger-label {
+    color: var(--foreground);
+    overflow-wrap: anywhere;
+}
+
+/* A control step's head is 40px: its name and the subtitle that says its kind and count of ways. */
+.starci-step-card[data-rows] .starci-step-card-head {
+    block-size: 2.5rem;
+    box-sizing: border-box;
+    padding: 0 0.75rem;
+}
+
+.starci-step-card[data-rows] .starci-step-card-head .starci-core-icon-tile {
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+}
+
 .starci-step-card-rows {
     display: flex;
     flex-direction: column;
 }
 
-/* One way out: 8px by 12px, a 0.5px seam above it (the first row too), its dot, its words and its port on the right edge. */
+/* One way out: 8px by 12px, 32px tall, a 0.5px seam above it (the first row too), its words and its port (a hollow dot in its tone) on the right edge. */
 .starci-step-card-row {
     --starci-step-card-row-tone: var(--muted);
 
@@ -592,6 +653,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    block-size: 2rem;
+    box-sizing: border-box;
     padding: 0.5rem 0.75rem;
     border-block-start: var(--starci-step-card-seam) solid var(--separator);
     min-inline-size: 0;
@@ -610,19 +673,19 @@
     --starci-step-card-row-tone: var(--danger);
 }
 
+/* The row's port: a 10px hollow dot on the surface, ringed in the row's tone, its centre on the card's right border at the row's middle. */
 .starci-step-card-row-dot {
-    flex: none;
-    inline-size: 0.5rem;
-    block-size: 0.5rem;
-    background: var(--starci-step-card-row-tone);
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: -0.3125rem;
+    inline-size: 0.625rem;
+    block-size: 0.625rem;
+    box-sizing: border-box;
+    translate: 0 -50%;
+    background: var(--surface);
+    border: calc(var(--grammar-hairline) * 2) solid var(--starci-step-card-row-tone);
     border-radius: var(--grammar-radius-pill);
-}
-
-/* The else, a timeout or a loop's limit: a hollow dashed dot, as its edge is dashed. */
-.starci-step-card-row[data-tone="else"] .starci-step-card-row-dot,
-.starci-step-card-row[data-tone="back"] .starci-step-card-row-dot {
-    background: transparent;
-    border: var(--grammar-hairline) dashed var(--starci-step-card-row-tone);
+    pointer-events: none;
 }
 
 .starci-step-card-row-label {
@@ -641,6 +704,7 @@
     position: absolute;
     inset-block: 0;
     inset-inline-end: 0;
+    z-index: 1;
 }
 
 /* A replay: the row the run took lights up, the others fade. */
