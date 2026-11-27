@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.64.3 - 2026-11-27
+
+- Added (h-grammar-codeblock-shiki): `CodeBlock` draws Shiki's highlighting. New prop `tokens` (type `CodeLineTokens`, one token list per line, the shape `highlightCode(code, lang)` of `@starci/grammar/core/ext/markdown/server` returns): the app awaits `highlightCode` on the server and hands the JSON to the block, so no Shiki ships to the browser. The block maps Shiki's css-variables colours (`--shiki-token-*`) onto the code palette itself, so light and dark follow the page or `scheme`; a line whose tokens do not spell its text is drawn plain, and Copy always copies `code`. New prop `maxLines`: the code is at most N lines tall and scrolls inside the block, the header, file name and note stay. Line numbers, Copy, fold, `highlightLines` are unchanged. Story `CodePalette/CodeBlockHighlighted`.
+
 ## 0.64.0 - 2026-11-26
 
 - Changed (h-grammar-flowgraph-midpoint, owner 2026-11-26): `FlowGraph` lays a flow out on its spine by default (`layout: "spine"`, `layoutSpine` in `spine.ts`, its numbers `SPINE`). The longest path along plain and "yes" edges is one straight centred column; side roads stand in columns to its right at `spine + lane * (NODE_WIDTH + 80)` (`COLUMN_PITCH`); a parallel fork splits its branches evenly (`lane = i - (n - 1) / 2`); one layer is one row. Edges attach only at the middles of the sides (in at the top-mid or, for a loop, the left-mid; out at the bottom-mid, the right-mid for a side road, the left-mid for a loop) with the fewest bends: straight down a column, one bend into a side column or back into the spine, a U on the left for a loop, fork and join bars. Two edges into one node meet at a merge dot above it; three or more drop straight down their own columns into a merge bar over the target that carries the one neutral arrow; loops into one node gather in one left lane. Horizontal runs lie in the gaps between rows, `edgeSpacing` apart. Words stand beside the first segment of their edge, never on a bend. The spine always runs top to bottom; `layout: "layered"` keeps ELK's layout (`LR` or `TB`, ports on the cards).

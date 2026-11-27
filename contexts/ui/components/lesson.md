@@ -39,7 +39,8 @@ takes none. Measure: judgement.
 ## Variants
 - `CodeBlock`: `scheme` (`page` follows the page; `dark` or `light` sets the block in that theme whatever the page's, from the same tokens:
   the code palette's dark or light set);
-  `lineNumbers` (default on); `copyable` (default on). The fold is controlled (`isCollapsed`, `onCollapsedChange`) or uncontrolled
+  `lineNumbers` (default on); `copyable` (default on); `tokens` (Shiki's tokens per line from the server's `highlightCode`, plain without them);
+  `maxLines` (the code scrolls inside past N lines). The fold is controlled (`isCollapsed`, `onCollapsedChange`) or uncontrolled
   (`defaultCollapsed`); without either the block has no fold.
 - `GradedChoice`: `keys` (default A, B, C ...); `picks` with `onPicksChange` (controlled, e.g. a learner's saved answers) or `defaultPicks`.
 - `Sidenotes`: the margin column from a 52rem frame; under it the fold `foldLabel(n)` ("Terms (3)") under the prose.

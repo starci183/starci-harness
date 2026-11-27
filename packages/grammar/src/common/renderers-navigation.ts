@@ -37,7 +37,7 @@ export { DragItem, type DragItemProps, type DragItemTone } from "../core/branch/
 export { Disclosure, type DisclosureProps } from "../core/branch/Disclosure/index.js"
 export { Expandable, type ExpandableProps } from "../core/branch/Expandable/index.js"
 export { GeoMap, type GeoMapLabels, type GeoMapPoint, type GeoMapProps, type GeoMapTiles } from "../core/branch/GeoMap/index.js"
-export { CodeBlock, type CodeBlockLabels, type CodeBlockProps, type CodeBlockScheme } from "../core/frame/CodeBlock/index.js"
+export { CodeBlock, type CodeBlockLabels, type CodeBlockProps, type CodeBlockScheme, type CodeBlockToken, type CodeLineTokens } from "../core/frame/CodeBlock/index.js"
 export { Sidenotes, SidenoteTerm, type SidenoteItem, type SidenotesProps, type SidenoteTermProps } from "../core/frame/Sidenotes/index.js"
 export { GradedChoice, type GradedChoiceLabels, type GradedChoiceLocalProps, type GradedChoiceOption, type GradedChoiceProps, type GradedChoiceServerProps, type GradedChoiceVerdict } from "../core/composite/GradedChoice/index.js"
 export { TableOfContents, type TableOfContentsItem, type TableOfContentsProps } from "../core/composite/TableOfContents/index.js"

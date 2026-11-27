@@ -17,6 +17,20 @@
         border-radius: var(--grammar-radius-lg);
         background: var(--surface);
         color: var(--foreground);
+        /* Shiki's css-variables theme: the colour of each token kind, from the code palette (the markdown ext maps the same set on .starci-md). */
+        --shiki-foreground: var(--grammar-code-fg);
+        --shiki-background: transparent;
+        --shiki-token-comment: var(--grammar-code-comment);
+        --shiki-token-punctuation: var(--grammar-code-punctuation);
+        --shiki-token-keyword: var(--grammar-code-keyword);
+        --shiki-token-string: var(--grammar-code-string);
+        --shiki-token-string-expression: var(--grammar-code-string);
+        --shiki-token-constant: var(--grammar-code-constant);
+        --shiki-token-function: var(--grammar-code-function);
+        --shiki-token-parameter: var(--grammar-code-fg);
+        --shiki-token-link: var(--grammar-code-function);
+        --shiki-token-inserted: var(--grammar-code-inserted);
+        --shiki-token-deleted: var(--grammar-code-deleted);
     }
 
     .starci-core-code-block-head {
@@ -90,6 +104,13 @@
         background: var(--grammar-code-bg);
         color: var(--grammar-code-fg);
         overscroll-behavior-inline: contain;
+    }
+
+    /* maxLines: the code's own scroll, both ways, at most N body lines tall (the padding of the block is added). */
+    .starci-core-code-block-code[data-grammar-code-bounded="true"] {
+        max-block-size: calc(var(--starci-code-max-lines) * var(--grammar-type-body-line) + 2 * var(--grammar-row-gap));
+        overflow-y: auto;
+        overscroll-behavior-block: contain;
     }
 
     .starci-core-code-block-code:focus-visible { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: calc(-1 * var(--grammar-ring-width)); }
