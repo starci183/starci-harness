@@ -5555,12 +5555,12 @@
     .starci-core-icon-tile[data-grammar-activity] {
         position: relative;
         overflow: visible;
-        border-radius: 9999px;
+        border-radius: var(--grammar-radius-pill);
     }
 
     .starci-core-icon-tile[data-grammar-activity="running"] > .starci-core-icon-tile-ring {
         inset: -3px;
-        border-radius: 50%;
+        border-radius: var(--grammar-radius-pill);
         border-color: transparent;
         border-top-color: var(--warning);
         border-right-color: var(--warning);
