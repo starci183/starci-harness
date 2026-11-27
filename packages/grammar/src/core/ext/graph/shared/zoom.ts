@@ -62,6 +62,8 @@ export interface ZoomBarProps {
     readonly fitOptions?: FitViewOptions
     /** Replaces xyflow's fit (a canvas that fits clear of its own controls). */
     readonly onFit?: () => void
+    /** A last button that puts every moved node back (an editable graph), with its words. */
+    readonly reset?: ZoomButtonsProps["reset"]
 }
 
 /** The zoom as a whole percent, read from the canvas so the bar follows the wheel, the pinch and the fit. */
@@ -72,7 +74,7 @@ const zoomPercent = (state: { readonly transform: readonly [number, number, numb
  * the zoom ("Vừa khung · 76%"), every part whole (the row takes its content's width, never cut by the frame). It reads xyflow's store, so it stands inside
  * a `ReactFlow` (in a `Panel`, or the app's own controls group).
  */
-export const ZoomBar = ({ words, fitOptions, onFit }: ZoomBarProps): ReactElement => {
+export const ZoomBar = ({ words, fitOptions, onFit, reset }: ZoomBarProps): ReactElement => {
     const flow = useReactFlow()
     const percent = useStore(zoomPercent)
     return h(
@@ -81,5 +83,6 @@ export const ZoomBar = ({ words, fitOptions, onFit }: ZoomBarProps): ReactElemen
         h(IconButton, { key: "in", size: "sm", source: TablerPlus, label: words.zoomIn, onPress: () => void flow.zoomIn() }),
         h(IconButton, { key: "out", size: "sm", source: TablerMinus, label: words.zoomOut, onPress: () => void flow.zoomOut() }),
         h(Button, { key: "fit", size: "sm", onPress: onFit ?? (() => void flow.fitView(fitOptions)), children: `${words.fit} · ${String(percent)}%` }),
+        reset === undefined ? null : h(IconButton, { key: "reset", size: "sm", source: TablerRefresh, label: reset.label, onPress: reset.onPress }),
     )
 }
