@@ -255,6 +255,30 @@ Read-only by default. `editable` lets a person drag the nodes; ELK gives the fir
 
 `isLoading` is a skeleton graph of node-shaped bones and the lines between them, with no text, and `aria-busy`. It is also shown for the moment ELK takes to place a new graph.
 
+## StepCard: the inside of a workflow step card
+
+`StepCard` (0.64.2, the owner's node design 2026-11-27) is the card of one step of a workflow graph, for a canvas that draws its own nodes (NIVO's
+`steps` graph): the canvas keeps the border, the selection, the run status on the border and the handles; the card draws everything inside.
+
+- **One size.** Every card is `STEP_CARD.width` (200) wide and `STEP_CARD.height` (96) tall; a control step is its head (64) plus one row per way out
+  (`stepCardHeight(rows)`, `STEP_CARD.row` 32.5 each), never under 96.
+- **Kind.** `kind` is `trigger`, `action`, `ai`, `wait`, `branch`, `approval`, `code`, `end`, `loop`, `parallel` or `join`: its glyph
+  (`STEP_CARD_GLYPHS`, or the app's `icon`) on its tinted tile (`STEP_CARD_KIND_TONE`), the name on one line, a muted `subtitle`.
+- **Mode badge**, bottom-right (in the head's corner on a control step): `auto` none, `ask` amber, `studio` purple (the graph's own
+  `--starci-graph-studio*` pair: HeroUI has no purple), `manual` grey; the words are the app's `modeLabels`.
+- **Rows.** A `branch` (an if: exactly two rows; a switch: three or more, the last the "else"), a `loop` (three: the body, its stop
+  condition, its limit; the subtitle says "vòng k/N" in a run) and a `parallel` (one row per branch) list their ways out. Each row is 8px by 12px
+  (the spacing scale has no 14), a 0.5px seam above it, the first row too, its tone's dot, its words, and its own port on the right edge: the app's
+  handle, passed by `renderPort(row, index)`. The tone sets the dot and the row's edge (`STEP_CARD_EDGE`, `STEP_CARD_DASH`): `main` solid green,
+  `warning` solid amber, `else` grey dashes, `back` (a loop's body, which returns) red dashes, `stop` green, `branch` neutral.
+- **Replay.** `row.state`: `taken` lights the row in its tone, `dimmed` fades it; `done`, `running` and `error` show a parallel branch's own
+  `InlineStatus` with the app's `stateLabel`.
+
+In `FlowGraph`, a node's `card` (`FlowStepCard`: `kind`, `subtitle`, `mode`, `modeLabels`, `rows`) draws its inside as the same `StepCard`: the node is a
+card whatever its kind, at least the step card's height, its run status still on the top edge; the app passes each row's `state`.
+
+Stories `Graph/Step card (0.64.2)`: `Kinds`, `Branches`, `LoopAndParallel`, `Replay`, `InFlowGraph`.
+
 ## SchemaMap
 
 `SchemaMap` takes `entities` (`{ id, label, description?, count?, icon?, fields?: { id, label, type? }[] }`), `relations` (`{ id?, source, target, label? }`, the `source` entity holds the field that points at the `target`), `moreLabel(n)` for the "+N" row of an entity with more than six fields, and the `GraphCanvasProps`. Its edges never flow.

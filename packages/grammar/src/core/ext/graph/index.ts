@@ -2,6 +2,24 @@ export { FLOW_READABLE_ZOOM, FlowGraph, type FlowGraphProps } from "./FlowGraph.
 export { DEFAULT_FOLD_ABOVE, FOLD_PREFIX, foldFlow, type FlowCollapse, type FoldedFlow } from "./collapse.js"
 export { FLOW_STEP_PARTS, FlowStepDrawer, type FlowStepDrawerProps, type FlowStepPart, type FlowStepSection } from "./FlowStepDrawer.js"
 export { BAR_PREFIX, COLUMN_PITCH, SPINE, layoutSpine } from "./spine.js"
+export {
+    STEP_CARD,
+    STEP_CARD_DASH,
+    STEP_CARD_EDGE,
+    STEP_CARD_GLYPHS,
+    STEP_CARD_KINDS,
+    STEP_CARD_KIND_TONE,
+    STEP_CARD_ROW_TONES,
+    StepCard,
+    stepCardHeight,
+    type StepCardKind,
+    type StepCardMode,
+    type StepCardModeLabels,
+    type StepCardProps,
+    type StepCardRow,
+    type StepCardRowState,
+    type StepCardRowTone,
+} from "./StepCard.js"
 export { SchemaMap, type SchemaMapProps } from "./SchemaMap.js"
 export { FlowLegend, type FlowLegendProps } from "./shared/legend.js"
 export { GraphSkeleton, SKELETON_COLUMNS } from "./shared/skeleton.js"
@@ -50,6 +68,7 @@ export type {
     FlowStatus,
     FlowStatusInput,
     FlowStatusLabels,
+    FlowStepCard,
     FlowWait,
     GraphCanvasProps,
     GraphDirection,
