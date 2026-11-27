@@ -1,11 +1,11 @@
-// uiaudit-family.mts - the UI Audit gate of `starci app check` (`--gate uiaudit`, contexts/project/gallery.md PROJECT-GALLERY-8): every gallery screen the diff touches since the base carries a
-// passed audit in its screen.yaml. Diff-only by construction: a screen the diff does not touch (its source, or its own audited screen.yaml) is grandfathered and never read, so the
+// uiaudit-family.mts - the local UI audit list of `starci app check --env local` (`--gate uiaudit`, contexts/project/gallery.md PROJECT-GALLERY-8): every gallery screen the diff touches since the
+// base that carries no passed audit in its screen.yaml. A UX/UI to-do list, never a gate (owner 2026-11-27): main.mts skips it under `--env prod`. Diff-only by construction: a screen the diff does not touch (its source, or its own audited screen.yaml) is grandfathered and never read, so the
 // gate costs the touched screens alone and stores no record (a record per touched screen would only be churn in every lane's committed cache). A screen is touched when
 //   - its route's source changed (the page and the feature folders it imports, the same screen-to-source mapping as the gallery coupling), or
 //   - a file its route's page reaches through imports changed (a shared composite, a hook, a module, a workspace package, an imported catalog: screen-reach.mts, the
 //     app's own TypeScript resolving under the front-end app's tsconfig, bounded and memoised), or
 //   - its screen.yaml changed and already holds an audit (the audit is being edited, so it is judged).
-// The codes (all `local` findings: report-only in `--env local`, errors in `--env prod`): UI_AUDIT_MISSING, _STALE, _SELF_REVIEW, _ROUNDS_FEW, _OPEN, _NEEDS_OWNER, _CONSIDERED_EMPTY.
+// The codes (tracker codes of the catalog: info and report-only in `--env local`, never judged in `--env prod`, check-env.mts trackedForEnv): UI_AUDIT_MISSING, _STALE, _SELF_REVIEW, _ROUNDS_FEW, _OPEN, _NEEDS_OWNER, _CONSIDERED_EMPTY.
 // They judge a screen only until its audit first passes (PROJECT-GALLERY-8): the pass is its baseline, and after it drift and later cycles are evidence, never a finding
 // (screen-yaml.mts judgeAudit). A malformed audit block is HFS_APP_GALLERY_SCREEN_INVALID, judged for every screen by rules/gallery.mts.
 import fs from 'node:fs';

@@ -25,6 +25,23 @@ export function localOnlyCodes(root: string = skillRoot): ReadonlySet<string> {
 /** A finding as the environment reads it. */
 export interface EnvFinding { code?: string | null | undefined; level?: string | undefined; local?: unknown; report?: boolean | undefined }
 
+/**
+ * The failure codes the catalog marks `tracker: true` (owner 2026-11-27: "chạy nhưng mà chỉ check local và dùng cái đó để sửa ux ui sau này ở local"): the gallery's
+ * to-do list of UX/UI work (a touched screen with no UI audit, a route with no screen.yaml, a built design page with no shots). They never block anything: `--env local`
+ * lists them as info, report-only; `--env prod` (the pre-push hook, CI, the release gate) leaves them out. Concept rules are never tracker codes and still block.
+ */
+export function trackerCodes(root: string = skillRoot): ReadonlySet<string> {
+  const catalog = readCatalogOnce(path.join(root, FAILURE_CODES_FILE)) as Record<string, { tracker?: unknown } | undefined> | null;
+  return new Set(Object.entries(catalog ?? {}).filter(([, entry]) => entry?.tracker === true).map(([code]) => code));
+}
+
+/** The findings with the tracker codes judged for `env`: in `local` each is an info finding, report-only; in `prod` they are left out. Every other finding is unchanged. */
+export function trackedForEnv<T extends EnvFinding>(findings: readonly T[], env: CheckEnv, codes: ReadonlySet<string> = trackerCodes()): T[] {
+  const isTracker = (finding: T): boolean => typeof finding.code === 'string' && codes.has(finding.code);
+  if (env !== 'local') return findings.filter((finding) => !isTracker(finding));
+  return findings.map((finding) => (isTracker(finding) ? { ...finding, level: 'info', report: true } : finding));
+}
+
 /** Whether the finding is one a local-registry loop alone causes: a localOnly code the producer marked `local`. */
 export const isLocalOnly = (finding: EnvFinding, codes: ReadonlySet<string>): boolean => finding.local === true && typeof finding.code === 'string' && codes.has(finding.code);
 
