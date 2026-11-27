@@ -4,6 +4,8 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.206 - 2026-11-27
 
+- Changed: the CLI requires @starci/hfs@6.17.19, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Pre-beta: this train releases @starci/hfs 6.17.19 (the UI audit is a local UX/UI helper: a missing audit, screen.yaml or shot never blocks a push, a tag or a release; concept rules still block).
 
 ## 1.1.0-alpha.205 - 2026-11-27
