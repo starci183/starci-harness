@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 3.28.7 - 2026-11-27
+
+- Released (train 2026-11-27): the `no-domain-error-logged` and `catch-must-account` `loggedAndThrown` rules of h-logging-enforce, listed under 3.28.6, landed after 3.28.6 was published (npm's 3.28.6 is commit 3627d3358 and lacks them); this version carries them.
+
 ## 3.28.6 - 2026-11-25
 
 - Added (h-logging-enforce, BE-ERROR-4): `no-domain-error-logged` refuses a `Logger.error` whose cause is typed as a `DomainError` (built in place, held in a variable of that type, or narrowed by `instanceof`) outside `platform/errors`; and `catch-must-account` refuses, as `loggedAndThrown`, a catch that both logs through the `Logger` and lets a throw escape, outside `platform/errors`, `platform/logging`, `platform/cqrs` and `platform/jobs`.
