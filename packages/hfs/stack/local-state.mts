@@ -5,9 +5,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { starciLocalRoot } from '../runtime/engine/runtime-root.mjs';
 
+/** One of the two build slots of a served process (local-run.mts SERVE_SLOT_ENV). */
+export type ServeSlot = 'a' | 'b';
+
 /** What the environment recorded about itself. */
 export interface LocalRecord {
-  processes: Record<string, { pid: number; startedAt: string; port: number | null; /** The launched command line (absent in a record written before identity checks). */ command?: string; /** serve (built) or watch (hot reload); absent in a record written before the built mode. */ mode?: 'serve' | 'watch' }>;
+  processes: Record<string, { pid: number; startedAt: string; port: number | null; /** The launched command line (absent in a record written before identity checks). */ command?: string; /** serve (built) or watch (hot reload); absent in a record written before the built mode. */ mode?: 'serve' | 'watch'; /** The build slot a served process runs from (local-run.mts SERVE_SLOT_ENV). */ slot?: ServeSlot }>;
   /** The edges of the web processes the dev tunnel publishes (local-edge.mts): each outlives the restarts of its process; stack down ends it. */
   edges?: Record<string, { pid: number; startedAt: string; port: number; command: string; /** the digest of the edge script it runs */ digest: string }>;
   ports: Record<string, number>;

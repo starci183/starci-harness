@@ -504,7 +504,9 @@ test('up builds and serves the built artifact by default; the watcher runs only 
   assert.ok(build >= 0 && build < start, 'the build runs before the built api starts');
   assert.deepEqual(up.calls[start]?.args.slice(-1), ['dist/api.js']);
   assert.equal(up.calls[build]?.env?.JWT_KEY_FILE, undefined, 'the build gets no custody file');
-  assert.match(up.out.join(''), /process api: built, started \(pid 4242, built artifact\)/u);
+  assert.match(up.out.join(''), /process api: built \(slot a\), started \(pid 4242, built artifact\)/u);
+  assert.equal(up.calls[build]?.env?.STARCI_SERVE_SLOT, 'a', 'the build names its slot');
+  assert.equal(up.calls[start]?.env?.STARCI_SERVE_SLOT, 'a', 'and so does the start, which reads the same output');
   const watchRoot = app(t, { block: SERVED });
   const watched = host(watchRoot);
   assert.equal(await run(watchRoot, ['up', '--env', 'dev', '--execute', '--watch'], watched), 0, watched.err.join(''));
@@ -523,16 +525,20 @@ test('restart rebuilds and restarts only the named processes, waits for their he
   const recorded = started ? [started.command, ...started.args].join(' ') : '';
   const dry = host(root);
   assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api'], dry), 0, dry.err.join(''));
-  assert.match(dry.out.join(''), /plan stop api \(pid 4242\)[\s\S]*plan build api[\s\S]*plan wait api: http:\/\/localhost:\$\{port\.api\}\/health\/live[\s\S]*dry run/u);
+  assert.match(dry.out.join(''), /plan build api[\s\S]*plan stop api \(pid 4242\)[\s\S]*plan wait api: http:\/\/localhost:\$\{port\.api\}\/health\/live[\s\S]*dry run/u);
   assert.equal(dry.calls.some((call) => call.background), false);
   const unknown = host(root);
   assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'worker', '--execute'], unknown), 2);
   assert.match(unknown.err.join(''), /--process names no process of dev: worker \(declared: api\)/u);
-  const killed: number[] = [];
+  const killed: Array<{ pid: number; calls: number }> = [];
   const again = host(root);
-  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api', '--execute'], again, { alive: () => true, commandLine: () => recorded, kill: (pid) => killed.push(pid) }), 0, again.err.join(''));
-  assert.deepEqual(killed, [4242], 'the running api is ended');
-  assert.ok(again.calls.some((call) => call.args.includes('build:be')), 'the api is rebuilt');
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'api', '--execute'], again, { alive: () => true, commandLine: () => recorded, kill: (pid) => killed.push({ pid, calls: again.calls.length }) }), 0, again.err.join(''));
+  assert.deepEqual(killed.map((kill) => kill.pid), [4242], 'the running api is ended');
+  const rebuilt = again.calls.findIndex((call) => call.args.includes('build:be'));
+  assert.ok(rebuilt >= 0, 'the api is rebuilt');
+  assert.ok(rebuilt < (killed[0]?.calls ?? 0), 'the build runs while the running api keeps serving, before it is ended');
+  assert.equal(again.calls[rebuilt]?.env?.STARCI_SERVE_SLOT, 'b', 'into the slot the running api does not use');
+  assert.match(again.out.join(''), /process api: built \(slot b\) while pid 4242 kept serving/u);
   assert.equal(again.calls.filter((call) => call.background).length, 1, 'and started once');
   assert.equal(again.calls.some((call) => call.command === 'docker' && call.args.includes('compose') && (call.args.includes('up') || call.args.includes('down') || call.args.includes('restart'))), false, 'no compose service is touched');
   assert.match(again.out.join(''), /ok {4}ready api: http:\/\/localhost:3001\/health\/live answered 200/u);
@@ -612,6 +618,52 @@ test('the owner never gets a half-built web: a web the tunnel publishes restarts
   const down = host(root);
   assert.equal(await run(root, ['down', '--env', 'dev', '--execute'], down, { alive: () => true, commandLine: (pid) => (pid === 777 ? 'node edge-server.mjs' : 'npx next dev --port 4568'), kill: (pid) => killed.push(pid) }), 0, down.err.join(''));
   assert.ok(killed.includes(777), 'stack down ends the edge');
+});
+
+test('a served web behind its edge is rebuilt beside the running one: the old copy ends only once the edge serves the new one, and stays when it never does', async (t) => {
+  const SERVED_WEB = TUNNELED.replace(
+    '        - {name: web, argv: [npx, next, dev, --port, "${port.web}"], cwd: fe/apps/web, port: web, health: {url: "http://localhost:${port.web}/"}}',
+    '        - {name: web, argv: [npx, next, dev, --port, "${port.web}"], cwd: fe/apps/web, port: web, health: {url: "http://localhost:${port.web}/"}, serve: {build: {argv: [npx, next, build]}, argv: [npx, next, start, --port, "${port.web}"]}}',
+  );
+  const root = app(t, { block: SERVED_WEB });
+  const cloudflared = path.join(root, '..', `${path.basename(root)}-cloudflared`);
+  fs.mkdirSync(cloudflared, { recursive: true });
+  t.after(() => fs.rmSync(cloudflared, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(cloudflared, 'cert.pem'), 'cert\n');
+  fs.writeFileSync(path.join(cloudflared, 't.yml'), 'tunnel: 00000000-0000-0000-0000-000000000000\ncredentials-file: x.json\ningress:\n  - hostname: app.dev.example.com\n    service: http://127.0.0.1:3000\n  - service: http_status:404\n');
+  const edgeDeps = { processTable: () => [], startEdge: async () => ({ pid: 777, command: 'node edge-server.mjs' }) };
+  const up = host(root);
+  up.io.env.CLOUDFLARED_HOME = cloudflared;
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], up, { ...edgeDeps, freePort: async () => 4567 }), 0, up.err.join(''));
+  assert.match(up.out.join(''), /process web: built \(slot a\), started \(pid 4242, built artifact, behind its edge on backend port 4567\)/u);
+  const state = path.join(root, '..', `${path.basename(root)}-state`);
+  const edgeDir = fs.readdirSync(path.join(state, 'stack'), { recursive: true, withFileTypes: true }).find((entry) => entry.isDirectory() && entry.name === 'edge');
+  assert.ok(edgeDir, 'the edge folder exists');
+  const edgeFolder = path.join(edgeDir.parentPath, edgeDir.name);
+  const owned = (pid: number): string => (pid === 777 ? 'node edge-server.mjs' : 'npx next start --port 4567');
+  const dry = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'web'], dry, { ...edgeDeps, alive: () => true, commandLine: owned }), 0, dry.err.join(''));
+  assert.match(dry.out.join(''), /plan build web: npx next build[\s\S]*plan stop web \(pid 4242\) once its edge serves the new copy/u);
+  // the edge passed the new copy: the old one ends after the start
+  fs.writeFileSync(path.join(edgeFolder, 'web.status.json'), JSON.stringify({ listening: true, backend: 4568, serving: 4568, live: true, detail: '/ answered 200', title: 'demo', at: 'now' }));
+  const killed: Array<{ pid: number; calls: number }> = [];
+  const swap = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'web', '--execute'], swap, { ...edgeDeps, freePort: async () => 4568, alive: () => true, commandLine: owned, kill: (pid) => killed.push({ pid, calls: swap.calls.length }) }), 0, swap.err.join(''));
+  const build = swap.calls.findIndex((call) => call.args.includes('build'));
+  const start = swap.calls.findIndex((call) => call.background);
+  assert.ok(build >= 0 && build < start, 'the build runs first');
+  assert.equal(swap.calls[build]?.env?.STARCI_SERVE_SLOT, 'b', 'into the other slot than the running web');
+  assert.deepEqual(killed.map((kill) => kill.pid), [4242], 'the old web ends');
+  assert.ok((killed[0]?.calls ?? 0) > start, 'after the new one started');
+  assert.match(swap.out.join(''), /edge web: serves backend port 4568 \(\/ answered 200\); process web: ended the previous copy \(pid 4242\)/u);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(edgeFolder, 'web.backend.json'), 'utf8')), { port: 4568 });
+  // the next copy never passes: it ends, the edge points back at the running one, and the restart fails
+  const failed: number[] = [];
+  const stuck = host(root);
+  assert.equal(await run(root, ['restart', '--env', 'dev', '--process', 'web', '--execute', '--timeout', '3'], stuck, { ...edgeDeps, freePort: async () => 4569, alive: () => true, commandLine: (pid) => (pid === 777 ? 'node edge-server.mjs' : 'npx next start --port 4568'), kill: (pid) => failed.push(pid) }), 1, stuck.err.join(''));
+  assert.deepEqual(failed, [4242], 'only the new copy is ended (its pid, as the fake spawn gives every start)');
+  assert.match(stuck.out.join(''), /FAIL {2}edge web: the new copy on backend port 4569 never passed[\s\S]*keeps serving on backend port 4568/u);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(edgeFolder, 'web.backend.json'), 'utf8')), { port: 4568 }, 'the edge is pointed back');
 });
 
 test('a second watcher tree of one checkout never survives a start: the earlier tree is ended by its root, other checkouts and the gallery are left alone', async () => {
@@ -695,8 +747,29 @@ test('the edge forwards to a web only once its page and Grammar CSS answer, and 
   const live = await get();
   assert.equal(live.status, 200);
   assert.equal(live.body, page, 'live, the edge forwards to the web as it is');
+  // a restart points the edge at a new backend that is not whole yet: the old one keeps answering until the new one passed
+  let nextCss: { status: number; body: string } = { status: 404, body: '' };
+  const nextPage = page.replace('<body>app</body>', '<body>next</body>');
+  const successor = http.createServer((request, response) => {
+    if (request.url === '/_next/static/chunks/app.css') { response.writeHead(nextCss.status, { 'content-type': 'text/css' }); response.end(nextCss.body); return; }
+    response.writeHead(200, { 'content-type': 'text/html' }); response.end(nextPage);
+  });
+  const successorPort = await freePort();
+  await new Promise<void>((done) => { successor.listen(successorPort, '127.0.0.1', done); });
+  t.after(() => { successor.close(); });
+  fs.writeFileSync(config.backendFile, JSON.stringify({ port: successorPort }));
+  await until(() => /keeps serving/u.test(status().detail ?? ''), 'the new backend is probed while the old one serves');
+  const during = await get();
+  assert.equal(during.status, 200, 'no updating page during the swap');
+  assert.equal(during.body, page, 'the old backend still answers');
+  nextCss = { status: 200, body: '.starci-core-icon{inline-size:1em}' };
+  await until(() => status().live === true, 'the new backend goes live');
+  assert.equal((await get()).body, nextPage, 'the edge forwards to the new backend');
   backend.close();
   backend.closeAllConnections();
+  assert.equal((await get()).status, 200, 'the old backend ending changes nothing once the edge moved');
+  successor.close();
+  successor.closeAllConnections();
   await until(() => status().live === false, 'a web that stops answering sends the edge back to the updating page');
   assert.equal((await get()).status, 503);
 });

@@ -298,10 +298,18 @@ processes, waits for readiness and prints the origins. An agent never runs Docke
 **A native process runs built, not watched.** A process may declare `serve: {build: {argv, cwd?}, argv, cwd?}`: `up` and `restart`
 run its `build` (the governor's build class, with the process's non-secret env and no custody file) and then its `serve.argv`, the built
 artifact (`next start`, `node dist/...`), so code merged on dev is never hot-reloaded half written. The process's own `argv` (`next dev`,
-`ts-node-dev`) runs only with `--watch`, the explicit opt-in for live coding; a process without `serve` runs its `argv` either way. `starci app
-stack restart --env <env> --process <name>[,<name>] [--watch] --execute` ends only those processes (only the ones this environment started),
-builds and starts them, and waits for their health probe on the loopback and, when the dev tunnel routes their port, over the tunnel
-hostname; the compose services, volumes, custody files and tunnel stay up. `STACK_LOCAL_NOT_UP` refuses an environment with no running
+`ts-node-dev`) runs only with `--watch`, the explicit opt-in for live coding; a process without `serve` runs its `argv` either way, so a
+dev environment that should run built declares `serve` on each process (NIVO: `next build` then `next start` for the web, `npm run build:be`
+then `node dist/...` for the api and its doors). The build and the start get `STARCI_SERVE_SLOT` (`a` or `b`, recorded per process): each
+build goes into the slot the running copy does not use, and a build that would overwrite the running output reads it to build elsewhere (a
+Next web: `distDir: .next/serve-${STARCI_SERVE_SLOT}`, since `next build` empties its `distDir`). `starci app stack restart --env <env>
+--process <name>[,<name>] [--watch] --execute` builds those processes first while the running copies keep serving (a failed build ends
+nothing; one build per command and folder in a restart), then starts them: a web behind its edge starts beside the running copy on a new
+backend port and the old copy ends only once the edge serves the new one (one that never passes is ended, the edge is pointed back and the
+restart fails, the old copy still serving), any other process is ended (only the one this environment started) just before its start. It
+waits for their health probe on the loopback and, when the dev tunnel routes their port, over the tunnel hostname; the compose services,
+volumes, custody files and tunnel stay up. After pulling dev by hand, `starci app stack restart --env dev --process api,web --execute`
+(plus any other process the pull changed) rebuilds and swaps them. `STACK_LOCAL_NOT_UP` refuses an environment with no running
 process. `starci dev sync` runs it ([cicd.md](cicd.md) "Dev and prod").
 
 **The edge of a dev web.** A front-end process (its `cwd` under `fe/`) whose port a dev tunnel route publishes runs behind an edge
@@ -310,7 +318,8 @@ listens on a free backend port (`${port.<name>}` in its argv and env is that por
 probe passed: the health path answers 200 with HTML linking at least one stylesheet, every stylesheet answers 200, and in an app on
 Grammar one of them holds `.starci-core-icon`. Before that, and whenever the backend stops answering, every request gets a 503 page
 "<app> đang cập nhật, tải lại sau vài giây" (the app's name from its page title) that reloads itself every 5 seconds, never a
-half-built page. A restart points the edge at the new backend; the edge itself outlives restarts and `dev sync` (it is no recorded
+half-built page. A restart points the edge at the new backend and the edge keeps forwarding to the backend it serves until the new one
+passed, so a rebuild never shows the updating page; the edge itself outlives restarts and `dev sync` (it is no recorded
 process and runs a copy of its script from the state folder, so no install touches it), `up` brings it back when it alone is gone, and
 `down` ends it. Before any process starts, `up` and `restart` end every earlier tree of the same command from the same checkout by
 its root process (a process that runs from `<checkout>/node_modules/` or the process's own folder with every literal argument of its

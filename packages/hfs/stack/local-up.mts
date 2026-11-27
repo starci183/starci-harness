@@ -17,12 +17,13 @@ import { isAdvisoryRow, type LocalConfig } from './local-config.mjs';
 import { missingKeys, missingStep, openCustody } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
-import { DEFAULT_TIMEOUT_SECONDS, buildCommand, launchedCommand, modeOf, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, portHolder, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, stopProcess, waitFor } from './local-run.mjs';
+import { DEFAULT_TIMEOUT_SECONDS, SERVE_SLOT_ENV, buildCommand, nextSlot, launchedCommand, modeOf, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, portHolder, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, stopProcess, waitFor } from './local-run.mjs';
 import type { LocalDeps, ProcessMode } from './local-run.mjs';
 import type { LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import { launch } from './local-host.mjs';
 import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
+import type { ServeSlot } from './local-state.mjs';
 import { SEED_RECEIPTS, seedStep } from './seeds.mjs';
 import { planTunnel, routeTunnel } from './local-tunnel.mjs';
 import { endEarlierTrees, ensureEdge, freePort, needsEdge } from './local-edge.mjs';
@@ -244,13 +245,27 @@ async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, aft
 }
 
 /**
- * Builds (serve mode, when the process declares a build) and starts one native process, recording its pid, port, command line and mode.
- * The build gets the process's own non-secret env (a Next build inlines its NEXT_PUBLIC_* values) and no custody file. The caller ends every
+ * Runs the build of one process in `mode` into `slot` (serve mode, when it declares a build): the process's own non-secret env (a Next build inlines
+ * its NEXT_PUBLIC_* values) plus SERVE_SLOT_ENV, and no custody file. The ports are the declared ones: a web behind its edge gets its backend port
+ * only at its start. False when there is nothing to build.
+ */
+export async function buildProcess(ctx: StackContext, local: LocalConfig, run: LocalProcess, custody: Custody, mode: ProcessMode, slot: ServeSlot): Promise<boolean> {
+  const build = buildCommand(run, mode, slot);
+  if (build === null) return false;
+  await runCommand(ctx, local, build, runEnvironment(ctx, local, build, custody, null));
+  return true;
+}
+
+/**
+ * Builds (serve mode, when the process declares a build, unless `built` says the caller already did) and starts one native process, recording its
+ * pid, port, command line, mode and build slot (SERVE_SLOT_ENV: the other one than the record's, unless `slot` names it). The caller ends every
  * earlier tree of the same command from this checkout first (local-edge.mts endEarlierTrees). A web the dev tunnel publishes runs behind its edge
  * (local-edge.mts): the edge keeps the declared port and the process gets a free backend port, `${port.<name>}` included.
  */
-export async function launchProcess(ctx: StackContext, local: LocalConfig, run: LocalProcess, custody: Custody, mode: ProcessMode, record: ReturnType<typeof readRecord>, deps: LocalDeps = {}): Promise<string> {
+export async function launchProcess(ctx: StackContext, local: LocalConfig, run: LocalProcess, custody: Custody, mode: ProcessMode, record: ReturnType<typeof readRecord>, deps: LocalDeps = {}, { built = false, slot = nextSlot(record.processes[run.name]) }: { built?: boolean; slot?: ServeSlot } = {}): Promise<string> {
   const lines: string[] = [];
+  const actual = modeOf(run, mode);
+  if (!built) await buildProcess(ctx, local, run, custody, mode, slot);
   let target = local;
   if (run.port !== null && needsEdge(local, run)) {
     const backend = await (deps.freePort ?? freePort)();
@@ -258,14 +273,14 @@ export async function launchProcess(ctx: StackContext, local: LocalConfig, run: 
     if (edge.line !== null) lines.push(edge.line);
     if (edge.ok) target = { ...local, ports: { ...local.ports, [run.port]: backend } };
   }
-  const build = buildCommand(run, mode);
-  if (build !== null) await runCommand(ctx, target, build, runEnvironment(ctx, target, build, custody, null));
   const launched = launchedCommand(run, mode);
-  const pid = startProcess(ctx, target, launched, runEnvironment(ctx, target, run, custody, 'app'));
-  const actual = modeOf(run, mode);
+  const env = runEnvironment(ctx, target, run, custody, 'app');
+  if (actual === 'serve') env[SERVE_SLOT_ENV] = slot;
+  const pid = startProcess(ctx, target, launched, env);
   const port = run.port === null ? null : (target.ports[run.port] ?? null);
-  record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port, command: processCommand(ctx, target, launched), mode: actual };
-  lines.push(`process ${run.name}: ${build === null ? '' : 'built, '}started (pid ${pid}, ${actual === 'serve' ? 'built artifact' : 'watch'}${target === local ? '' : `, behind its edge on backend port ${String(port)}`})`);
+  record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port, command: processCommand(ctx, target, launched), mode: actual, ...(actual === 'serve' ? { slot } : {}) };
+  const builtWord = buildCommand(run, mode) === null ? '' : `built (slot ${slot}), `;
+  lines.push(`process ${run.name}: ${builtWord}started (pid ${pid}, ${actual === 'serve' ? 'built artifact' : 'watch'}${target === local ? '' : `, behind its edge on backend port ${String(port)}`})`);
   return lines.join('\n');
 }
 

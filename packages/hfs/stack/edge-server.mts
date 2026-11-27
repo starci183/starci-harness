@@ -3,7 +3,8 @@
 // probe page answers 200 with HTML that links at least one stylesheet, every linked stylesheet answers 200, and, when the app uses Grammar,
 // the stylesheets hold Grammar's `.starci-core-icon` rule. Until then, and whenever the backend stops answering, every request gets a small
 // "updating" page that reloads itself, never a half-built app (a page with no Grammar CSS draws every icon unsized). A restart writes the
-// new backend port into the backend file; the edge probes it and switches once it passed, so the old page answers until the new one is whole.
+// new backend port into the backend file; the edge probes it while it keeps forwarding to the backend it serves, and switches once the new one
+// passed, so the old page answers until the new one is whole (stack restart ends the old process only after that switch).
 // It runs standalone (`node edge-server.mjs <config.json>`) from a copy in the environment's state folder, with node built-ins only, so an
 // `npm ci` of the checkout never touches a file it holds.
 import fs from 'node:fs';
@@ -29,7 +30,11 @@ export interface EdgeConfig {
 /** What the edge writes into its status file. */
 export interface EdgeStatus {
   listening: boolean;
+  /** The backend port the backend file names (the wanted one). */
   backend: number | null;
+  /** The backend port the edge forwards to now: the wanted one once it passed, the previous one until then, null while it holds. */
+  serving?: number | null;
+  /** True when the edge forwards to the wanted backend. */
   live: boolean;
   detail: string;
   title: string;
@@ -113,29 +118,32 @@ const readBackend = (file: string): number | null => {
 
 /** Runs the edge until it is killed. */
 export function runEdge(config: EdgeConfig): void {
+  /** The wanted backend (the backend file). */
   let backend: number | null = null;
-  let live = false;
+  /** The backend requests are forwarded to: the last one that passed its probe and still answers, else null (the updating page). */
+  let serving: number | null = null;
   let detail = 'no backend yet';
   let title = config.title;
   let listening = false;
   let probing = false;
   const write = (error?: string): void => {
-    const status: EdgeStatus = { listening, backend, live, detail, title, at: new Date().toISOString(), ...(error === undefined ? {} : { error }) };
+    const status: EdgeStatus = { listening, backend, serving, live: serving !== null && serving === backend, detail, title, at: new Date().toISOString(), ...(error === undefined ? {} : { error }) };
     const temporary = `${config.statusFile}.${process.pid}.tmp`;
-    try { fs.writeFileSync(temporary, `${JSON.stringify(status)}\n`); fs.renameSync(temporary, config.statusFile); } catch { /* the next tick writes again */ }
+    try { fs.writeFileSync(temporary, `${JSON.stringify(status)}
+`); fs.renameSync(temporary, config.statusFile); } catch { /* the next tick writes again */ }
   };
   const tick = async (): Promise<void> => {
     const wanted = readBackend(config.backendFile);
-    if (wanted !== backend) { backend = wanted; live = false; detail = wanted === null ? 'no backend yet' : `probing backend ${wanted}`; write(); }
-    if (live || backend === null || probing) return;
+    if (wanted !== backend) { backend = wanted; detail = wanted === null ? 'no backend yet' : `probing backend ${wanted}${serving === null ? '' : ` while backend ${serving} keeps serving`}`; write(); }
+    if (backend === null || backend === serving || probing) return;
     probing = true;
     const port = backend;
     try {
       const verdict = await probeBackend(port, config.probePath, config.marker);
       if (verdict.title !== null) title = verdict.title;
       if (port !== backend) return;
-      live = verdict.ok;
-      detail = verdict.detail;
+      if (verdict.ok) serving = port;
+      detail = verdict.ok || serving === null ? verdict.detail : `${verdict.detail}; backend ${serving} keeps serving`;
       write();
     } finally { probing = false; }
   };
@@ -143,22 +151,24 @@ export function runEdge(config: EdgeConfig): void {
     response.writeHead(503, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'retry-after': '5', refresh: '5' });
     response.end(holdingPage(title));
   };
-  const lost = (): void => { if (live) { live = false; detail = `backend ${backend ?? '?'} stopped answering`; write(); } };
+  const lost = (port: number): void => { if (serving === port) { serving = null; detail = `backend ${port} stopped answering`; write(); } };
   const server = http.createServer((request, response) => {
-    if (!live || backend === null) { hold(response); return; }
-    const upstream = http.request({ host: '127.0.0.1', port: backend, method: request.method, path: request.url, headers: request.headers }, (answer) => {
+    const port = serving;
+    if (port === null) { hold(response); return; }
+    const upstream = http.request({ host: '127.0.0.1', port, method: request.method, path: request.url, headers: request.headers }, (answer) => {
       response.writeHead(answer.statusCode ?? 502, answer.rawHeaders);
       answer.pipe(response);
     });
     upstream.on('error', (error: NodeJS.ErrnoException) => {
-      if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') lost();
+      if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') lost(port);
       if (!response.headersSent) hold(response); else response.destroy();
     });
     request.pipe(upstream);
   });
   server.on('upgrade', (request, socket, head) => {
-    if (!live || backend === null) { socket.destroy(); return; }
-    const upstream = net.connect(backend, '127.0.0.1', () => {
+    const port = serving;
+    if (port === null) { socket.destroy(); return; }
+    const upstream = net.connect(port, '127.0.0.1', () => {
       const lines = [`${request.method ?? 'GET'} ${request.url ?? '/'} HTTP/${request.httpVersion}`];
       for (let index = 0; index < request.rawHeaders.length; index += 2) lines.push(`${request.rawHeaders[index]}: ${request.rawHeaders[index + 1]}`);
       upstream.write(`${lines.join('\r\n')}\r\n\r\n`);
@@ -171,12 +181,13 @@ export function runEdge(config: EdgeConfig): void {
   server.on('error', (error: NodeJS.ErrnoException) => { listening = false; write(`${error.code ?? 'error'}: ${error.message}`); process.exit(1); });
   server.listen({ port: config.listen, host: '::', ipv6Only: false }, () => { listening = true; write(); });
   setInterval(() => { void tick(); }, 1000).unref();
-  // A live backend is re-checked by connection only (cheap): a restart that ends it sends the edge back to the updating page at once.
+  // The served backend is re-checked by connection only (cheap): once it stops answering the edge holds (or the wanted one is probed again).
   setInterval(() => {
-    if (!live || backend === null) return;
-    const probe = net.connect(backend, '127.0.0.1');
+    const port = serving;
+    if (port === null) return;
+    const probe = net.connect(port, '127.0.0.1');
     probe.on('connect', () => { probe.destroy(); });
-    probe.on('error', () => { lost(); });
+    probe.on('error', () => { lost(port); });
   }, 2000).unref();
   void tick();
 }
