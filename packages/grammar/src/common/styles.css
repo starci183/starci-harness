@@ -5506,11 +5506,11 @@
         font-size: var(--grammar-icon-row);
         font-variant-numeric: tabular-nums;
         font-weight: var(--grammar-weight-medium);
-        line-height: 1;
+        line-height: var(--grammar-icon-row);
         user-select: none;
     }
 
-    .starci-core-icon-tile[data-size="head"] .starci-core-icon-tile-step { font-size: var(--grammar-icon-head); }
+    .starci-core-icon-tile[data-size="head"] .starci-core-icon-tile-step { font-size: var(--grammar-icon-head); line-height: var(--grammar-icon-head); }
 
     .starci-core-icon-tile[data-grammar-mark="status"] {
         border-radius: var(--grammar-radius-pill);
