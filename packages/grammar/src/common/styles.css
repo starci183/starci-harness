@@ -5544,6 +5544,27 @@
     }
 
     /*
+     * A subject tile's activity (0.64.1, `IconTile activity`, owner 2026-11-27 final): each activity is its role's soft pair, the tone rules above:
+     * idle (and done) info, running warning, error danger. Never the accent, never a solid plate.
+     */
+    /*
+     * Every subject tile is ROUND (owner 2026-11-27 "tất cả ô logo đều tròn"), at both sizes; a running one wears the status mark's spinning ring on
+     * the plate's edge in the warning tone (the run page head's spinner in the activity's colour). Under reduced motion the arc stops (a still full ring, as the status mark).
+     */
+    .starci-core-icon-tile[data-grammar-activity] {
+        position: relative;
+        border-radius: var(--grammar-radius-pill);
+    }
+
+    .starci-core-icon-tile[data-grammar-activity="running"] > .starci-core-icon-tile-ring {
+        border-block-start-color: var(--warning);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-icon-tile[data-grammar-activity="running"] > .starci-core-icon-tile-ring { animation: none; border-color: var(--warning); }
+    }
+
+    /*
      * --- Status marks (0.55.0, owner "chốt"): (B) the round 40px tile, `data-grammar-mark="status"`, always `data-size="md"`; its plate tone is
      * the state's. Case 1 carries the status glyph at 20px (check, x or a small ring; the ring spins while running); case 2 the subject icon, and a running subject wears a
      * spinning ring on the plate's edge. (A) `InlineStatus`: the bare glyph (1em of the words beside it, the text-sized glyph rule) and its words in the state's ink, no plate.

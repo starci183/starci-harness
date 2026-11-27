@@ -94,6 +94,28 @@ export const WhichIsWhich: Story = {
 };
 
 /**
+ * (C) The subject tile (0.64.1, owner 2026-11-27 "logo workflow đồng nhất"): a workflow's own icon on ONE round tile wherever it stands, toned by what it
+ * is doing, each its role's soft pair: idle (and done) info, running warning with a warning arc spinning round it, error the danger solid. The page head wears the 48 tile, a row the 40 one.
+ */
+export const SubjectTile: Story = {
+  render: () => (
+    <Matrix maxWidth={880}>
+      <State label="IconTile activity: idle, running, error at the row size (40) and the head size (48)">
+        {G.TILE_ACTIVITIES.map((activity) => <G.IconTile key={activity} source={TablerSparkles} activity={activity} />)}
+        {G.TILE_ACTIVITIES.map((activity) => <G.IconTile key={`h-${activity}`} source={TablerSparkles} activity={activity} size="head" />)}
+      </State>
+      <State label="A workflow list: the subject tile leads, the status trails as (A)" direction="column">
+        <G.Section kind="list" title="Luồng việc" empty={null} items={[
+          { id: 'w1', title: 'Bắt khách từ tin nhắn', description: 'Chị Lan · Zalo', leading: { icon: TablerMessages, activity: 'running' }, value: <G.InlineStatus state="running" label="NIVO đang làm" meta="1 phút" /> },
+          { id: 'w2', title: 'Đăng đa kênh theo giờ', description: 'Không gắn với khách', leading: { icon: TablerCalendar, activity: 'error' }, value: <G.InlineStatus state="error" label="Dừng giữa chừng, cần người tiếp" meta="5 phút" /> },
+          { id: 'w3', title: 'Gửi báo giá', description: 'Anh Minh · Facebook', leading: { icon: TablerFileText, activity: 'idle' }, value: <G.InlineStatus state="done" label="Đã xong" meta="09:12" /> },
+        ]} />
+      </State>
+    </Matrix>
+  ),
+};
+
+/**
  * The Alert (owner: "alert nói rõ là icon 24 soft-foreground trên nền soft thôi mà? và button phải là màu tương ứng, ko phải border"): the bare 24px
  * Heroicon in the soft foreground on the soft box, no tile; its action Button SOLID in the banner's tone. Every tone, each with an action.
  */

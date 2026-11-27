@@ -6,6 +6,7 @@ import type { AvatarKind, AvatarShape } from "./leaf/Avatar/index.js"
 import type { ToneSlot } from "./toneSlot.js"
 import type { BadgeTone } from "./leaf/Badge/index.js"
 import type { IconSource } from "./leaf/Icon/index.js"
+import type { TileActivity } from "./leaf/IconTile/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
 import type { ButtonProps, ButtonVariant } from "./leaf/Button/index.js"
@@ -61,12 +62,17 @@ export type ItemMenu = {
 /** The mark that leads a row. */
 export type ItemLeading =
     | { readonly avatar: AvatarData; readonly size?: "sm" | "md"; readonly icon?: never; readonly position?: never }
-    | { readonly icon: IconSource; readonly size?: "sm" | "md"; readonly avatar?: never; readonly position?: never; readonly state?: never }
+    | { readonly icon: IconSource; readonly size?: "sm" | "md"; readonly avatar?: never; readonly position?: never; readonly state?: never; readonly activity?: never }
     /**
      * A row among DIFFERENT things side by side (0.55.0, the status-mark rule, case 2 "which thing is which?": a run or workflow list, notification
      * rows): the subject icon on the round 40px plate of the state's tone. The status then trails as an `InlineStatus` (the row's `value`), never a second circle.
      */
-    | { readonly icon: IconSource; readonly state: MarkState; readonly size?: never; readonly avatar?: never; readonly position?: never }
+    | { readonly icon: IconSource; readonly state: MarkState; readonly size?: never; readonly avatar?: never; readonly position?: never; readonly activity?: never }
+    /**
+     * A row of a subject the app runs (0.64.1, a workflow, a run of it): the subject's own icon on its ROUND tile of what it is doing (`IconTile activity`,
+     * idle info, running warning with a spinning warning arc, error danger, each its soft pair), the same tile its page head wears. The status still trails as an `InlineStatus`.
+     */
+    | { readonly icon: IconSource; readonly activity: TileActivity; readonly size?: never; readonly avatar?: never; readonly position?: never; readonly state?: never }
     | { readonly position: number; readonly format?: "ordinal" | "hash"; readonly size?: never; readonly avatar?: never; readonly icon?: never }
 
 type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {

@@ -273,8 +273,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/graph.md](../ui/components/graph.md) · 40 KB — `@starci/grammar/core/ext/graph` is part of Grammar core, used ONLY when the reader must see a structure of steps, relations or clusters: a run's flow (`FlowGraph`), a data model ...
   - sections: Minimal usage (any app) · Use it · Built from core · The six states · FlowGraph · SchemaMap · ErdMap · KnowledgeMap · The routing law · Look · Layout and helpers · The demo
   - ids: string;
-- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 16 KB — Contract: Avatar and IconTile.
-  - sections: Job · Choose · Status marks: (A) inline and (B) the round 40px tile · Variants · Plates of an initials mark · Size · States · Owner split · Initials, marks and the AI Chip · Rules
+- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 17 KB — Contract: Avatar and IconTile.
+  - sections: Job · Choose · Status marks: (A) inline and (B) the round 40px tile · (C) The subject tile of a workflow · Variants · Plates of an initials mark · Size · States · Owner split · Initials, marks and the AI Chip · Rules
 - [ui/components/illustration.md](../ui/components/illustration.md) · 3 KB — Contract: Illustration.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/image.md](../ui/components/image.md) · 5 KB — Contract: Image.
