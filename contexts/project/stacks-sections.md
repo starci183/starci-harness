@@ -13,7 +13,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
   - PROJECT-STACKS-3 Two kinds of environment, each with its runbook · `PROJECT-STACKS-3` · 3 KB — Two kinds, named by the project:
   - PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · `PROJECT-STACKS-4` · 4 KB — One declared ingress component per environment is the only thing that publishes a port (R266, R275); every other service sits on internal networks.
   - PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · `PROJECT-STACKS-5` · 18 KB
-  - PROJECT-STACKS-6 Every runbook declares the same operations · `PROJECT-STACKS-6` · 9 KB — Every environment's runbook declares the same seven operations, one row each, with the project's command and its acceptance gate.
+  - PROJECT-STACKS-6 Every runbook declares the same operations · `PROJECT-STACKS-6` · 10 KB — Every environment's runbook declares the same seven operations, one row each, with the project's command and its acceptance gate.
   - PROJECT-STACKS-7 CI holds names; every value stays with its consumer · `PROJECT-STACKS-7` · 3 KB — One key belongs to one class, and the manifest's `ci` block declares names and public values only:
   - PROJECT-STACKS-8 Quality services are declared and required · `PROJECT-STACKS-8` · 3 KB — The manifest's `services` block names the delivery, quality and platform services the code and CI use (a static analysis server, coverage upload, the dependency bot, the ...
   - PROJECT-STACKS-9 A remote application API is consumed, not administered · `PROJECT-STACKS-9` · 1 KB — An application the app calls that runs elsewhere (on a cluster or another host) is an application API to its caller, whatever runs it.

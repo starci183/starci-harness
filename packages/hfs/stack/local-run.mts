@@ -16,6 +16,7 @@ import type { EdgeDeps } from './local-edge.mjs';
 import { tcpOpen } from './local-ports.mjs';
 import type { PeerBase } from './local-peers.mjs';
 import { logFile, stateDirectory } from './local-state.mjs';
+import type { ServeSlot } from './local-state.mjs';
 import { expandPorts } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import type { HttpProbe, LocalCommand, LocalProcess } from '../runtime/scripts/hfs/stack-local-config.mjs';
 
@@ -157,6 +158,17 @@ const launcher = (ctx: Pick<StackContext, 'platform'>, argv: readonly string[]):
  */
 export type ProcessMode = 'serve' | 'watch';
 
+/**
+ * The variable that names the build slot of a served process (`a` or `b`), set for its build and its start. A restart builds the slot the running
+ * process does not use while that process keeps serving, so an app whose build would otherwise overwrite the running one's output (a Next web:
+ * `next build` empties `.next`) reads it to build elsewhere (`distDir: .next/serve-${STARCI_SERVE_SLOT}`). An app that builds out of place (the
+ * api's tsc into dist) ignores it.
+ */
+export const SERVE_SLOT_ENV = 'STARCI_SERVE_SLOT';
+
+/** The slot the next build of a served process uses: the other one than the running process's. Pure. */
+export const nextSlot = (known: { slot?: ServeSlot | undefined } | undefined): ServeSlot => (known?.slot === 'a' ? 'b' : 'a');
+
 /** The mode a process actually runs in: `serve` only when it declares a built mode. */
 export const modeOf = (run: LocalProcess, mode: ProcessMode): ProcessMode => (mode === 'serve' && run.serve !== null ? 'serve' : 'watch');
 
@@ -165,10 +177,10 @@ export const launchedCommand = (run: LocalProcess, mode: ProcessMode): LocalProc
   modeOf(run, mode) === 'serve' && run.serve !== null ? { ...run, argv: run.serve.argv, cwd: run.serve.cwd ?? run.cwd } : run;
 
 /** The build of a process in serve mode (heavy class build, from `serve.build.cwd`, else the process's cwd), or null when it has none. */
-export const buildCommand = (run: LocalProcess, mode: ProcessMode): LocalCommand | null => {
+export const buildCommand = (run: LocalProcess, mode: ProcessMode, slot?: ServeSlot): LocalCommand | null => {
   const build = modeOf(run, mode) === 'serve' ? run.serve?.build ?? null : null;
   if (build === null) return null;
-  return { name: `${run.name}-build`, argv: build.argv, cwd: build.cwd ?? run.cwd, heavy: 'build', skipIfExists: null, env: run.env, files: [], after: 'migrate' };
+  return { name: `${run.name}-build`, argv: build.argv, cwd: build.cwd ?? run.cwd, heavy: 'build', skipIfExists: null, env: slot === undefined ? run.env : { ...run.env, [SERVE_SLOT_ENV]: slot }, files: [], after: 'migrate' };
 };
 
 /** Runs one setup or seed command to its end, through the governor when its class is heavy. A non-zero exit is a failure naming the command and its first error line. */

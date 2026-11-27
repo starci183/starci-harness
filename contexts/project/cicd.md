@@ -91,11 +91,12 @@ to `origin/dev` and its running dev stack onto that code:
    manifests, `packages/`, `db/`, the stack declaration, an overlay) both; docs and cache records restart nothing. It runs the app's
    own pinned CLI: `starci app stack restart --env <env> --process <names> --execute`, which **builds** each process from the
    checkout's code and runs the built artifact (the process's `serve` block: `next build` then `next start`, the api build then
-   `node dist/...`), never a watcher, waits for its health on the loopback and over each tunnel hostname that routes its port, and
-   keeps the database, the storage, their volumes and the tunnel up ([stacks.md](stacks.md) PROJECT-STACKS-6). A web the tunnel
-   publishes runs behind its edge, which keeps answering the tunnel with a page saying the app is updating (reloading itself) from
-   the stop before the install until the new web's page and its Grammar CSS answer, so the owner never loads a page with no Grammar
-   CSS; and a start first ends any earlier tree of the same command from the checkout, so one api watcher runs per checkout
+   `node dist/...`), never a watcher, while the running copy keeps serving, waits for its health on the loopback and over each tunnel
+   hostname that routes its port, and keeps the database, the storage, their volumes and the tunnel up ([stacks.md](stacks.md)
+   PROJECT-STACKS-6). A web the tunnel publishes runs behind its edge: a restart starts the new web beside the old one and the edge
+   keeps serving the old one until the new web's page and its Grammar CSS answer, then the old one ends; only when the sync stopped the
+   processes for an install does the edge answer with a page saying the app is updating (reloading itself) until the new web is whole,
+   so the owner never loads a page with no Grammar CSS; and a start first ends any earlier tree of the same command from the checkout, so one api watcher runs per checkout
    ([stacks.md](stacks.md) "The edge of a dev web").
 6. It prints the local overlay in effect (or "none"). Without `--execute` it fetches and prints the plan.
 

@@ -98,12 +98,15 @@ export function readProcessTable(ctx: Pick<StackContext, 'spawn' | 'platform'>):
   return result.stdout.split(/\r?\n/u).map((line) => /^\s*(\d+)\s+(\d+)\s+(.*)$/u.exec(line)).filter((match) => match !== null).map((match) => ({ pid: Number(match[1]), ppid: Number(match[2]), command: match[3] ?? '' }));
 }
 
-/** Ends every earlier tree of `run` started from this checkout (earlierTrees); the lines saying which. */
-export function endEarlierTrees(ctx: StackContext, local: LocalConfig, run: LocalProcess, record: LocalRecord, deps: LocalDeps & EdgeDeps): string[] {
+/**
+ * Ends every earlier tree of `run` started from this checkout (earlierTrees); the lines saying which. `spare` holds pids whose trees stay: the
+ * running copy a restart keeps serving until its successor is live (local-restart.mts).
+ */
+export function endEarlierTrees(ctx: StackContext, local: LocalConfig, run: LocalProcess, record: LocalRecord, deps: LocalDeps & EdgeDeps, spare: ReadonlySet<number> = new Set()): string[] {
   const table = (deps.processTable ?? (() => readProcessTable(ctx)))();
   if (table === null) return [`process ${run.name}: the process table could not be read, so no earlier tree of this checkout was looked for`];
   const keep = new Set<number>([process.pid, ...Object.values(record.edges ?? {}).map((edge) => edge.pid)]);
-  const others = new Set<number>(Object.entries(record.processes).filter(([name]) => name !== run.name).map(([, known]) => known.pid));
+  const others = new Set<number>([...spare, ...Object.entries(record.processes).filter(([name]) => name !== run.name).map(([, known]) => known.pid)]);
   const roots = earlierTrees(table, local.repoRoot, run, keep, others);
   for (const pid of roots) stopProcess(ctx, pid, deps);
   return roots.length === 0 ? [] : [`process ${run.name}: ended ${roots.length === 1 ? 'an earlier tree' : `${roots.length} earlier trees`} of this checkout still running (root pid ${roots.join(', ')})`];
