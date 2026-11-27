@@ -44,10 +44,10 @@ function app(t: import('node:test').TestContext, gates: string): string {
   return root;
 }
 
-test('the closed set: hfs, secrets, db and uiaudit are never switchable, every other gate is', () => {
-  assert.deepEqual([...HFS_GATES].sort(), ['db', 'hfs', 'secrets', 'uiaudit']);
+test('the closed set: hfs, secrets and db are never switchable, every other gate is (the UI audit is a local helper since 2026-11-27, switchable and never blocking)', () => {
+  assert.deepEqual([...HFS_GATES].sort(), ['db', 'hfs', 'secrets']);
   assert.deepEqual([...OPTIONAL_GATES].sort(), PROFILE_GATES.filter((gate) => !HFS_GATES.has(gate)).sort());
-  assert.deepEqual([...OPTIONAL_GATES].sort(), ['audit', 'build', 'checks', 'codecov', 'coverage', 'deps', 'format', 'lint', 'sonar', 'test', 'types', 'wiring']);
+  assert.deepEqual([...OPTIONAL_GATES].sort(), ['audit', 'build', 'checks', 'codecov', 'coverage', 'deps', 'format', 'lint', 'sonar', 'test', 'types', 'uiaudit', 'wiring']);
   assert.deepEqual([...optionalGatePolicy({})].sort(), [...OPTIONAL_GATES].sort(), 'a run outside the CLI takes the whole set');
   assert.deepEqual([...optionalGatePolicy({ STARCI_OPTIONAL_GATES: 'lint,hfs,secrets' })], ['lint'], 'the policy never widens past the optional gates');
 });
@@ -100,7 +100,9 @@ test('one reader: a declared gate is off on every branch, the default branch and
   const refused = activeProfile(app(t, '  hfs: { run: off, reason: "x" }\n  lint: { run: off, reason: "x" }'), {});
   assert.deepEqual([refused.declaredOff, refused.modes.lint], [{}, 'blocking']);
   const none = activeProfile(app(t, ''), {});
-  assert.deepEqual([none.declaredOff, ...PROFILE_GATES.map((gate) => none.modes[gate])].flat().filter((mode) => mode !== 'blocking' && typeof mode === 'string'), []);
+  // every gate blocks but the UI audit, which only ever reports (owner 2026-11-27)
+  assert.deepEqual([none.declaredOff, ...PROFILE_GATES.filter((gate) => gate !== 'uiaudit').map((gate) => none.modes[gate])].flat().filter((mode) => mode !== 'blocking' && typeof mode === 'string'), []);
+  assert.equal(none.modes.uiaudit, 'report');
   assert.deepEqual(profileNotices(none), []);
 });
 

@@ -3307,6 +3307,7 @@ HFS_APP_GALLERY_DESIGN_PAGE_MISSING:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 HFS_APP_GALLERY_DESIGN_SHOT_MISSING:
   title: "A built design page records and holds its 1440 and 390 shots"
@@ -3320,6 +3321,7 @@ HFS_APP_GALLERY_DESIGN_SHOT_MISSING:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 HFS_APP_GALLERY_DESIGN_SHOT_STALE:
   title: "A design page's recorded shots are newer than its approval and are the shots in the gallery"
@@ -3346,6 +3348,7 @@ HFS_APP_GALLERY_ROUTE_MISSING:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 HFS_APP_GALLERY_ROUTE_AMBIGUOUS:
   title: "A screen's route is served by two apps and the screen names none"
@@ -3437,6 +3440,7 @@ UI_AUDIT_MISSING:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 UI_AUDIT_STALE:
   title: "The audit is of an older screen"
@@ -3448,6 +3452,7 @@ UI_AUDIT_STALE:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 UI_AUDIT_SELF_REVIEW:
   title: "The auditor is the builder"
@@ -3459,6 +3464,7 @@ UI_AUDIT_SELF_REVIEW:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 UI_AUDIT_ROUNDS_FEW:
   title: "The audit has fewer than two rounds"
@@ -3470,6 +3476,7 @@ UI_AUDIT_ROUNDS_FEW:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 UI_AUDIT_OPEN:
   title: "A lens is still open in the last round"
@@ -3481,6 +3488,7 @@ UI_AUDIT_OPEN:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 UI_AUDIT_NEEDS_OWNER:
   title: "A lens is still open after round four"
@@ -3492,6 +3500,7 @@ UI_AUDIT_NEEDS_OWNER:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 UI_AUDIT_CONSIDERED_EMPTY:
   title: "The screen records no option considered"
@@ -3503,6 +3512,7 @@ UI_AUDIT_CONSIDERED_EMPTY:
   owner: op-retry
   kind: check-finding
   localOnly: true
+  tracker: true
 
 HFS_APP_LAYOUT_INVALID:
   title: "App directory layout invalid"
