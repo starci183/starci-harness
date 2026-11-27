@@ -138,7 +138,7 @@ export function profileFor(profiles: BranchProfiles['profiles'], branch: string)
  * `hfs` (structure, slots, stacks, naming, managed-file drift, the bypass markers, the project ext rules), `secrets` (the secret scan and the sealed-secret custody) and `db` (the
  * migration shape, sealing and row-level-security rules). Every other gate is the app's own to run or not.
  */
-export const HFS_GATES: ReadonlySet<ProfileGate> = Object.freeze(new Set<ProfileGate>(['hfs', 'secrets', 'db', 'uiaudit']));
+export const HFS_GATES: ReadonlySet<ProfileGate> = Object.freeze(new Set<ProfileGate>(['hfs', 'secrets', 'db']));
 /** The gates an app may switch off for the whole app: every gate that is not an hfs gate. */
 export const OPTIONAL_GATES: ReadonlySet<ProfileGate> = Object.freeze(new Set<ProfileGate>(PROFILE_GATES.filter((gate) => !HFS_GATES.has(gate))));
 /**

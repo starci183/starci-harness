@@ -144,7 +144,7 @@ import { CHECK_LEVELS, checkLevelOf, FAST_FAMILIES, FAST_GATES, FAST_SKIPPED, fa
 import { TSC_HEAP_ENV } from '../cache/types-family.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
 import { freshnessFindings } from '../cache/freshness.mjs';
-import { CHECK_ENVS, checkEnvOf, judgedForEnv, localOnlyCodes, localReported, localVerdictLine, type CheckEnv } from '../runtime/scripts/hfs/check-env.mjs';
+import { CHECK_ENVS, checkEnvOf, judgedForEnv, localOnlyCodes, localReported, localVerdictLine, trackedForEnv, type CheckEnv } from '../runtime/scripts/hfs/check-env.mjs';
 import { identityGuardFindings } from '../runtime/scripts/hfs/secret-identity-guard.mjs';
 import { cutoverDeclarationFindings, cutoverLines, cutoverReports, judgedForCutover, type CutoverReport } from '../runtime/scripts/hfs/check-cutover.mjs';
 import { declaredCutovers, todayOf } from '../runtime/scripts/lib/stack-cutover.mjs';
@@ -691,6 +691,12 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   }
   if (session !== undefined && selected.has('uiaudit')) {
     bodies.set('uiaudit', async () => {
+      // The UI audit is a local UX/UI helper, never a gate (owner 2026-11-27): a prod run (the hook, CI, the release gate) does not judge it at all.
+      if (env !== 'local') {
+        found.set('uiaudit', []);
+        said.set('uiaudit', ['  ui audit: a local UX/UI to-do list (`--env local`), not judged under --env prod: it never refuses a push, a tag or a release']);
+        return;
+      }
       const uiBase = landingBase(repoRoot, io.env, profile.branch).base;
       const audited = runUiAuditFamily(session, { repoRoot, changed: changedSince(repoRoot, uiBase), base: uiBase });
       found.set('uiaudit', withWhy(audited.findings as Dynamic[], readWhy(skillRoot, [...new Set(audited.findings.map((finding) => String(finding.code)))])));
@@ -811,7 +817,8 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   // `--env local` lists the findings only a local-registry loop causes as report-only (check-env.mts); `--env prod` judges them as every other finding.
   const localCodes = localOnlyCodes();
   // A pending cutover reports, for its environment alone, the findings of the codes the catalog marks cutoverTolerant (check-cutover.mts); every other finding still blocks.
-  const findings = judgedForCutover(judgedForEnv(branchJudged, env, localCodes), cutovers);
+  // The gallery's tracker codes (a missing UI audit, screen.yaml or shot) never block: info in `--env local`, left out of `--env prod` (check-env.mts trackedForEnv).
+  const findings = judgedForCutover(judgedForEnv(trackedForEnv(branchJudged, env), env, localCodes), cutovers);
   const cutover: CutoverReport[] = cutoverReports(cutovers, findings);
   const localListed = env === 'local' ? localReported(findings, localCodes) : [];
   // Green only with no error finding outside a report profile (gate-verdict.mts); every finding is still listed.

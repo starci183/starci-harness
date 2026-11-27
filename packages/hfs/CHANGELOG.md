@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 6.17.19 - 2026-11-27
+
+- Changed (h-uiaudit-local, the owner on 2026-11-27: "chạy nhưng mà chỉ check local và dùng cái đó để sửa ux ui sau này ở local"; PROJECT-GALLERY-8): the UI audit is a local UX/UI helper, never a gate. The catalog's `tracker` codes (UI_AUDIT_*, HFS_APP_GALLERY_ROUTE_MISSING, _DESIGN_PAGE_MISSING, _DESIGN_SHOT_MISSING) are info and report-only in `--env local` and left out of `--env prod` (the pre-push hook on main and dev, CI, the release gate), where the uiaudit step does not run; `uiaudit` leaves the never-switchable gates and is report-only in every profile. `starci audit run|cycle|status` stay. Concept rules still block.
+
 ## 6.17.18 - 2026-11-27
 
 - Fixed (h-json-embedded-source, `runtime/scripts/lib/secret-patterns.mts`): the `assigned-secret` heuristic reads a JSON file's strings decoded. Source code a JSON string carries (a generated seed embedding a module's text) is judged as source: an unquoted `secret: NAME` is a reference when that same string declares or imports `NAME`, so a seed's `secretField: SIGNER_FIELD` no longer refuses a push; a quoted literal written `\"...\"` inside the string is now decoded and refused, and an undeclared unquoted value or a dotenv text carried in a string stays a candidate.

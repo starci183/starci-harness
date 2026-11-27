@@ -63,5 +63,5 @@ with a canvas it is the screen's canvas page (`design.json` page `approved`, the
 approved, the slice is `blocked` naming it; you never draw or approve it yourself.
 
 A slice that changes a screen ends with its shots at 1440 and 390 in the gallery. In an app with a board, the one review of the whole gallery
-(the `inspect` op) audits it with every other screen the change reaches; in an app without one, the slice ends with the UI audit of
-[PROJECT-GALLERY-8](../../contexts/project/gallery.md#project-gallery-8-one-file-per-screen-screenyaml-audited-until-it-first-passes): shoot, `starci audit run <area>/<screen> --builder <you>`, an auditor subagent other than you fills the seven lenses of `screen.yaml`, you fix and shoot again until round 2 or later has no open lens. The "UI Audit" gate (`UI_AUDIT_*`) refuses the change while a touched screen's first audit cycle has not passed; once it passed (its baseline), later drift and cycles are evidence, never a finding (owner, 2026-11-21).
+(the `inspect` op) audits it with every other screen the change reaches; in an app without one, a UI audit of
+[PROJECT-GALLERY-8](../../contexts/project/gallery.md#project-gallery-8-one-file-per-screen-screenyaml-audited-until-it-first-passes) is optional: a local UX/UI helper (`starci audit run <area>/<screen> --builder <you>`, an auditor subagent other than you fills the lenses), never a gate. `UI_AUDIT_*` are info findings of `--env local`, a to-do list; nothing about an audit refuses a commit, a push or a release (owner, 2026-11-27).
