@@ -55,10 +55,11 @@ const options = (direction: GraphDirection, density: "roomy" | "steps" = "roomy"
     "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
     "elk.layered.cycleBreaking.strategy": "DEPTH_FIRST",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-    // A step graph keeps its main road on one straight row: Brandes-Koepf, balanced, puts a chain of cards (their entry and exit ports at the middles of
-    // their sides) on one line and centres a branch's other ways above and below it; any other graph keeps network simplex.
+    // A step graph keeps its main road on one straight row: Brandes-Koepf aligned to the top-left run (LEFTDOWN) puts the chain of first ways on one line,
+    // every wire of it straight, and stacks a branch's other ways below it; balanced would average the merges back into the road and let the row drift.
+    // Any other graph keeps network simplex.
     ...(density === "steps"
-        ? { "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF", "elk.layered.nodePlacement.bk.fixedAlignment": "BALANCED" }
+        ? { "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF", "elk.layered.nodePlacement.bk.fixedAlignment": "LEFTDOWN" }
         : { "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX" }),
     "elk.layered.nodePlacement.favorStraightEdges": "true",
     // A back edge runs round the nodes in a lane of its own, never through a column.

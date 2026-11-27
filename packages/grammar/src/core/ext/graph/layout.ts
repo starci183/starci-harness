@@ -125,8 +125,9 @@ export interface LayoutSettings {
     readonly measure?: Measure
     /**
      * How tight `layoutLayered` packs the graph. `roomy` (default): `LAYERED_SPACING`, words on edges. `steps`: a workflow step graph as the owner's canvas
-     * draws it (2026-11-27): `LAYERED_STEP_SPACING` (a column every card width plus 22px), the main road on one straight row (Brandes-Koepf, balanced), a
-     * branch's other ways stacked above and below it, and no words on any wire (a branch's meaning is its row and its colour).
+     * draws it (2026-11-27): `LAYERED_STEP_SPACING` (a column every card width plus 22px), the main road on one straight row (Brandes-Koepf aligned
+     * LEFTDOWN), a branch's other ways stacked below it, and no words on any wire (a branch's meaning is its row and its colour). A control step's entry
+     * port stands level with its first row, so the road runs straight through it.
      */
     readonly density?: "roomy" | "steps"
 }
