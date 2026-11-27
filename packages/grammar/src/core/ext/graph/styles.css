@@ -635,9 +635,14 @@
     padding: 0 0.75rem;
 }
 
-.starci-step-card[data-rows] .starci-step-card-head .starci-core-icon-tile {
+/* A control step's head and the start node's keep a 24px tile, so the rows and the triggers fit the card (the start node stays 96 tall with three triggers). */
+.starci-step-card:is([data-rows], [data-kind="trigger"]) .starci-step-card-head .starci-core-icon-tile {
     inline-size: 1.5rem;
     block-size: 1.5rem;
+}
+
+.starci-step-card[data-kind="trigger"] {
+    overflow: hidden;
 }
 
 .starci-step-card-rows {
