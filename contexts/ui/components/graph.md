@@ -274,7 +274,10 @@ Read-only by default. `editable` lets a person drag the nodes; ELK gives the fir
 - **Replay.** `row.state`: `taken` lights the row in its tone, `dimmed` fades it; `done`, `running` and `error` show a parallel branch's own
   `InlineStatus` with the app's `stateLabel`.
 
-Stories `Graph/Step card (0.64.2)`: `Kinds`, `Branches`, `LoopAndParallel`, `Replay`.
+In `FlowGraph`, a node's `card` (`FlowStepCard`: `kind`, `subtitle`, `mode`, `modeLabels`, `rows`) draws its inside as the same `StepCard`: the node is a
+card whatever its kind, at least the step card's height, its run status still on the top edge; the app passes each row's `state`.
+
+Stories `Graph/Step card (0.64.2)`: `Kinds`, `Branches`, `LoopAndParallel`, `Replay`, `InFlowGraph`.
 
 ## SchemaMap
 

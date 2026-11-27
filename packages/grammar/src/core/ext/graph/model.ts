@@ -1,6 +1,7 @@
 import { FLOW_NODE_HEIGHT, NODE_WIDTH, type Insets, type LayoutPort, type LinkEnds, type PortSide, type SizedNode } from "./layout.js"
 import { edgeStyleOf, normalizeKind, normalizeStatus, type EdgeStyle } from "./shared/status.js"
 import type { FlowNode, FlowPort, FlowShape, FlowStatus, GraphDirection, GraphEdge, GraphEdgeKind } from "./types.js"
+import { stepCardHeight } from "./StepCard.js"
 
 /**
  * How a `FlowGraph` is laid out. `spine` (default): the longest run of plain and "yes" steps is one straight centred column, side roads stand in columns to
@@ -70,7 +71,7 @@ const isBranch = (node: FlowNode): boolean => node.kind === "condition" || node.
  * `stadium`, a `parallel` step a `rect`, a `call` the dashed `call` hexagon, anything else a `card`. The layered layout draws a card unless told.
  */
 export const shapeOf = (node: FlowNode, layout: FlowLayoutMode, outputs = node.outputs?.length ?? 0): FlowShape => {
-    if (node.container !== undefined) return "card"
+    if (node.container !== undefined || node.card !== undefined) return "card"
     if (node.shape !== undefined || layout !== "spine") return node.shape ?? "card"
     const kind = normalizeKind(node.kind)
     if (kind === "condition") return outputs >= 3 ? "hexagon" : "diamond"
@@ -142,7 +143,8 @@ export const cardWidth = (portCount: number, direction: GraphDirection): number 
 export const cardHeight = (node: FlowNode, portCount: number, direction: GraphDirection): number => {
     let height = FLOW_NODE_HEIGHT + (node.chips !== undefined && node.chips.length > 0 ? CHIP_ROW : 0) + (node.agent !== undefined || node.agentName !== undefined ? AGENT_ROW : 0)
     if (portCount > 0) height = direction === "TB" ? height + PORT_ROW_TB : Math.max(height, portCount * PORT_PITCH_LR + 16)
-    return height
+    // a step card is its head and its rows (`stepCardHeight`)
+    return node.card === undefined ? height : Math.max(height, stepCardHeight(node.card.rows?.length ?? 0))
 }
 
 /** The room a frame keeps round its children: its header on top and its note at the bottom. An exit has no pill: its words are the label of its edge, outside the frame. */

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
-import { STEP_CARD, StepCard, stepCardHeight, type StepCardModeLabels, type StepCardRow } from '../core/ext/graph/index.js';
+import { FlowGraph, STEP_CARD, StepCard, stepCardHeight, type FlowNode, type FlowStatusLabels, type GraphEdge, type StepCardModeLabels, type StepCardRow } from '../core/ext/graph/index.js';
 import '../core/ext/graph/styles.css';
 
 /**
@@ -100,4 +100,19 @@ export const Replay: Story = {
       </Frame>
     </Row>
   ),
+};
+
+const WORDS: FlowStatusLabels = { done: 'Xong', running: 'Đang chạy', wait: 'Đang chờ', error: 'Lỗi', skipped: 'Bỏ qua', todo: 'Chưa tới' };
+
+/** Look at: the run graph draws the same step cards (`FlowNode.card`); the run status stays on the card's top edge, the switch's taken row is lit, the others fade. */
+export const InFlowGraph: Story = {
+  render: () => {
+    const nodes: readonly FlowNode[] = [
+      { id: 'ask', label: 'Soạn câu trả lời', status: 'done', card: { kind: 'ai', mode: 'studio', modeLabels: MODES } },
+      { id: 'kind', label: 'Loại khách', status: 'done', kind: 'switch', card: { kind: 'branch', subtitle: 'Rẽ nhánh · 3 đường', rows: SWITCH.map((row) => ({ ...row, state: row.id === 'late' ? 'taken' : 'dimmed' })) } },
+      { id: 'remind', label: 'Nhắc lịch', status: 'running', card: { kind: 'action', mode: 'ask', modeLabels: MODES } },
+    ];
+    const edges: readonly GraphEdge[] = [{ source: 'ask', target: 'kind' }, { source: 'kind', target: 'remind', variant: 'taken' }];
+    return <div style={{ maxInlineSize: 900 }}><FlowGraph label="Lượt chạy" nodes={nodes} edges={edges} statusLabels={WORDS} height="content" /></div>;
+  },
 };

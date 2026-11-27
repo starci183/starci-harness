@@ -68,6 +68,7 @@ export type {
     FlowStatus,
     FlowStatusInput,
     FlowStatusLabels,
+    FlowStepCard,
     FlowWait,
     GraphCanvasProps,
     GraphDirection,

@@ -112,6 +112,13 @@
     border-radius: inherit;
 }
 
+/* A step card (0.64.2) fills the card from its top: StepCard keeps its own head padding and rows. */
+.starci-graph-node[data-step-card="true"] .starci-graph-node-body {
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0;
+}
+
 .starci-graph-node[data-direction="LR"][data-ports="true"] .starci-graph-node-body {
     padding-inline-end: var(--starci-graph-ports-inline);
 }
