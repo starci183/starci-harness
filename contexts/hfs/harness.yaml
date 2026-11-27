@@ -238,6 +238,11 @@ slots:
     presence: optional
     holds: every piece of knowledge an agent loads (harness, hfs, code, ui, grammars, vendor, stack, project), product-agnostic
     rule: CONTRIB-4
+  - id: misc.know-how
+    path: "misc/*.md"
+    presence: optional
+    holds: know-how for work that is neither code nor the harness (filming a product demo and the like), indexed by misc/README.md and read on demand from AGENTS.md "Misc work"
+    rule: AGENTS.md "Misc work"
 
   # --- machine rules: ops/ and policy/
   - id: ops.map
