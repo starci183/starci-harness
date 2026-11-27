@@ -43,7 +43,7 @@ capabilities:
     marks: ['\["ci", ']
     owners: [cli/src/harness/install-cache.ts, cli/src/harness/install-guard.ts, cli/src/core/deps/packages.ts]
     known:
-      cli/src/core/lane/gate.ts: installs with its own npm ci after a shared-install miss; call install-cache.ts cachedInstall
+      cli/src/harness/lane-install.ts: the lane gate installs with its own npm ci after a shared-install miss; call install-cache.ts cachedInstall
       cli/src/core/hotfix/cli-copy.ts: installs and builds the CLI copy itself; call cachedInstall and packages.ts buildPackage
       cli/src/core/dev/sync.ts: installs in place beside the old node_modules (safe-install); move the in-place mode into install-cache.ts
   - id: app-typecheck
