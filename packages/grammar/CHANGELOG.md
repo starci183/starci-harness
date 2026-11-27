@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.64.6 - 2026-11-27
+
+- Added (h-grammar-codeblock-shiki, built as 0.64.3 on the lane, a number already taken): `CodeBlock` draws Shiki's highlighting. New prop `tokens` (type `CodeLineTokens`, one token list per line, the shape `highlightCode(code, lang)` of `@starci/grammar/core/ext/markdown/server` returns): the app awaits `highlightCode` on the server and hands the JSON to the block, so no Shiki ships to the browser. The block maps Shiki's css-variables colours (`--shiki-token-*`) onto the code palette itself, so light and dark follow the page or `scheme`; a line whose tokens do not spell its text is drawn plain, and Copy always copies `code`. New prop `maxLines`: the code is at most N lines tall and scrolls inside the block, the header, file name and note stay. Line numbers, Copy, fold, `highlightLines` are unchanged. Story `CodePalette/CodeBlockHighlighted`.
+
 ## 0.64.5 - 2026-11-27
 
 - Fixed (owner 2026-11-27): the subject tile (`IconTile activity`) is the containing block of its ring and never clips it (`position: relative`, `overflow: visible`, `border-radius: var(--grammar-radius-pill)` at 40 and 48); a running tile's ring is a warning arc (top and right borders) at `inset: -3px`, spinning, still under reduced motion.

@@ -92,3 +92,13 @@ export const CodeBlockSchemes: Story = {
     </G.Stack>
   ),
 };
+
+/** The lesson CodeBlock with Shiki's tokens (`tokens`) and `maxLines={4}`: the code scrolls inside the block, the header and note stay. Light, then dark. */
+export const CodeBlockHighlighted: Story = {
+  render: () => (
+    <G.Stack gap="section">
+      <Themed theme="light"><G.CodeBlock code={EXCERPT} language="ts" path="src/products.ts" tokens={tokens(TS)} maxLines={4} note="tokens + maxLines (light)." /></Themed>
+      <Themed theme="dark"><G.CodeBlock code={EXCERPT} language="ts" path="src/products.ts" tokens={tokens(TS)} maxLines={4} highlightLines={[[3, 4]]} note="tokens + maxLines (dark)." /></Themed>
+    </G.Stack>
+  ),
+};
