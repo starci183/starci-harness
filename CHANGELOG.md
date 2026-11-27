@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 1.1.0-alpha.205 - 2026-11-27
+
+- Pre-beta: this train releases @starci/hfs 6.17.18 (the push secret scan judges source embedded in a JSON string as source, and refuses a quoted literal inside one).
+
 ## 1.1.0-alpha.204 - 2026-11-26
 
 - Changed: the CLI requires @starci/hfs@6.17.17, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

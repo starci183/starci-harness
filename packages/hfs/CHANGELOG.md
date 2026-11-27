@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 6.17.18 - 2026-11-27
+
+- Fixed (h-json-embedded-source, `runtime/scripts/lib/secret-patterns.mts`): the `assigned-secret` heuristic reads a JSON file's strings decoded. Source code a JSON string carries (a generated seed embedding a module's text) is judged as source: an unquoted `secret: NAME` is a reference when that same string declares or imports `NAME`, so a seed's `secretField: SIGNER_FIELD` no longer refuses a push; a quoted literal written `\"...\"` inside the string is now decoded and refused, and an undeclared unquoted value or a dotenv text carried in a string stays a candidate.
+
 ## 6.17.17 - 2026-11-26
 
 - Changed (h-logging-winston-loki, `templates/be/skeleton/src/modules/platform/logging`, BE-LOGGING-1): the Logger port's adapter is Winston. `JsonLoggerService` writes the same JSON line to stdout and stderr through two winston stream transports and, when `LOKI_URL` is declared (`parseLoggingConfig`), pushes it to Loki through `winston-loki` (`loki-transport.adapter.ts`: batched every 5 s, a push abandoned after 5 s, a failed batch dropped, at most 10 000 lines held, no exit hook; a failed push is reported on stderr as `platform.logging.loki.unreachable` at most once a minute). Lines carry the stream labels `stack`, `app`, `env`, `service`, `level` and `event`; credential-named fields are masked (`log-redaction.policy.ts`); one cause object is logged once per process. `LoggingModule` flushes the push on shutdown; the api's env reader, options and composition hand the logging options in, and `main.ts` moves the framework onto the container's logger (`bufferLogs`, `useLogger`). The cqrs base no longer logs a DomainError (BE-ERROR-4), and platform/errors exports `isDomainError`. `winston` 3.19.0 and `winston-loki` 6.1.7 are canon pins and starter dependencies, and the slot manifest admits `winston-loki` and `winston-transport` in platform/logging only (R90).

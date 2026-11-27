@@ -141,6 +141,46 @@ export const SECRET_PATTERNS: SecretPattern[] = [
 ];
 
 
+/** A text the keyword heuristic reads, and the names it binds itself (a JSON string's embedded source): an unquoted value naming one is a reference. */
+interface AssignmentText { text: string; declares?: (name: string) => boolean }
+
+const JSON_FILE = /\.jsonl?$/i;
+// A JSON string literal: JSON forbids a raw line break inside one, so every line of a JSON file starts outside a string.
+const JSON_STRING = /"(?:[^"\\\r\n]|\\.)*"/g;
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** True when `source` binds `name` itself: a const, let, var, function, class or enum declaration, or an import of it. Only then
+ *  is an unquoted `secret: NAME` in that text a reference to a binding, never a literal; any other unquoted value stays a candidate. */
+const declaresName = (source: string, name: string): boolean => IDENTIFIER.test(name) && new RegExp([
+  String.raw`\b(?:const|let|var|function\*?|class|enum)\s+${name}\b`,
+  String.raw`\bimport\s+(?:type\s+)?(?:${name}\s*(?:,|\s+from\s*["'])|\*\s*as\s+${name}\s+from\s*["']|\{[^}]*\b${name}\b[^}]*\}\s*from\s*["'])`,
+].join('|')).test(source);
+
+/** The texts the keyword heuristic reads on one line. Outside JSON, the line itself. In a JSON file, the line with every string's
+ *  content blanked, then each string's DECODED content, a line at a time: a quoted literal written `\"...\"` inside the string is
+ *  read as the quoted literal it is, and source code embedded in the string (a generated seed carrying a module's text) is judged as
+ *  source: an unquoted value is a reference when that same string declares it. A string that does not decode is read as written. */
+function assignmentTexts(file: string | null | undefined, text: string): AssignmentText[] {
+  if (!JSON_FILE.test(file ?? '')) return [{ text }];
+  const texts: AssignmentText[] = [];
+  const structure = text.replace(JSON_STRING, (literal: string) => {
+    let decoded: unknown;
+    try { decoded = JSON.parse(literal); } catch { return literal; }
+    if (typeof decoded !== 'string') return literal;
+    const declares = (name: string): boolean => declaresName(decoded as string, name);
+    for (const line of decoded.split(/\r?\n/)) texts.push({ text: line, declares });
+    return `"${' '.repeat(literal.length - 2)}"`;
+  });
+  return [{ text: structure }, ...texts];
+}
+
+/** The first match of `re` in `text` whose captured value is no binding the text declares; null when every match is one. */
+function firstLiteral(re: RegExp, { text, declares }: AssignmentText): RegExpExecArray | null {
+  if (!declares) return re.exec(text);
+  for (const hit of text.matchAll(new RegExp(re.source, `${re.flags.replace('g', '')}g`))) if (!declares(hit[1] ?? '')) return hit as RegExpExecArray;
+  return null;
+}
+
 /** Matched pattern metadata stays private; callers receive pattern names, never credential values. */
 function matchingSecretPatterns(file: string | null | undefined, text: string): { rule: Pick<SecretPattern, 'name' | 'sourceCode'>; value: string }[] {
   const matches: { rule: Pick<SecretPattern, 'name' | 'sourceCode'>; value: string }[] = [];
@@ -148,9 +188,16 @@ function matchingSecretPatterns(file: string | null | undefined, text: string): 
   const assignments = maskedReferences(text, sql.references);
   for (const rule of SECRET_PATTERNS) {
     if (rule.skipFile?.test(file ?? '')) continue;
+    if (rule.name !== 'assigned-secret') {
+      const hit = rule.re.exec(text);
+      if (hit) matches.push({ rule, value: hit[1] ?? '' });
+      continue;
+    }
     const scanned = rule.skipSqlComments === true && /\.sql(?:\.tpl)?$/i.test(file ?? '') ? withoutSqlComments(assignments) : assignments;
-    const hit = rule.re.exec(rule.name === 'assigned-secret' ? scanned : text);
-    if (hit && !rule.placeholder?.test(hit[1] ?? '')) matches.push({ rule, value: hit[1] ?? '' });
+    for (const candidate of assignmentTexts(file, scanned)) {
+      const hit = firstLiteral(rule.re, candidate);
+      if (hit && !rule.placeholder?.test(hit[1] ?? '')) { matches.push({ rule, value: hit[1] ?? '' }); break; }
+    }
   }
   for (const value of sql.literals) if (!ASSIGNED_PLACEHOLDER.test(value)) matches.push({ rule: SQL_PASSWORD_RULE, value });
   return matches;
