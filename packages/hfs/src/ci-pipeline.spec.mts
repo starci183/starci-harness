@@ -207,6 +207,10 @@ for (const edition of ['lite'] as const) {
         assert.ok(script.indexOf('sha256sum -c -') > script.indexOf('curl ') && script.indexOf('sha256sum -c -') < script.indexOf('tar -xzf'), `${label}: the digest is checked before extraction`);
         assert.match(script, /age\/age age\/age-keygen/u, 'both binaries are extracted');
         assert.match(script, /GITHUB_PATH/u);
+        // A GITHUB_PATH entry applies only to later steps: this step runs both binaries by their absolute path, never by bare name.
+        assert.match(script, /"\$RUNNER_TEMP\/age-bin\/age" --version/u, `${label}: age is proved by its absolute path`);
+        assert.match(script, /"\$RUNNER_TEMP\/age-bin\/age-keygen" --version/u, `${label}: age-keygen is proved by its absolute path`);
+        assert.doesNotMatch(script, /^\s*age(-keygen)?\s/mu, `${label}: no bare age call in the step that extends GITHUB_PATH`);
         assert.doesNotMatch(script, /apt(-get)?\s+install|\|\s*(ba)?sh/u, 'no unpinned package install and no streamed installer');
       }
       // The deploy job's age step waits for the pause brake like every step after it.

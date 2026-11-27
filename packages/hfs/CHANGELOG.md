@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 6.17.20 - 2026-11-28
+
+- Fixed (h-deploy-age-path, `sync/stack-images.mts` `installAgeSteps`): the "install age" step of `stack-deploy.yml` (deploy, rollback) and of the sealed image jobs of `images.yml` ran `age --version` and `age-keygen --version` by bare name in the same step that appends `$RUNNER_TEMP/age-bin` to `$GITHUB_PATH`. A `GITHUB_PATH` entry reaches only the later steps of the job, so the step stopped with `age: command not found` (exit 127) and no release tag could deploy. The step now proves both binaries by their absolute path (`"$RUNNER_TEMP/age-bin/age" --version`) and still appends the folder to `GITHUB_PATH` for the later steps; ci-pipeline.spec refuses a bare `age` call in that step. Run `starci app sync` to rewrite the app's managed workflows.
+
 ## 6.17.19 - 2026-11-27
 
 - Changed (h-uiaudit-local, the owner on 2026-11-27: "chạy nhưng mà chỉ check local và dùng cái đó để sửa ux ui sau này ở local"; PROJECT-GALLERY-8): the UI audit is a local UX/UI helper, never a gate. The catalog's `tracker` codes (UI_AUDIT_*, HFS_APP_GALLERY_ROUTE_MISSING, _DESIGN_PAGE_MISSING, _DESIGN_SHOT_MISSING) are info and report-only in `--env local` and left out of `--env prod` (the pre-push hook on main and dev, CI, the release gate), where the uiaudit step does not run; `uiaudit` leaves the never-switchable gates and is report-only in every profile. `starci audit run|cycle|status` stay. Concept rules still block.
