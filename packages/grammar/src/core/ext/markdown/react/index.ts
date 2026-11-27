@@ -26,6 +26,9 @@ import { parse, plainText } from "../parse.js"
 import { profileOf, type Profile } from "../profiles.js"
 import type { Block, CalloutBlock, CodeBlock, CodeToken, CompareBlock, Diagrams, DiffBlock, Inline, MarkdownTree, MermaidBlock, ProfileName, SourcePoint, TabsBlock, TerminalBlock } from "../types.js"
 
+/** Shiki in the browser, lazily, for the lesson `CodeBlock` (and any code an app draws outside a markdown text). */
+export { useCodeTokens } from "./useCodeTokens.js"
+
 /** The words the drawn body speaks itself. The consumer passes its own, in its language; the defaults are plain English. */
 export interface MarkdownLabels {
     readonly copy: string

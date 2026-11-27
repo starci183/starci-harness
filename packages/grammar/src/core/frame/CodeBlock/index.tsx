@@ -6,8 +6,9 @@ import { Icon } from "../../leaf/Icon/index.js"
 import { glyphSource } from "../../leaf/Icon/glyphs.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { CopyAction } from "../Markdown/CopyAction.js"
-import { CodeLines, isHighlighted, type CodeBlockToken, type CodeLineRange, type CodeLineTokens } from "../MarkdownArticle/index.js"
+import { CodeLines, isHighlighted, tokenSpans, type CodeBlockToken, type CodeLineRange, type CodeLineTokens } from "../MarkdownArticle/index.js"
 import type { NoChildren } from "../../tier.js"
+import { diffAfter, diffRows, type CodeDiff, type CodeDiffKind, type CodeDiffLine } from "./diff.js"
 
 /** The words of a code block, in the app's language. English defaults. */
 export type CodeBlockLabels = {
@@ -18,14 +19,38 @@ export type CodeBlockLabels = {
     readonly lines: (first: number, last: number) => string
     /** How many lines are marked, on the folded row: `2 marked lines`. */
     readonly marked: (count: number) => string
+    /** What a diff changes, on its header row: `2 added · 1 removed`. */
+    readonly changes: (added: number, removed: number) => string
+    /** Read before an added row of a diff by a screen reader (the `+` and the tint are not read): `Added`. */
+    readonly added: string
+    /** Read before a removed row of a diff by a screen reader (the `−` and the tint are not read): `Removed`. */
+    readonly removed: string
 }
 
 /** `page` follows the page's theme; `dark` and `light` set the block in that theme whatever the page's (its tokens, scoped to the block). */
 export type CodeBlockScheme = "page" | "dark" | "light"
 
-export type CodeBlockProps = NoChildren & {
-    /** The code, as written. */
-    readonly code: string
+/**
+ * What the block shows: `code` as written, or a `diff` (its rows, or a unified diff string) drawn as one block, each added row on the code
+ * palette's inserted tint with a `+`, each removed row on its `deleted` tint with a `−`, the rest plain. Exactly one of the two.
+ */
+export type CodeBlockSource =
+    | {
+          /** The code, as written. */
+          readonly code: string
+          readonly diff?: never
+      }
+    | {
+          /**
+           * The change, as rows (`{ kind: "add" | "del" | "same", text }`) or as a unified diff (`git diff` output; its file and hunk headers
+           * are skipped). Copy copies the code after the change. Each changed row's kind is also spoken (`labels.added`, `labels.removed`), never
+           * colour only. In a diff `lineNumbers` and `highlightLines` are not drawn: the gutter carries the sign, the tint carries the change.
+           */
+          readonly diff: CodeDiff
+          readonly code?: never
+      }
+
+export type CodeBlockProps = NoChildren & CodeBlockSource & {
     /** The language, a small badge in the header (`ts`). */
     readonly language?: string
     /** The file the code comes from (`bugs/source/src/products.ts`), named first in the header. */
@@ -48,9 +73,11 @@ export type CodeBlockProps = NoChildren & {
     readonly defaultCollapsed?: boolean
     readonly onCollapsedChange?: (isCollapsed: boolean) => void
     /**
-     * Shiki's tokens, one list per line of `code`, from `highlightCode(code, language)` of `@starci/grammar/core/ext/markdown/server` (run it on
-     * the server, hand the JSON down). Their colours are `var(--shiki-token-*)`, which the block maps onto the code palette, so light and dark follow
-     * the page (or `scheme`). Without tokens, or for a line they do not spell, the code is plain. The copied text is `code` either way.
+     * Shiki's tokens, one list per line of `code` (or per row of `diff`: highlight `diffCode(diff)`), from `highlightCode(code, language)` of
+     * `@starci/grammar/core/ext/markdown/server` (run it on the server, hand the JSON down) or from the client hook `useCodeTokens(code, language)`
+     * of `@starci/grammar/core/ext/markdown/react` (Shiki loads lazily in the browser, only on a page that draws code). Their colours are
+     * `var(--shiki-token-*)`, which the block maps onto the code palette, so light and dark follow the page (or `scheme`). Without tokens (until the
+     * hook is ready, or for a language Shiki does not ship), or for a line they do not spell, the code is plain. Copy copies the code either way.
      */
     readonly tokens?: CodeLineTokens
     /** At most this many lines tall: past it the code scrolls inside the block (the header and note stay). Unset, the block is as tall as its code. */
@@ -69,7 +96,29 @@ const LABELS: CodeBlockLabels = {
     copyError: "Could not copy",
     lines: (first, last) => (first === last ? `line ${String(first)}` : `lines ${String(first)}–${String(last)}`),
     marked: (count) => (count === 1 ? "1 marked line" : `${String(count)} marked lines`),
+    changes: (added, removed) => `${String(added)} added · ${String(removed)} removed`,
+    added: "Added",
+    removed: "Removed",
 }
+
+/** The sign each row kind shows in the diff gutter: a plus, a true minus (U+2212) or nothing. */
+const SIGN: Readonly<Record<CodeDiffKind, string>> = { add: "+", del: "−", same: " " }
+
+/**
+ * The rows of a diff, one block per row like `CodeLines`: the sign in a gutter nobody selects or hears, the row's kind as hidden words a
+ * screen reader says first (`Added: `, `Removed: `), then its Shiki tokens (or its plain text). CSS tints each row by `data-grammar-diff`.
+ */
+const DiffLines = ({ rows, tokens, words }: { readonly rows: readonly CodeDiffLine[]; readonly tokens: CodeLineTokens | undefined; readonly words: CodeBlockLabels }) => (
+    <code data-grammar-code-lines="true" data-grammar-code-diff="true">
+        {rows.map((row, index) => (
+            <span key={index} className="starci-core-code-line" data-grammar-diff={row.kind}>
+                <span className="starci-core-code-diff-sign" aria-hidden="true">{SIGN[row.kind]}</span>
+                {row.kind === "same" ? null : <span className="starci-core-visually-hidden starci-core-code-diff-kind">{`${row.kind === "add" ? words.added : words.removed}: `}</span>}
+                {row.text === "" ? null : tokenSpans(tokens?.[index], row.text)}
+            </span>
+        ))}
+    </code>
+)
 
 const lineCount = (code: string): number => code.replace(/\n$/, "").split("\n").length
 
@@ -77,11 +126,14 @@ const lineCount = (code: string): number => code.replace(/\n$/, "").split("\n").
  * FRAME - `CodeBlock`: a lesson's code on its own, outside an article (owner 2026-11-23). One bordered block: a header naming the file
  * and its language with the Copy command; the code numbered from `start`, the marked ranges in the code palette's highlight-line tint; a note under it.
  * It may fold to one row that says which lines it holds and how many are marked, so a page can keep a long excerpt one press away.
- * `scheme` sets the block in the dark or the light theme whatever the page's, from the same tokens.
+ * `scheme` sets the block in the dark or the light theme whatever the page's, from the same tokens. With `diff` in place of `code` it draws one
+ * change: added rows on the code palette's inserted tint, removed rows on its `deleted` tint, a `+`/`−` gutter, each changed row's kind in words
+ * for a screen reader, the header counting the rows added and removed. `tokens` colour either through the code palette.
  * Contract: overflow OVERFLOW-4 (the code scrolls inline, a named Tab stop), the fold FOCUS-1 and STATE-7, loading STATE-8.
  */
 export const CodeBlock = ({
     code,
+    diff,
     language,
     path,
     start = 1,
@@ -109,19 +161,23 @@ export const CodeBlock = ({
         if (isCollapsed === undefined) setOwnCollapsed(next)
         onCollapsedChange?.(next)
     }
-    const count = lineCount(code)
+    const rows = diff === undefined ? undefined : diffRows(diff)
+    const text = rows === undefined ? (code ?? "") : diffAfter(rows)
+    const count = rows === undefined ? lineCount(text) : rows.length
     const last = start + count - 1
-    const marked = Array.from({ length: count }, (_, index) => start + index).filter((line) => isHighlighted(highlightLines, line)).length
-    const summary = `${words.lines(start, last)}${marked > 0 ? ` · ${words.marked(marked)}` : ""}`
+    const marked = rows === undefined ? Array.from({ length: count }, (_, index) => start + index).filter((line) => isHighlighted(highlightLines, line)).length : 0
+    const summary = rows === undefined
+        ? `${words.lines(start, last)}${marked > 0 ? ` · ${words.marked(marked)}` : ""}`
+        : words.changes(rows.filter((row) => row.kind === "add").length, rows.filter((row) => row.kind === "del").length)
     const name = label ?? path ?? language ?? words.lines(start, last)
 
     const title = (
         <>
             {path === undefined ? null : <span className="starci-core-code-block-path" data-grammar-code-path="true">{path}</span>}
-            {collapsed || path === undefined ? <span className="starci-core-code-block-summary">{summary}</span> : null}
+            {collapsed || path === undefined || rows !== undefined ? <span className="starci-core-code-block-summary">{summary}</span> : null}
         </>
     )
-    const copy = copyable ? <CopyAction code={code} copyLabel={words.copy} copiedLabel={words.copied} copyErrorLabel={words.copyError} /> : null
+    const copy = copyable ? <CopyAction code={text}copyLabel={words.copy} copiedLabel={words.copied} copyErrorLabel={words.copyError} /> : null
     const body = (
         <pre
             className="starci-core-code-block-code"
@@ -130,7 +186,9 @@ export const CodeBlock = ({
             aria-label={name}
             {...(maxLines === undefined ? {} : { "data-grammar-code-bounded": "true", style: { "--starci-code-max-lines": maxLines } as CSSProperties })}
         >
-            <CodeLines code={code} numbered={lineNumbers} ranges={highlightLines} start={start} {...(tokens === undefined ? {} : { tokens })} />
+            {rows === undefined
+                ? <CodeLines code={text} numbered={lineNumbers} ranges={highlightLines} start={start} {...(tokens === undefined ? {} : { tokens })} />
+                : <DiffLines rows={rows} tokens={tokens} words={words} />}
         </pre>
     )
     return (
@@ -162,4 +220,5 @@ export const CodeBlock = ({
         </div>
     )
 }
-export type { CodeBlockToken, CodeLineTokens }
+export type { CodeBlockToken, CodeDiff, CodeDiffKind, CodeDiffLine, CodeLineTokens }
+export { diffAfter, diffCode, diffRows, parseUnifiedDiff } from "./diff.js"

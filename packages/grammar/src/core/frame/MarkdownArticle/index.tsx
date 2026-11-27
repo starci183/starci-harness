@@ -56,8 +56,11 @@ export type CodeBlockToken = { readonly content: string; readonly color?: string
 /** One token list per line of the code, as the markdown ext's server `highlightCode` returns it. */
 export type CodeLineTokens = readonly (readonly CodeBlockToken[])[]
 
-/** A line's tokens as coloured spans, or its plain text when it has none (or they do not spell the line, so a stale list never changes the code). */
-const tokenSpans = (line: readonly CodeBlockToken[] | undefined, text: string): ReactNode =>
+/**
+ * A line's tokens as coloured spans, or its plain text when it has none (or they do not spell the line, so a stale list never changes the code).
+ * Shared by `CodeLines` and the diff rows of the lesson `CodeBlock`.
+ */
+export const tokenSpans = (line: readonly CodeBlockToken[] | undefined, text: string): ReactNode =>
     line === undefined || line.map((token) => token.content).join("") !== text
         ? text
         : line.map((token, index) => (
