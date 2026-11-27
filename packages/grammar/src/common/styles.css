@@ -5497,6 +5497,21 @@
         height: var(--grammar-icon-head);
     }
 
+    /*
+     * The step tile (D, owner 2026-11-27): the step's number in place of the glyph, as tall as the glyph (20 on the row tile, 24 on the head tile),
+     * in the Grammar's own font (inherited) at the medium weight, tabular figures so 1 and 12 sit on the same centre; its ink is the tone's, like a glyph.
+     */
+    .starci-core-icon-tile-step {
+        font-family: inherit;
+        font-size: var(--grammar-icon-row);
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--grammar-weight-medium);
+        line-height: 1;
+        user-select: none;
+    }
+
+    .starci-core-icon-tile[data-size="head"] .starci-core-icon-tile-step { font-size: var(--grammar-icon-head); }
+
     .starci-core-icon-tile[data-grammar-mark="status"] {
         border-radius: var(--grammar-radius-pill);
     }

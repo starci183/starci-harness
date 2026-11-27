@@ -39,6 +39,21 @@ type IconTileIdentity = IconTileShared & {
     readonly source: IconSource
     readonly state?: never
     readonly activity?: never
+    readonly step?: never
+}
+
+/**
+ * (D) A step tile (owner 2026-11-27 "icon tile cũng hỗ trợ số trong mình chứ? để làm step by step"): the step's NUMBER on the same plate and tone
+ * as an identity tile, for a step-by-step list. The numeral is the Grammar's own font in tabular figures, as tall as the glyph it stands in for
+ * (20 on the `row` tile, 24 on the `head` tile). Read as `ariaLabel`, default `Step N`. The intended look of a list: the current step
+ * `tone="accent"`, a pending step `tone="neutral"` (the default), and a finished step switches to the status mark (`state: "done"`, the check).
+ */
+type IconTileStep = IconTileShared & {
+    /** The step's number, a whole number from 1 to 99 (a value outside is clamped, a fraction dropped). */
+    readonly step: number
+    readonly source?: never
+    readonly state?: never
+    readonly activity?: never
 }
 
 /**
@@ -73,6 +88,7 @@ type IconTileActivity = IconTileShared & {
     readonly activity: TileActivity
     readonly state?: never
     readonly tone?: never
+    readonly step?: never
 }
 
 /**
@@ -87,9 +103,13 @@ type IconTileStatus = IconTileShared & {
     readonly state: MarkState
     readonly source?: IconSource
     readonly activity?: never
+    readonly step?: never
 }
 
-export type IconTileProps = IconTileIdentity | IconTileStatus | IconTileActivity
+export type IconTileProps = IconTileIdentity | IconTileStatus | IconTileActivity | IconTileStep
+
+/** The number a step tile draws: a whole number from 1 to 99. */
+const stepNumber = (step: number): number => (Number.isFinite(step) ? Math.min(99, Math.max(1, Math.trunc(step))) : 1)
 
 /*
  * Plate size, corner and tone pair are SHIPPED by `.starci-core-icon-tile` in
@@ -113,7 +133,8 @@ const TONE_CONTRACT: Partial<Record<IconTileBuiltInTone, string>> = {
 
 /**
  * Soft-tone icon tile: an outline icon on a `row` (40, radius 10) or `head` (48, radius 12) plate (the icon table, owner 2026-11-23), with its tone pair and loading geometry.
- * With `state` it is the status mark (B) of the status-mark rule, contexts/ui/components/identity-mark.md; with `activity` the subject tile (C).
+ * With `state` it is the status mark (B) of the status-mark rule, contexts/ui/components/identity-mark.md; with `activity` the subject tile (C);
+ * with `step` the step tile (D), its number on the identity plate.
  */
 export const IconTile = (props: IconTileProps) => {
     if (props.state !== undefined && props.isLoading !== true && props.artwork == null) {
@@ -135,6 +156,7 @@ const IdentityTile = ({
     isLoading = false,
     state,
     activity,
+    step,
     size = "row",
 }: IconTileProps) => {
     // a loading status mark keeps the 40px plate in the state's tone; its glyph is not drawn
@@ -144,6 +166,9 @@ const IdentityTile = ({
     const showsArtwork = !isLoading && artwork != null
     const custom = useCustomTone(tone, SLOT_AND_BUILT_IN_TONES)
     const toneRule = isLoading || showsArtwork ? undefined : (TONE_CONTRACT as Record<string, string | undefined>)[tone]
+    const number = step === undefined ? undefined : stepNumber(step)
+    // A step tile is one image to a screen reader: its name, never the bare numeral (a loading tile is hidden, as every tile is).
+    const named = number === undefined || isLoading ? {} : { role: "img", "aria-label": ariaLabel ?? `Step ${String(number)}` }
     return (
         <span
             ref={custom.ref}
@@ -152,6 +177,8 @@ const IdentityTile = ({
             data-tier="leaf"
             data-component="IconTile"
             data-tone={tone}
+            {...named}
+            {...(number === undefined ? {} : { "data-grammar-step": String(number) })}
             {...(look === undefined ? {} : { "data-grammar-activity": activity, "data-grammar-emphasis": look.emphasis })}
             data-size={state === undefined ? size : "row"}
             data-artwork={showsArtwork ? "true" : "false"}
@@ -160,7 +187,9 @@ const IdentityTile = ({
             data-contract={[look === undefined ? "OVERFLOW-2" : undefined, toneRule].filter(Boolean).join(" ")}
             className={cn("starci-core-icon-tile", isLoading ? SKELETON_CLASS_NAME : undefined)}
         >
-            {isLoading ? null : showsArtwork ? artwork : source === undefined ? null : (
+            {isLoading ? null : showsArtwork ? artwork : number !== undefined ? (
+                <span className="starci-core-icon-tile-step" aria-hidden="true">{number}</span>
+            ) : source === undefined ? null : (
                 <Icon source={source} usage={size === "head" ? "head" : "row"} {...(ariaLabel === undefined ? {} : { ariaLabel })} />
             )}
             {activity === "running" && !isLoading && !showsArtwork ? <span className="starci-core-icon-tile-ring" data-grammar-activity-ring="true" aria-hidden /> : null}
