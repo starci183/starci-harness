@@ -576,6 +576,29 @@ test("assigned-secret ignores identifiers and types in TypeScript source (DI tok
   assert.ok(secretHits(".env", "DB_PASSWORD=hunter2hunter2hunter2").includes("assigned-secret"));
 });
 
+test("assigned-secret judges source embedded in a JSON string as source: a declared name is a reference, a quoted literal is still a leak", () => {
+  const seed = "packages/templates/seed/templates@0.1.0.json";
+  const line = (text: string): string => `        "text": ${JSON.stringify(text)},`;
+  const literal = ["Zk3pQ9vL2m", "X8aR5tY7uN"].join("");
+  const declared = [
+    'const SIGNER_FIELD = "apiKeySecret";',
+    "const signed = reach.hmacSign({ algorithm: \"sha256\", secretField: SIGNER_FIELD, data: input });",
+  ].join("\n");
+  const imported = 'import { SIGNING_FIELD } from "./fields";\nreturn reach.hmacEquals({ secret: SIGNING_FIELD, message: body });';
+  for (const text of [declared, imported]) assert.deepEqual(secretHits(seed, line(text)), [], text);
+  // The same text outside JSON reads as written: only source files skip the unquoted form.
+  assert.ok(secretHits("infra/stack.yaml", "secretField: SIGNER_FIELD_NAME").includes("assigned-secret"));
+  // A quoted literal written \"...\" in the embedded source is decoded and refused, beside a declared name or alone.
+  assert.ok(secretHits(seed, line(`${declared}\nconst client = { apiKey: "${literal}" };`)).includes("assigned-secret"));
+  assert.ok(secretHits(seed, line(`const password = "${literal}";`)).includes("assigned-secret"));
+  // An unquoted value the string does not declare, or a dotenv text carried in a string, stays a candidate.
+  assert.ok(secretHits(seed, line("reach.hmacSign({ secretField: SIGNER_FIELD_NAME });")).includes("assigned-secret"));
+  assert.ok(secretHits(seed, line(`DB_HOST=db\nDB_PASSWORD=${literal}\n`)).includes("assigned-secret"));
+  assert.ok(secretHits(seed, line(`${declared}\nDB_PASSWORD=${literal}`)).includes("assigned-secret"), "a declared name never hides a later literal");
+  // A stand-in that names itself one still passes inside the string, as it does in any file.
+  assert.deepEqual(secretHits(seed, line('const apiKey = "fixture-api-key-value";')), []);
+});
+
 test("assigned-secret reads no `-- name: prose` comment line of a SQL file as an assignment, and still reads real assignments", () => {
   const literal = ["Zk3pQ9vL2m", "X8aR5tY7uN"].join("");
   const comment = "-- drop-identity-password-tokens: forward-only;\n-- mcp-call-log-api-key: forward-only;\n";
