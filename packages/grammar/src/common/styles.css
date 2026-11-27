@@ -5548,20 +5548,26 @@
      * idle (and done) info, running warning, error danger. Never the accent, never a solid plate.
      */
     /*
-     * Every subject tile is ROUND (owner 2026-11-27 "tất cả ô logo đều tròn"), at both sizes; a running one wears the status mark's spinning ring on
-     * the plate's edge in the warning tone (the run page head's spinner in the activity's colour). Under reduced motion the arc stops (a still full ring, as the status mark).
+     * Every subject tile is ROUND (owner 2026-11-27 "tất cả ô logo đều tròn"), at both sizes (40, 48), and positions its own ring: the tile is the
+     * containing block (`position: relative`, its fixed size) and lets the ring stand just outside its edge (`overflow: visible`). A running tile wears a
+     * warning arc (top and right borders) 3px outside the plate, spinning; under reduced motion the arc stands still.
      */
     .starci-core-icon-tile[data-grammar-activity] {
         position: relative;
-        border-radius: var(--grammar-radius-pill);
+        overflow: visible;
+        border-radius: 9999px;
     }
 
     .starci-core-icon-tile[data-grammar-activity="running"] > .starci-core-icon-tile-ring {
-        border-block-start-color: var(--warning);
+        inset: -3px;
+        border-radius: 50%;
+        border-color: transparent;
+        border-top-color: var(--warning);
+        border-right-color: var(--warning);
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .starci-core-icon-tile[data-grammar-activity="running"] > .starci-core-icon-tile-ring { animation: none; border-color: var(--warning); }
+        .starci-core-icon-tile[data-grammar-activity="running"] > .starci-core-icon-tile-ring { animation: none; }
     }
 
     /*

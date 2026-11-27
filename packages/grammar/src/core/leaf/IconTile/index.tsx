@@ -157,7 +157,7 @@ const IdentityTile = ({
             data-artwork={showsArtwork ? "true" : "false"}
             data-loading={isLoading ? "true" : "false"}
             aria-hidden={isLoading || undefined}
-            data-contract={["OVERFLOW-2", toneRule].filter(Boolean).join(" ")}
+            data-contract={[look === undefined ? "OVERFLOW-2" : undefined, toneRule].filter(Boolean).join(" ")}
             className={cn("starci-core-icon-tile", isLoading ? SKELETON_CLASS_NAME : undefined)}
         >
             {isLoading ? null : showsArtwork ? artwork : source === undefined ? null : (

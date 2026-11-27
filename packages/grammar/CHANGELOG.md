@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 0.64.5 - 2026-11-27
 
+- Fixed (owner 2026-11-27): the subject tile (`IconTile activity`) is the containing block of its ring and never clips it (`position: relative`, `overflow: visible`, `border-radius: 9999px` at 40 and 48); a running tile's ring is a warning arc (top and right borders) at `inset: -3px`, spinning, still under reduced motion.
 - Fixed (h-grammar-graph-layout 44437dcca): the generated edge-end rules of the graph carry no comment text in their selectors; 0.64.4-dev.1 shipped them and a strict CSS parser (Turbopack) refused the whole app stylesheet.
 
 ## 0.64.4 - 2026-11-27
