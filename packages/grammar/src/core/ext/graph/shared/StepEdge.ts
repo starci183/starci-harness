@@ -108,7 +108,8 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
             ? null
             : joinEnd
             ? h("circle", { className: "starci-graph-edge-join", cx: end[0], cy: end[1], r: JOIN })
-            : h("path", { className: "starci-graph-edge-arrow", d: `M${String(-ARROW)} ${String(-ARROW / 2)}L0 0L${String(-ARROW)} ${String(ARROW / 2)}`, transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }),
+            : // The V's frame turns with the edge, so the stylesheet's step back (half the stroke) runs along it.
+              h("g", { transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }, h("path", { className: "starci-graph-edge-arrow", d: `M${String(-ARROW)} ${String(-ARROW / 2)}L0 0L${String(-ARROW)} ${String(ARROW / 2)}` })),
         given !== undefined && data?.joinStart === true ? h("circle", { className: "starci-graph-edge-join", cx: start[0], cy: start[1], r: JOIN }) : null,
         pill === undefined
             ? null
