@@ -20,6 +20,7 @@ export {
     type StepCardRowState,
     type StepCardRowTone,
 } from "./StepCard.js"
+export { LAYERED_SPACING, findOverlaps, layoutLayered, type Overlap, type OverlapKind } from "./layered.js"
 export { SchemaMap, type SchemaMapProps } from "./SchemaMap.js"
 export { FlowLegend, type FlowLegendProps } from "./shared/legend.js"
 export { GraphSkeleton, SKELETON_COLUMNS } from "./shared/skeleton.js"
@@ -51,7 +52,7 @@ export {
 } from "./layout.js"
 export { KIND_TONES, STATUS_TONE, edgeClassName, edgeKindClassName, edgeStyleOf, findConcurrentRunning, isEdgeAnimated, kindTone, nodeAriaLabel, nodeClassName, normalizeKind, normalizeStatus, statusTone, tileTone } from "./shared/status.js"
 export type { EdgeStyle, StepKind } from "./shared/status.js"
-export { CHECK_MARK, LOOP_MARK, MAIN_KINDS, cardHeight, edgeKindOf, isDiamond, shapeOf, portSide, resolveFlow } from "./model.js"
+export { CHECK_MARK, LOOP_MARK, MAIN_KINDS, NOTE_CHARS, cardHeight, mergeParallel, edgeKindOf, isDiamond, shapeOf, portSide, resolveFlow } from "./model.js"
 export type { FlowLayoutMode, FlowModel, ResolvedEdge, ResolvedPort } from "./model.js"
 export { BAR_THICKNESS, buildBarNodes, buildEntityNodes, buildFlowEdges, buildFlowNodes, buildSchemaEdges, entityHeight, schemaSizes, structureKey, visibleFields } from "./build.js"
 export type { BarNodeData, BarRfNode, EntityNodeData, EntityRfNode, FlowNodeData, FlowRfNode, StepEdgeData } from "./build.js"

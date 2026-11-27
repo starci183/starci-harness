@@ -4,6 +4,7 @@ import { Handle, Position, type NodeProps, type NodeTypes } from "@xyflow/react"
 import { createElement as h, isValidElement, useEffect, useMemo, useState, type CSSProperties, type ElementType, type ReactElement, type ReactNode } from "react"
 import { POSITION_OF, buildBarNodes, buildFlowEdges, buildFlowNodes, containerKind, type BarRfNode, type FlowRfNode } from "./build.js"
 import { layoutSpine } from "./spine.js"
+import { layoutLayered } from "./layered.js"
 import { foldFlow, type FlowCollapse } from "./collapse.js"
 import type { CanvasLayout } from "./shared/canvas.js"
 import { Badge, IconTile, InlineStatus, Text, type IconSource } from "../../index.js"
@@ -275,6 +276,12 @@ const EDGE_TYPES = { step: StepEdge }
 
 const SPINE_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutSpine(sizes, links, settings)
 
+/** The layered layout: one ELK run places the nodes and routes every edge, final as given (see `layered.ts`). */
+const LAYERED_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutLayered(sizes, links, settings)
+
+/** The layout port a card's handle stands for: its entry, its default exit, or a row's port (`port:<id>`, the id the card renders). */
+const portOfHandle = (handle: string): string | undefined => (handle.startsWith("port:") ? handle.slice("port:".length) : undefined)
+
 const isProduction = (): boolean => typeof process !== "undefined" && process.env.NODE_ENV === "production"
 
 /**
@@ -334,7 +341,7 @@ export const FlowGraph = (props: FlowGraphProps): ReactElement => {
         nodeTypes,
         edgeTypes: EDGE_TYPES,
         onNodePress: press,
-        ...(layout === "spine" ? { runLayout: SPINE_LAYOUT, routed: true, leastZoom: FLOW_READABLE_ZOOM, fitWidth: true } : {}),
+        ...(layout === "spine" ? { runLayout: SPINE_LAYOUT, routed: true, leastZoom: FLOW_READABLE_ZOOM, fitWidth: true } : { runLayout: LAYERED_LAYOUT, routed: true, portOf: portOfHandle }),
         ...(footer === undefined ? {} : { footer }),
     })
 }

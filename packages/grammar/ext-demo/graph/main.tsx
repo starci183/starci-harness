@@ -9,6 +9,7 @@ import { FLOWS, FlowStory, MIXES, type Mix } from "./flows.tsx"
 import { ERD_STORIES } from "./erd.tsx"
 import { KNOWLEDGE_STORIES } from "./knowledge.tsx"
 import { STORIES, StoryView } from "./stories.tsx"
+import { NIVO_STORIES } from "./nivo.tsx"
 
 interface StoryMeta {
     readonly id: string
@@ -23,7 +24,7 @@ document.documentElement.dataset.theme = params.get("theme") === "dark" ? "dark"
 const id = params.get("story")
 const mix = MIXES.find((candidate) => candidate === params.get("mix")) ?? "running"
 const flow = FLOWS.find((candidate) => candidate.id === id)
-const story = [...STORIES, ...ERD_STORIES].find((candidate) => candidate.id === id)
+const story = [...STORIES, ...ERD_STORIES, ...NIVO_STORIES].find((candidate) => candidate.id === id)
 const knowledge = KNOWLEDGE_STORIES.find((candidate) => candidate.id === id)
 const root = document.getElementById("root")
 
@@ -33,7 +34,7 @@ Object.assign(window, { graphStory: meta })
 
 const Index = (): React.ReactElement => (
     <ul className="demo-page">
-        {[...FLOWS, ...STORIES, ...ERD_STORIES, ...KNOWLEDGE_STORIES].map((entry) => (
+        {[...FLOWS, ...STORIES, ...ERD_STORIES, ...NIVO_STORIES, ...KNOWLEDGE_STORIES].map((entry) => (
             <li key={entry.id}>
                 <a href={`?story=${entry.id}`}>{entry.title}</a>
             </li>
