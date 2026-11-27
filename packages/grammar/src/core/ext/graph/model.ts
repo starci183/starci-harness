@@ -156,6 +156,32 @@ const DIAMOND_SIDES: Readonly<Record<GraphDirection, readonly PortSide[]>> = {
 /** The ports every card and diamond has besides its outputs: the one an edge enters by, and the one an edge with no named port leaves by. */
 export const IN_PORT = "\u0001in"
 export const OUT_PORT = "\u0001out"
+/** The middle of the side under the row (LR) or beside the column (TB) in the layered layout: a back edge leaves by it and enters its target by it. */
+export const BACK_OUT_PORT = "\u0001back-out"
+export const BACK_IN_PORT = "\u0001back-in"
+
+const BACK_SIDE: Readonly<Record<GraphDirection, PortSide>> = { LR: "SOUTH", TB: "EAST" }
+
+/** The middle of a side of a box (owner 2026-11-27: an edge leaves and enters a node only at the middle of one of its four sides, a control step's rows aside). */
+export const sideMiddle = (side: PortSide, width: number, height: number): { readonly x: number; readonly y: number } =>
+    side === "NORTH" ? { x: width / 2, y: 0 } : side === "EAST" ? { x: width, y: height / 2 } : side === "SOUTH" ? { x: width / 2, y: height } : { x: 0, y: height / 2 }
+
+/**
+ * The ports of a card or a diamond in the layered layout (owner 2026-11-27, plan B). In at the middle of its start side. Out at the middle of its end side,
+ * except a control step (an if, a switch, a loop, a parallel step: one with rows): each row has its own port on the end side at that row's middle (the canvas
+ * measures where the row's dot is drawn), its edge goes straight out of it and carries no words (the row says them). A back edge leaves and enters by the middle
+ * of the side under the row.
+ */
+export const layeredPorts = (width: number, height: number, direction: GraphDirection, rows: readonly ResolvedPort[] = [], diamond = false): readonly LayoutPort[] => {
+    const out = portSide(false, direction, 0)
+    const back = BACK_SIDE[direction]
+    return [
+        { id: IN_PORT, side: entrySide(direction), at: sideMiddle(entrySide(direction), width, height) },
+        ...(rows.length === 0 ? [{ id: OUT_PORT, side: out, at: sideMiddle(out, width, height) }] : rows.map((port, index) => ({ id: port.id, side: port.side, at: portAt(port.side, diamond, index, rows.length, width, height) }))),
+        { id: BACK_OUT_PORT, side: back, at: sideMiddle(back, width, height) },
+        { id: BACK_IN_PORT, side: back, at: sideMiddle(back, width, height) },
+    ]
+}
 
 export const portSide = (diamond: boolean, direction: GraphDirection, index: number): PortSide => {
     if (diamond) return DIAMOND_SIDES[direction][index] ?? DIAMOND_SIDES[direction][0] ?? "EAST"
@@ -285,11 +311,6 @@ export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdg
         const own = ports.get(node.id) ?? []
         const parentId = parents.get(node.id)
         const place = parentId === undefined ? {} : { parentId }
-        const fixed = (width: number, height: number, diamond: boolean): readonly LayoutPort[] => [
-            { id: IN_PORT, side: entrySide(direction), at: portAt(entrySide(direction), true, 0, 1, width, height) },
-            ...(own.length === 0 ? [{ id: OUT_PORT, side: portSide(false, direction, 0), at: portAt(portSide(false, direction, 0), true, 0, 1, width, height) }] : []),
-            ...own.map((port, index) => ({ id: port.id, side: port.side, at: portAt(port.side, diamond, index, own.length, width, height) })),
-        ]
         // The spine layout draws no port pill inside a card (a port's words stand on its edge) and routes a loop's back edge itself, so a frame keeps no gutter.
         if (spine) {
             if (node.container !== undefined) return { id: node.id, ...containerMinimum(node, "TB", false), insets: containerInsets(node, false), ...place }
@@ -297,10 +318,10 @@ export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdg
             return { id: node.id, width: NODE_WIDTH, height: cardHeight(node, 0, "TB"), ...place }
         }
         if (node.container !== undefined) return { id: node.id, ...containerMinimum(node, direction, backIn.has(node.id)), insets: containerInsets(node, backIn.has(node.id)), ports: own.map((port, index) => ({ id: port.id, side: port.side, ...(direction === "LR" ? { at: { x: 0, y: CONTAINER_HEAD + 4 + index * EXIT_PITCH + EXIT_PITCH / 3 } } : {}) })), ...place }
-        if (isDiamond(node)) return { id: node.id, width: DIAMOND_WIDTH, height: DIAMOND_HEIGHT, ports: fixed(DIAMOND_WIDTH, DIAMOND_HEIGHT, true), ...place }
+        if (isDiamond(node)) return { id: node.id, width: DIAMOND_WIDTH, height: DIAMOND_HEIGHT, ports: layeredPorts(DIAMOND_WIDTH, DIAMOND_HEIGHT, direction, own, true), ...place }
         const width = cardWidth(own.length, direction)
         const height = cardHeight(node, own.length, direction)
-        return { id: node.id, width, height, ports: fixed(width, height, false), ...place }
+        return { id: node.id, width, height, ports: layeredPorts(width, height, direction, own), ...place }
     })
 
     const taken = new Set<string>()
@@ -347,14 +368,15 @@ export const resolveFlow = (nodes: readonly FlowNode[], edges: readonly GraphEdg
         if (words.length === 0 && marks.length === 0) return undefined
         return marks.length > 0 ? [...marks, ...words].join(" ") : words.join(" \u00b7 ")
     }
+    const isBack = (item: ResolvedEdge): boolean => item.edge.variant === "back" || item.kind === "loop"
     const links = resolved.map((item) => {
         const label = spine ? item.pill : reserved(item)
         return {
             id: item.id,
             source: item.edge.source,
             target: item.edge.target,
-            ...(item.port === undefined ? (item.sourceIsCard ? { sourcePort: OUT_PORT } : {}) : { sourcePort: item.port.id }),
-            ...(item.targetIsCard ? { targetPort: IN_PORT } : {}),
+            ...(item.port === undefined || (!spine && isBack(item)) ? (item.sourceIsCard ? { sourcePort: !spine && isBack(item) ? BACK_OUT_PORT : OUT_PORT } : {}) : { sourcePort: item.port.id }),
+            ...(item.targetIsCard ? { targetPort: !spine && isBack(item) ? BACK_IN_PORT : IN_PORT } : {}),
             ...(label === undefined ? {} : { label, labelAt: spine ? ("TAIL" as const) : ("CENTER" as const) }),
             ...(item.edge.variant === "back" || item.kind === "loop" ? { back: true } : {}),
             kind: item.kind,

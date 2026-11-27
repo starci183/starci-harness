@@ -12,7 +12,7 @@ import { focusStep } from "./shared/status.js"
 import { useLayoutDirection } from "./shared/phone.js"
 import { GraphCanvas, type Placement } from "./shared/canvas.js"
 import { FlowLegend } from "./shared/legend.js"
-import { IN_PORT, OUT_PORT, PORT_COLUMN, PORT_ROW_TB, entrySide, resolveFlow, type FlowLayoutMode, type ResolvedPort } from "./model.js"
+import { PORT_COLUMN, PORT_ROW_TB, entrySide, resolveFlow, type FlowLayoutMode, type ResolvedPort } from "./model.js"
 import { StepEdge } from "./shared/StepEdge.js"
 import { badgeTone, findConcurrentRunning, markState, nodeClassName, statusTone } from "./shared/status.js"
 import type { FlowChip, FlowKindTones, FlowLegendItem, FlowNode, FlowStatus, FlowStatusLabels, GraphCanvasProps, GraphEdge, GraphLinkComponent } from "./types.js"
@@ -264,7 +264,7 @@ const SPINE_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutSpine(sizes
 const LAYERED_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutLayered(sizes, links, settings)
 
 /** The layout port a card's handle stands for: its entry, its default exit, or a row's port (`port:<id>`, the id the card renders). */
-const portOfHandle = (handle: string): string | undefined => (handle === "in" ? IN_PORT : handle === "out" ? OUT_PORT : handle.startsWith("port:") ? handle.slice("port:".length) : undefined)
+const portOfHandle = (handle: string): string | undefined => (handle.startsWith("port:") ? handle.slice("port:".length) : undefined)
 
 const isProduction = (): boolean => typeof process !== "undefined" && process.env.NODE_ENV === "production"
 

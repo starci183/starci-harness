@@ -97,17 +97,24 @@
     color: var(--starci-graph-line);
 }
 
+/* The dot an edge starts with and the open V it ends with (owner 2026-11-27): hollow, on the surface, in the line's colour and width (the rules after the edge looks). */
 .starci-graph-edge-dot {
+    --starci-graph-edge-width: 1.5px;
+
     fill: var(--surface);
     stroke: currentcolor;
-    stroke-width: 1.5;
+    stroke-width: var(--starci-graph-edge-width);
 }
 
 .starci-graph-edge-arrow {
+    --starci-graph-edge-width: 1.5px;
+
     fill: none;
     stroke: currentcolor;
-    stroke-width: 1.5;
+    stroke-width: var(--starci-graph-edge-width);
+    stroke-linecap: round;
     stroke-linejoin: round;
+    translate: calc(var(--starci-graph-edge-width) / -2) 0;
 }
 
 .starci-graph .starci-graph-edge--running {
@@ -348,10 +355,7 @@
     stroke: none;
 }
 
-/* A read-only graph shows no handle dots (the routing law, rule 1): an edge is a line and its arrowhead, its source dot only while a person edits the graph. */
-.starci-graph:not([data-editable="true"]) .starci-graph-edge-dot {
-    display: none;
-}
+/* Every edge starts at a small round dot centred on its node's border, in its road's colour (owner 2026-11-27), read-only or not. */
 
 /*
  * Edge kinds (GraphEdgeKind, owner 2026-11-26: "today they all look alike"): which road an edge is. `ok` and `parallel` are the solid neutral line, `yes`
@@ -523,4 +527,124 @@
 .starci-graph-bar[data-look="hollow"] {
     background: var(--surface);
     border: 1.5px solid var(--starci-graph-line);
+}
+
+/* The ends of every edge look (generated with the looks above, kept in their order): the dot and the V take the line's colour and width. */
+or were not taken (faded and dotted). */
+.starci-graph .starci-graph-edge-arrow,
+or were not taken (faded and dotted). */
+.starci-graph .starci-graph-edge-dot {
+    stroke: var(--starci-graph-line);
+    --starci-graph-edge-width: 1.5px;
+}
+
+its dashes moving towards the
+ * step. No second path is drawn over or beside it.
+ */
+.starci-graph .starci-graph-edge--running .starci-graph-edge-arrow,
+its dashes moving towards the
+ * step. No second path is drawn over or beside it.
+ */
+.starci-graph .starci-graph-edge--running .starci-graph-edge-dot {
+    stroke: var(--success);
+    --starci-graph-edge-width: 2px;
+}
+
+nothing moves. */
+.starci-graph .starci-graph-edge--wait .starci-graph-edge-arrow,
+nothing moves. */
+.starci-graph .starci-graph-edge--wait .starci-graph-edge-dot {
+    stroke: var(--warning);
+}
+
+.starci-graph .starci-graph-edge--taken .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--taken .starci-graph-edge-dot {
+    stroke: var(--success);
+    --starci-graph-edge-width: 2px;
+}
+
+.starci-graph .starci-graph-edge--skipped .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--skipped .starci-graph-edge-dot {
+    stroke: var(--muted);
+}
+
+.starci-graph .starci-graph-edge--pending .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--pending .starci-graph-edge-dot {
+    stroke: color-mix(in oklab, var(--muted) 55%, transparent);
+}
+
+.starci-graph .starci-graph-edge--danger .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--danger .starci-graph-edge-dot {
+    stroke: var(--danger);
+}
+
+.starci-graph .starci-graph-edge--kind-ok .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-ok .starci-graph-edge-dot,
+.starci-graph .starci-graph-edge--kind-parallel .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-parallel .starci-graph-edge-dot {
+    stroke: var(--starci-graph-line);
+    --starci-graph-edge-width: 1.5px;
+}
+
+.starci-graph .starci-graph-edge--kind-yes .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-yes .starci-graph-edge-dot {
+    stroke: var(--success);
+    --starci-graph-edge-width: 2.5px;
+}
+
+.starci-graph .starci-graph-edge--kind-no .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-no .starci-graph-edge-dot {
+    stroke: var(--muted);
+    --starci-graph-edge-width: 1.5px;
+}
+
+.starci-graph .starci-graph-edge--kind-loop .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-loop .starci-graph-edge-dot {
+    stroke: var(--accent);
+    --starci-graph-edge-width: 1.5px;
+}
+
+.starci-graph .starci-graph-edge--kind-timeout .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-timeout .starci-graph-edge-dot {
+    stroke: var(--warning);
+    --starci-graph-edge-width: 2.5px;
+}
+
+.starci-graph .starci-graph-edge--kind-refused .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-refused .starci-graph-edge-dot,
+.starci-graph .starci-graph-edge--kind-declined .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-declined .starci-graph-edge-dot {
+    stroke: var(--danger);
+    --starci-graph-edge-width: 1px;
+}
+
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--running .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--running .starci-graph-edge-dot {
+    stroke: var(--success);
+    --starci-graph-edge-width: 2px;
+}
+
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--wait .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kinded.starci-graph-edge--wait .starci-graph-edge-dot {
+    stroke: var(--warning);
+}
+
+.starci-graph .starci-graph-edge--kind-case .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-case .starci-graph-edge-dot {
+    stroke: var(--starci-graph-line);
+    --starci-graph-edge-width: 1.5px;
+}
+
+.starci-graph .starci-graph-edge--kind-default .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-default .starci-graph-edge-dot {
+    stroke: var(--muted);
+    --starci-graph-edge-width: 1.5px;
+}
+
+.starci-graph .starci-graph-edge--kind-case.starci-graph-edge--taken .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-case.starci-graph-edge--taken .starci-graph-edge-dot,
+.starci-graph .starci-graph-edge--kind-default.starci-graph-edge--taken .starci-graph-edge-arrow,
+.starci-graph .starci-graph-edge--kind-default.starci-graph-edge--taken .starci-graph-edge-dot {
+    stroke: var(--foreground);
+    --starci-graph-edge-width: 3px;
 }
