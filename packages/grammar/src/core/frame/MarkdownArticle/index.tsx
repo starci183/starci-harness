@@ -50,14 +50,36 @@ type RenderedCodeProps = {
 export const isHighlighted = (ranges: readonly CodeLineRange[] | undefined, line: number): boolean =>
     ranges?.some((range) => typeof range === "number" ? range === line : line >= range[0] && line <= range[1]) === true
 
+/** One token of a highlighted line: its text and the CSS colour of its kind (a `var(--shiki-token-*)` the code block maps onto the code palette). */
+export type CodeBlockToken = { readonly content: string; readonly color?: string; readonly fontStyle?: "italic" | "bold" }
+
+/** One token list per line of the code, as the markdown ext's server `highlightCode` returns it. */
+export type CodeLineTokens = readonly (readonly CodeBlockToken[])[]
+
+/** A line's tokens as coloured spans, or its plain text when it has none (or they do not spell the line, so a stale list never changes the code). */
+const tokenSpans = (line: readonly CodeBlockToken[] | undefined, text: string): ReactNode =>
+    line === undefined || line.map((token) => token.content).join("") !== text
+        ? text
+        : line.map((token, index) => (
+              <span
+                  key={index}
+                  style={{
+                      ...(token.color === undefined ? {} : { color: token.color }),
+                      ...(token.fontStyle === "italic" ? { fontStyle: "italic" } : token.fontStyle === "bold" ? { fontWeight: "var(--grammar-weight-medium)" } : {}),
+                  }}
+              >
+                  {token.content}
+              </span>
+          ))
+
 /**
  * Authored code as one block per line, so a line can be numbered and marked; the text copies as it was written. `start` is the number of
  * the first line (an excerpt of a file starts where the excerpt does), and `ranges` name lines by those numbers.
  */
-export const CodeLines = ({ code, numbered, ranges, start = 1 }: { readonly code: string; readonly numbered: boolean; readonly ranges: readonly CodeLineRange[] | undefined; readonly start?: number }) => (
+export const CodeLines = ({ code, numbered, ranges, start = 1, tokens }: { readonly code: string; readonly numbered: boolean; readonly ranges: readonly CodeLineRange[] | undefined; readonly start?: number; readonly tokens?: CodeLineTokens }) => (
     <code data-grammar-code-lines="true" {...(numbered ? { "data-grammar-line-numbers": "true" } : {})}>
         {code.replace(/\n$/, "").split("\n").map((text, index) => (
-            <span key={index} className="starci-core-code-line" data-line={start + index} {...(isHighlighted(ranges, start + index) ? { "data-grammar-line-highlighted": "true" } : {})}>{text === "" ? "\n" : text}</span>
+            <span key={index} className="starci-core-code-line" data-line={start + index} {...(isHighlighted(ranges, start + index) ? { "data-grammar-line-highlighted": "true" } : {})}>{text === "" ? "\n" : tokenSpans(tokens?.[index], text)}</span>
         ))}
     </code>
 )

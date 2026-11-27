@@ -1,12 +1,12 @@
 "use client"
 
-import { useId, useState, type ReactNode } from "react"
+import { useId, useState, type CSSProperties, type ReactNode } from "react"
 import { Badge } from "../../leaf/Badge/index.js"
 import { Icon } from "../../leaf/Icon/index.js"
 import { glyphSource } from "../../leaf/Icon/glyphs.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { CopyAction } from "../Markdown/CopyAction.js"
-import { CodeLines, isHighlighted, type CodeLineRange } from "../MarkdownArticle/index.js"
+import { CodeLines, isHighlighted, type CodeBlockToken, type CodeLineRange, type CodeLineTokens } from "../MarkdownArticle/index.js"
 import type { NoChildren } from "../../tier.js"
 
 /** The words of a code block, in the app's language. English defaults. */
@@ -47,6 +47,14 @@ export type CodeBlockProps = NoChildren & {
     readonly isCollapsed?: boolean
     readonly defaultCollapsed?: boolean
     readonly onCollapsedChange?: (isCollapsed: boolean) => void
+    /**
+     * Shiki's tokens, one list per line of `code`, from `highlightCode(code, language)` of `@starci/grammar/core/ext/markdown/server` (run it on
+     * the server, hand the JSON down). Their colours are `var(--shiki-token-*)`, which the block maps onto the code palette, so light and dark follow
+     * the page (or `scheme`). Without tokens, or for a line they do not spell, the code is plain. The copied text is `code` either way.
+     */
+    readonly tokens?: CodeLineTokens
+    /** At most this many lines tall: past it the code scrolls inside the block (the header and note stay). Unset, the block is as tall as its code. */
+    readonly maxLines?: number
     /** Whether the header carries the Copy command. Default true. */
     readonly copyable?: boolean
     readonly scheme?: CodeBlockScheme
@@ -88,6 +96,8 @@ export const CodeBlock = ({
     scheme = "page",
     labels,
     isLoading = false,
+    tokens,
+    maxLines,
 }: CodeBlockProps) => {
     const words = { ...LABELS, ...labels }
     const bodyId = useId()
@@ -113,8 +123,14 @@ export const CodeBlock = ({
     )
     const copy = copyable ? <CopyAction code={code} copyLabel={words.copy} copiedLabel={words.copied} copyErrorLabel={words.copyError} /> : null
     const body = (
-        <pre className="starci-core-code-block-code" tabIndex={0} role="region" aria-label={name}>
-            <CodeLines code={code} numbered={lineNumbers} ranges={highlightLines} start={start} />
+        <pre
+            className="starci-core-code-block-code"
+            tabIndex={0}
+            role="region"
+            aria-label={name}
+            {...(maxLines === undefined ? {} : { "data-grammar-code-bounded": "true", style: { "--starci-code-max-lines": maxLines } as CSSProperties })}
+        >
+            <CodeLines code={code} numbered={lineNumbers} ranges={highlightLines} start={start} {...(tokens === undefined ? {} : { tokens })} />
         </pre>
     )
     return (
@@ -146,3 +162,4 @@ export const CodeBlock = ({
         </div>
     )
 }
+export type { CodeBlockToken, CodeLineTokens }
