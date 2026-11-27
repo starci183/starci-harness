@@ -11,6 +11,12 @@ const PILL_TONE: Readonly<Record<string, BadgeTone>> = { taken: "success", runni
 /** The hollow circle at the source port (8px) and the open triangle at the target port (10px long, 10px across). */
 const DOT = 4
 const ARROW = 10
+/**
+ * The arrowhead is an open V (owner 2026-11-27: "M1 1 L11 6 L1 11", no fill, the line's colour and width, round corners), its point at the route's end on the
+ * target's border; the stylesheet moves it back by half its stroke (`--starci-graph-edge-width`) so the drawn point touches the border. The line runs on
+ * into the V and stops that far short of the border too.
+ */
+const ARROW_INSET = 0.75
 /** The junction dot where an edge meets another edge's line. */
 const JOIN = 3
 /** How far a back edge runs below the line of its ends before it turns back, and how far it leaves its source first. */
@@ -82,7 +88,7 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
     const joinEnd = given !== undefined && data?.joinEnd === true
     // An edge that ends on a merge bar draws nothing at its end: the bar carries the one arrow into the target.
     const bareEnd = given !== undefined && data?.bareEnd === true
-    const shortened = given === undefined ? undefined : joinEnd || bareEnd ? given.points : [...given.points.slice(0, -1), [end[0] - dir[0] * ARROW, end[1] - dir[1] * ARROW] as const]
+    const shortened = given === undefined ? undefined : joinEnd || bareEnd ? given.points : [...given.points.slice(0, -1), [end[0] - dir[0] * ARROW_INSET, end[1] - dir[1] * ARROW_INSET] as const]
     const [path, labelX, labelY] =
         given !== undefined && shortened !== undefined
             ? [roundedPath(shortened, CORNER), 0, 0]
@@ -102,7 +108,8 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
             ? null
             : joinEnd
             ? h("circle", { className: "starci-graph-edge-join", cx: end[0], cy: end[1], r: JOIN })
-            : h("path", { className: "starci-graph-edge-arrow", d: `M0 0L${String(-ARROW)} ${String(-ARROW / 2)}L${String(-ARROW)} ${String(ARROW / 2)}Z`, transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }),
+            : // The V's frame turns with the edge, so the stylesheet's step back (half the stroke) runs along it.
+              h("g", { transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }, h("path", { className: "starci-graph-edge-arrow", d: `M${String(-ARROW)} ${String(-ARROW / 2)}L0 0L${String(-ARROW)} ${String(ARROW / 2)}` })),
         given !== undefined && data?.joinStart === true ? h("circle", { className: "starci-graph-edge-join", cx: start[0], cy: start[1], r: JOIN }) : null,
         pill === undefined
             ? null

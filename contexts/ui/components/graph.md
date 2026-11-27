@@ -227,9 +227,18 @@ The spine layout is plain code over the layers, the lanes and the gaps, not ELK:
 
 ### Layout (`layout: "layered"`)
 
-Top to bottom (`direction: "TB"`) is the layout the owner's earlier spine rules were written for: in at the top centre, out at the bottom centre, a decision's branches at its sides (the first on the left, the second on the right); 48 within a layer, 64 between layers. ELK also gives the route of every edge and the box of every label (measured from the words), and the graph draws from those. A back edge is routed after the layout: it leaves its source by the west or east side, runs in a lane and enters its target by the west or east side. Of every lane its ends allow (beside both, between them, in each gap between the nodes it passes) it takes the shortest that passes no node, frame or label; a crossing with another edge and a side of the target another back edge already enters cost extra, and a lane or label outside the box of all the nodes (it would widen the layout) its distance out; a lane more than one card and its gutter (320) outside the box of its ends, or more than its gutter (40) outside the box of all the nodes, is a last resort. A loop's back edge stays inside its frame, on its own branch's side when both sides are equal. Every back edge stays within 320 of the box of its ends, and it and its label within 40 of the box of all the nodes (rule 11), looked at in the demo shots.
+One ELK `layered` run places every node and routes every edge (`layoutLayered`, `layered.ts`; owner 2026-11-27: "nothing overlaps"); nothing is moved or re-routed by hand afterwards, so ELK's guarantees hold on the drawing. The other graphs (the lesson `MermaidDiagram`) keep `layoutFlow` and its routing law below.
 
-ELK `layered`, left to right or top to bottom, with ports and containers; edges are orthogonal with rounded corners, a dot where they leave and an arrowhead. **Islands** (parts of the graph with no edge between them) are laid out one by one and packed side by side in rows up to `islandsWidth` (default 1200 graph units); `islands: "stack"` puts them in one column. The layout depends on ids, sizes, ports, edge ends, direction and islands only: a status change neither moves nor refits the graph.
+0. **Edge ends (owner 2026-11-27).** An edge leaves and enters a node only at the middle of one of its four sides: out at the end side, in at the start side, a back edge out of and into the side under the row. A control step (rows) is the one exception: each row has its own port on the end side at the row's middle. The start is a hollow dot (surface fill, the line's colour and width) centred on the border; the end is an open V (`M1 1 L11 6 L1 11`, no fill, round joins, the line's colour and width) whose drawn point touches the target's border, never inside it, never short.
+1. **Ports in row order.** Each output port of a card (a branch row of an if, a switch, a loop or a parallel step; the handle `port:<id>` the card renders) is its own ELK port on the end side, in row order (`FIXED_POS`, else `FIXED_ORDER`); a card is entered by one entry port. **Measured, not guessed:** once the cards are drawn the canvas reads every handle's centre back (xyflow's handle bounds) and, when a port stands more than 1px off where the layout put it, lays the graph out once more with the measured ports (`GraphCanvas` `portOf`), so an edge leaves exactly from its row's dot.
+2. **Orthogonal, spaced, never through a node** (`LAYERED_SPACING`): 40 within a layer, 72 between layers, 20 between an edge and a node, 12 between parallel edges.
+3. **Words placed by the layout, or dropped.** An edge that leaves a card's row carries no words (the row names the branch, and the card dims the row the run did not take). Any other edge's words are an ELK centre label with a box of its own in the layer gap: no line or node runs through it. The room reserved is the structure's words (the loop mark, a case's check, the skipped words a branch may get), never the run's, so a run update never moves the graph.
+4. **Notes off the lines.** Words longer than `NOTE_CHARS` (24, a branch's name) are a note (a refusal's reason, "Bị từ chối: ..."): the step's status or its drawer says it, never a pill on a line.
+5. **Parallel edges are one line** (`mergeParallel`): the edges that leave one port for one target (an action's "xong", "không duyệt" and "bị từ chối" that all go on to the same step) are drawn once, in the strongest state of the group (a taken one wins), with the first edge's id and their words when they are at most two short names ("có sự kiện · quá hạn"), else none.
+6. **Back edges round the outside, dashed.** A loop's body returning to its head or a wait's retry is given to ELK last, flagged back; ELK breaks the cycle there and routes it round the nodes in a lane of its own (`feedbackEdges`).
+7. **Deterministic.** A fixed seed and the model order: the same nodes, sizes, ports and edges give the same layout, and the canvas runs it again only when that structure changes. Disconnected parts are packed by ELK (48 apart).
+
+`findOverlaps(sizes, links, layout)` lists every overlap of a laid-out drawing (node on node, edge through a node, label on a node, a line or a label, two edges along one line unless they share a port); the demo stories `nivo-deposit`, `nivo-deposit-run` and `nivo-multi-post` (two real NIVO workflows) put it on `window.graphOverlaps`, empty.
 
 ### Opening a step
 
@@ -254,6 +263,30 @@ Read-only by default. `editable` lets a person drag the nodes; ELK gives the fir
 ### Loading
 
 `isLoading` is a skeleton graph of node-shaped bones and the lines between them, with no text, and `aria-busy`. It is also shown for the moment ELK takes to place a new graph.
+
+## StepCard: the inside of a workflow step card
+
+`StepCard` (0.64.2, the owner's node design 2026-11-27) is the card of one step of a workflow graph, for a canvas that draws its own nodes (NIVO's
+`steps` graph): the canvas keeps the border, the selection, the run status on the border and the handles; the card draws everything inside.
+
+- **One size.** Every card is `STEP_CARD.width` (200) wide and `STEP_CARD.height` (96) tall; a control step is its head (64) plus one row per way out
+  (`stepCardHeight(rows)`, `STEP_CARD.row` 32.5 each), never under 96.
+- **Kind.** `kind` is `trigger`, `action`, `ai`, `wait`, `branch`, `approval`, `code`, `end`, `loop`, `parallel` or `join`: its glyph
+  (`STEP_CARD_GLYPHS`, or the app's `icon`) on its tinted tile (`STEP_CARD_KIND_TONE`), the name on one line, a muted `subtitle`.
+- **Mode badge**, bottom-right (in the head's corner on a control step): `auto` none, `ask` amber, `studio` purple (the graph's own
+  `--starci-graph-studio*` pair: HeroUI has no purple), `manual` grey; the words are the app's `modeLabels`.
+- **Rows.** A `branch` (an if: exactly two rows; a switch: three or more, the last the "else"), a `loop` (three: the body, its stop
+  condition, its limit; the subtitle says "vòng k/N" in a run) and a `parallel` (one row per branch) list their ways out. Each row is 8px by 12px
+  (the spacing scale has no 14), a 0.5px seam above it, the first row too, its tone's dot, its words, and its own port on the right edge: the app's
+  handle, passed by `renderPort(row, index)`. The tone sets the dot and the row's edge (`STEP_CARD_EDGE`, `STEP_CARD_DASH`): `main` solid green,
+  `warning` solid amber, `else` grey dashes, `back` (a loop's body, which returns) red dashes, `stop` green, `branch` neutral.
+- **Replay.** `row.state`: `taken` lights the row in its tone, `dimmed` fades it; `done`, `running` and `error` show a parallel branch's own
+  `InlineStatus` with the app's `stateLabel`.
+
+In `FlowGraph`, a node's `card` (`FlowStepCard`: `kind`, `subtitle`, `mode`, `modeLabels`, `rows`) draws its inside as the same `StepCard`: the node is a
+card whatever its kind, at least the step card's height, its run status still on the top edge; the app passes each row's `state`.
+
+Stories `Graph/Step card (0.64.2)`: `Kinds`, `Branches`, `LoopAndParallel`, `Replay`, `InFlowGraph`.
 
 ## SchemaMap
 
@@ -357,7 +390,7 @@ A card is 280 wide (a card with a column of ports down its end side, 376), radiu
 
 ## Layout and helpers
 
-`layoutSpine(sizedNodes, links, { islands, width, measure })` is the pure spine layout (with its `bars` and each route's `end`: an arrow, a merge dot or a bar); `layoutFlow(sizedNodes, links, { direction, islands, width })` is the pure ELK layout (`layered`); it returns the top-left corner and the box of each node, rounded to whole pixels, and the same graph always gets the same layout. `layoutGraph` is its positions only. `resolveFlow`, `buildFlowNodes`, `buildFlowEdges`, `buildEntityNodes`, `isEdgeAnimated`, `normalizeStatus`, `statusTone`, `findConcurrentRunning` and the rest are exported for a custom canvas.
+`layoutSpine(sizedNodes, links, { islands, width, measure })` is the pure spine layout (with its `bars` and each route's `end`: an arrow, a merge dot or a bar); `layoutFlow(sizedNodes, links, { direction, islands, width })` is the pure ELK layout with the routing law (the lesson diagrams), `layoutLayered` the `layered` flow layout (one ELK run, nothing re-routed after); each returns the top-left corner and the box of each node, rounded to whole pixels, and the same graph always gets the same layout. `layoutGraph` is its positions only. `resolveFlow`, `buildFlowNodes`, `buildFlowEdges`, `buildEntityNodes`, `isEdgeAnimated`, `normalizeStatus`, `statusTone`, `findConcurrentRunning` and the rest are exported for a custom canvas.
 
 `@xyflow/react` and `elkjs` are dependencies; `react` and `react-dom` are peers.
 

@@ -4,6 +4,7 @@ import { Handle, Position, type NodeProps, type NodeTypes } from "@xyflow/react"
 import { createElement as h, isValidElement, useEffect, useMemo, useState, type CSSProperties, type ElementType, type ReactElement, type ReactNode } from "react"
 import { POSITION_OF, buildBarNodes, buildFlowEdges, buildFlowNodes, containerKind, type BarRfNode, type FlowRfNode } from "./build.js"
 import { layoutSpine } from "./spine.js"
+import { layoutLayered } from "./layered.js"
 import { foldFlow, type FlowCollapse } from "./collapse.js"
 import type { CanvasLayout } from "./shared/canvas.js"
 import { Badge, IconTile, InlineStatus, Text, type IconSource } from "../../index.js"
@@ -13,6 +14,7 @@ import { GraphCanvas, type Placement } from "./shared/canvas.js"
 import { FlowLegend } from "./shared/legend.js"
 import { PORT_COLUMN, PORT_ROW_TB, entrySide, resolveFlow, type FlowLayoutMode, type ResolvedPort } from "./model.js"
 import { StepEdge } from "./shared/StepEdge.js"
+import { StepCard } from "./StepCard.js"
 import { badgeTone, findConcurrentRunning, markState, nodeClassName, statusTone } from "./shared/status.js"
 import type { FlowChip, FlowKindTones, FlowLegendItem, FlowNode, FlowStatus, FlowStatusLabels, GraphCanvasProps, GraphEdge, GraphLinkComponent } from "./types.js"
 
@@ -176,7 +178,22 @@ const makeNodeTypes = (Link: ElementType | undefined): NodeTypes => {
         // The spine layout names a port on its edge, so a card draws no port pills.
         const spine = data.layout === "spine"
         const ports = spine ? [] : data.ports
-        const body = [
+        // A step card (0.64.2) draws the step's inside as `StepCard`: the kind's tile, the name and its line, the mode badge and the rows.
+        const card = node.card
+        const icon = typeof node.icon === "function" ? (node.icon as IconSource) : isValidElement(node.icon) && typeof node.icon.type !== "string" ? (node.icon.type as IconSource) : undefined
+        const cardSub = card?.subtitle ?? (data.status === "error" ? node.errorReason : undefined) ?? node.description
+        const body = card !== undefined ? [
+            h(StepCard, {
+                key: "card",
+                kind: card.kind,
+                title: node.label,
+                ...(cardSub === undefined ? {} : { subtitle: cardSub }),
+                ...(icon === undefined ? {} : { icon }),
+                ...(card.mode === undefined ? {} : { mode: card.mode }),
+                ...(card.modeLabels === undefined ? {} : { modeLabels: card.modeLabels }),
+                ...(card.rows === undefined ? {} : { rows: card.rows }),
+            }),
+        ] : [
             head(data),
             chips(node.chips),
             node.agent === undefined && node.agentName === undefined
@@ -185,7 +202,7 @@ const makeNodeTypes = (Link: ElementType | undefined): NodeTypes => {
         ]
         return h(
             "div",
-            { className: nodeClassName(data.status), ...nodeFlags(data), "data-shape": data.shape === "card" ? undefined : data.shape, "data-direction": data.direction, "data-ports": ports.length > 0 ? "true" : undefined, style: { inlineSize: data.width, blockSize: data.height, ...PORTS_RESERVE } },
+            { className: nodeClassName(data.status), ...nodeFlags(data), "data-step-card": node.card === undefined ? undefined : "true", "data-shape": data.shape === "card" ? undefined : data.shape, "data-direction": data.direction, "data-ports": ports.length > 0 ? "true" : undefined, style: { inlineSize: data.width, blockSize: data.height, ...PORTS_RESERVE } },
             data.shape === "hexagon" || data.shape === "call" ? hexagon(data.width, data.height) : null,
             node.tag === undefined ? null : h("span", { className: "starci-graph-node-tag" }, h(Badge, { tone: badgeTone(statusTone(data.status)) }, node.tag)),
             statusChip(data.status, data.statusWord),
@@ -259,6 +276,12 @@ const EDGE_TYPES = { step: StepEdge }
 
 const SPINE_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutSpine(sizes, links, settings)
 
+/** The layered layout: one ELK run places the nodes and routes every edge, final as given (see `layered.ts`). */
+const LAYERED_LAYOUT: CanvasLayout = (sizes, links, settings) => layoutLayered(sizes, links, settings)
+
+/** The layout port a card's handle stands for: its entry, its default exit, or a row's port (`port:<id>`, the id the card renders). */
+const portOfHandle = (handle: string): string | undefined => (handle.startsWith("port:") ? handle.slice("port:".length) : undefined)
+
 const isProduction = (): boolean => typeof process !== "undefined" && process.env.NODE_ENV === "production"
 
 /**
@@ -318,7 +341,7 @@ export const FlowGraph = (props: FlowGraphProps): ReactElement => {
         nodeTypes,
         edgeTypes: EDGE_TYPES,
         onNodePress: press,
-        ...(layout === "spine" ? { runLayout: SPINE_LAYOUT, routed: true, leastZoom: FLOW_READABLE_ZOOM, fitWidth: true } : {}),
+        ...(layout === "spine" ? { runLayout: SPINE_LAYOUT, routed: true, leastZoom: FLOW_READABLE_ZOOM, fitWidth: true } : { runLayout: LAYERED_LAYOUT, routed: true, portOf: portOfHandle }),
         ...(footer === undefined ? {} : { footer }),
     })
 }

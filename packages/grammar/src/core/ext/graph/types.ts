@@ -1,5 +1,6 @@
 import type { AriaLabelConfig } from "@xyflow/react"
 import type { ComponentType, ReactNode } from "react"
+import type { StepCardKind, StepCardMode, StepCardModeLabels, StepCardRow } from "./StepCard.js"
 
 /**
  * Where a node of a workflow run stands, exactly six states: `done`, `running` (the only active one on a path: green (success), a spinner, its outgoing edge flows),
@@ -86,6 +87,18 @@ export interface FlowWait {
     readonly detail?: string
 }
 
+/**
+ * A step drawn as the workflow step card (0.64.2, `StepCard`): its kind's glyph on the tinted tile, the mode badge, and a control step's ways out as rows
+ * (`rows`, with their `state` in a run: the taken row lit, the others dimmed; a parallel branch's own mark). The run status stays on the card's top edge.
+ */
+export interface FlowStepCard {
+    readonly kind: StepCardKind
+    readonly subtitle?: string
+    readonly mode?: StepCardMode
+    readonly modeLabels?: StepCardModeLabels
+    readonly rows?: readonly StepCardRow[]
+}
+
 export interface FlowNode {
     readonly id: string
     readonly label: string
@@ -118,6 +131,8 @@ export interface FlowNode {
     readonly wait?: FlowWait
     /** With `status: "error"`: the business reason, in the app's words (never a code); it is the line under the title. */
     readonly errorReason?: string
+    /** Draws the step's inside as the workflow step card (`StepCard`); the node is a card whatever its kind, and at least as tall as the step card. */
+    readonly card?: FlowStepCard
     /** Filtered out: the node draws faint and keeps its place. */
     readonly dimmed?: boolean
     /** A slot not filled yet: dashed, muted. */
