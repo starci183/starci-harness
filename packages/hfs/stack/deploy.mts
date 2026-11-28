@@ -1,5 +1,5 @@
 // deploy.mts - the whole release (deployRelease) and the redeploy of a stored release (rollbackRelease).
-// deploy: render, provision, store the release record, pre-pull, `docker stack deploy`, converge, post-deploy tasks (deploy.postDeploy, when declared), verify, accept, prune. A failure at or
+// deploy: render, provision, store the release record, pre-pull, `docker stack deploy`, converge, the edge aliases, converge again (edgeSteps), post-deploy tasks (deploy.postDeploy, when declared), verify, accept, prune. A failure at or
 // after the stack deploy redeploys the previous accepted release from its STORED bytes; a failure before it leaves the services untouched.
 // Without `execute` a deploy renders locally and prints the plan: NO remote call at all. A rollback cannot undo data effects.
 // An app that declares the `database:` block gets the database phases of db-phases.mts in every deploy: migrate preview, a
@@ -99,7 +99,8 @@ export interface DeployDeps {
   renderRelease: (ctx: StackContext, config: DeployConfig, options: RenderOptions) => Promise<ActionResult>;
   provisionRelease: (ctx: StackContext, config: DeployConfig, options: ProvisionOptions) => Promise<ActionResult>;
   convergeStack: (ctx: StackContext, config: DeployConfig, options: { since: string; timeoutSeconds?: number | undefined }) => Promise<ActionResult>;
-  reconcileEdge: (ctx: StackContext, config: DeployConfig, file: string) => ActionResult | Promise<ActionResult>;
+  /** After the stack converged: the edge aliases (edge-alias.mts); `since` is the ISO instant the deploy began. */
+  reconcileEdge: (ctx: StackContext, config: DeployConfig, file: string, options?: { since?: string | undefined }) => ActionResult | Promise<ActionResult>;
   postDeployStack: (ctx: StackContext, config: DeployConfig) => Promise<ActionResult>;
   /** The seed step after convergence (seeds.mts seedDeployed). */
   seedRelease: (ctx: StackContext, config: DeployConfig, database: DeployDatabase, f: FloorDeps) => Promise<ActionResult>;
@@ -227,6 +228,24 @@ function writeHoldOverride(config: DeployConfig, out: string, database: string):
   return file;
 }
 
+/**
+ * The steps that follow `docker stack deploy`, in this order: converge (every service's own update reached `completed`, or Swarm's rollback of it is
+ * reported), the edge aliases (their `service update`s only once the rollout settled: an update issued during the rollout supersedes it and, after a
+ * Swarm rollback, resets the update state that would have shown it), then converge again over the rollouts the edge updates started. `prefix` names
+ * the rollback's steps (`rollback-`).
+ */
+function edgeSteps(ctx: StackContext, config: DeployConfig, d: DeployDeps, file: string, since: string, timeoutSeconds: number | undefined, prefix = ''): Step[] {
+  const converge = (): Promise<ActionResult> => d.convergeStack(ctx, config, { since, timeoutSeconds });
+  return [
+    [`${prefix}converge`, converge],
+    [`${prefix}edge`, async () => d.reconcileEdge(ctx, config, file, { since })],
+    [`${prefix}edge-converge`, converge],
+  ];
+}
+
+/** The steps with `after` run once the step `name` finished (the live services snapshot after the last convergence). */
+const withSnapshot = (plan: Step[], name: string, after: () => unknown): Step[] => plan.map(([step, action]): Step => [step, step === name ? async () => { const done = await action(); after(); return done; } : action]);
+
 /** Runs [name, action] steps in order until one fails; records { step, ok } and collects the lines; each step is also a phase of the journal. Returns the failed step name or ''. */
 async function runSteps(plan: Step[], lines: string[], steps: StepRecord[], rec: Recorder): Promise<string> {
   const failed = await findInOrder(plan, async ([step, action]: Step) => {
@@ -253,11 +272,11 @@ const openStore = async (ctx: StackContext, config: DeployConfig, options: SshOp
 async function redeployStored(ctx: StackContext, config: DeployConfig, d: DeployDeps, store: ReleaseStore, previous: string, out: string, steps: StepRecord[], rec: Recorder): Promise<{ lines: string[]; ok: boolean }> {
   const dir = path.join(out, 'previous');
   const lines = [`ROLLING BACK to the previous accepted release ${previous}`];
+  const since = isoBefore(ctx, 30);
   const failed = await runSteps([
     ['rollback-fetch', async () => { await store.fetch(previous, dir); return { ok: true, lines: [] }; }],
     ['rollback-deploy', () => stackDeploy(ctx, config, path.join(dir, 'stack.yaml'))],
-    ['rollback-edge', async () => d.reconcileEdge(ctx, config, path.join(dir, 'stack.yaml'))],
-    ['rollback-converge', async () => { const converged = await d.convergeStack(ctx, config, { since: isoBefore(ctx, 30), timeoutSeconds: 600 }); snapshot(ctx, config, d, rec, 'rollback'); return converged; }],
+    ...withSnapshot(edgeSteps(ctx, config, d, path.join(dir, 'stack.yaml'), since, 600, 'rollback-'), 'rollback-edge-converge', () => snapshot(ctx, config, d, rec, 'rollback')),
   ], lines, steps, rec);
   lines.push(failed ? 'ROLLBACK DID NOT CONVERGE: follow the stack runbook, Rollback' : `rolled back to ${previous}`);
   return { lines, ok: !failed };
@@ -441,8 +460,7 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
       return adoptedDb.result;
     }] satisfies Step] : []),
     ['deploy', () => stackDeploy(ctx, config, stackFile)],
-    ['edge', async () => d.reconcileEdge(ctx, config, stackFile)],
-    ['converge', async () => { const converged = await d.convergeStack(ctx, config, { since, timeoutSeconds: options.timeoutSeconds }); snapshot(ctx, config, d, rec, 'converge'); return converged; }],
+    ...withSnapshot(edgeSteps(ctx, config, d, stackFile, since, options.timeoutSeconds), 'edge-converge', () => snapshot(ctx, config, d, rec, 'converge')),
     ...(database && hasSeedEntries(config.repoRoot, config.env) ? [['seed', () => d.seedRelease(ctx, config, database, { ...FLOOR_DEPS, ...d.floor })] satisfies Step] : []),
     ...(config.postDeploy.length > 0 ? [['post-deploy', () => d.postDeployStack(ctx, config)] satisfies Step] : []),
     ['verify', () => d.verifyStack(ctx, config, { retrySeconds: options.retrySeconds, skipPublic: skipPublic === true, stackFile: path.join(out, 'stack.yaml') })],
@@ -594,8 +612,7 @@ export async function rollbackRelease(ctx: StackContext, config: DeployConfig, o
         const failed = await runSteps([
           ['fetch', async () => { await store.fetch(target, scratch); return { ok: true, lines: [] }; }],
           ['deploy', () => stackDeploy(ctx, config, stackFile)],
-          ['edge', async () => d.reconcileEdge(ctx, config, stackFile)],
-          ['converge', async () => { const converged = await d.convergeStack(ctx, config, { since, timeoutSeconds: options.timeoutSeconds ?? 600 }); snapshot(ctx, config, d, rec, 'converge'); return converged; }],
+          ...withSnapshot(edgeSteps(ctx, config, d, stackFile, since, options.timeoutSeconds ?? 600), 'edge-converge', () => snapshot(ctx, config, d, rec, 'converge')),
           ['verify', () => d.verifyStack(ctx, config, { retrySeconds: 180, stackFile })],
           ['accept', async () => { await acceptObserved(ctx, config, d, store, rec, { out: scratch, releaseId: target }); return { ok: true, lines: [] }; }],
         ], lines, steps, rec);

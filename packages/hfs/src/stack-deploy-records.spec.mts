@@ -245,7 +245,7 @@ test('a deploy takes the lock, journals every phase, snapshots the services and 
   const result = await run();
   assert.equal(result.ok, true, result.lines.join('\n'));
   const doc = phasesOf(records);
-  assert.deepEqual(doc.phases.map((p) => p.phase), ['lock', 'idempotence', 'render', 'provision', 'store', 'pre-pull', 'deploy', 'edge', 'converge', 'verify', 'accept']);
+  assert.deepEqual(doc.phases.map((p) => p.phase), ['lock', 'idempotence', 'render', 'provision', 'store', 'pre-pull', 'deploy', 'converge', 'edge', 'edge-converge', 'verify', 'accept']);
   assert.ok(doc.phases.every((p) => p.verdict === 'ok'));
   assert.equal(doc.outcome, 'accepted');
   assert.equal(doc.trigger, 'dispatch');
@@ -290,7 +290,7 @@ test('a red verify is journaled with the rollback phases, a snapshot of the roll
   assert.equal(result.ok, false);
   const doc = phasesOf(records);
   assert.equal(doc.outcome, 'rolled-back');
-  assert.deepEqual(doc.phases.slice(-5).map((p) => [p.phase, p.verdict]), [['verify', 'failed'], ['rollback-fetch', 'ok'], ['rollback-deploy', 'ok'], ['rollback-edge', 'ok'], ['rollback-converge', 'ok']]);
+  assert.deepEqual(doc.phases.slice(-6).map((p) => [p.phase, p.verdict]), [['verify', 'failed'], ['rollback-fetch', 'ok'], ['rollback-deploy', 'ok'], ['rollback-converge', 'ok'], ['rollback-edge', 'ok'], ['rollback-edge-converge', 'ok']]);
   assert.deepEqual(Object.keys(doc.observed).sort(), ['converge', 'rollback']);
   assert.equal(records.lock, null);
 });
@@ -369,7 +369,7 @@ test('a rollback is one recorded attempt under the lock', async (t) => {
   const result = await rollbackRelease(ctx, configOf({ stack: 'shop', env: 'production' }), { execute: true }, deps);
   assert.equal(result.ok, true);
   const doc = phasesOf(records);
-  assert.deepEqual(doc.phases.map((p) => p.phase), ['lock', 'fetch', 'deploy', 'edge', 'converge', 'verify', 'accept']);
+  assert.deepEqual(doc.phases.map((p) => p.phase), ['lock', 'fetch', 'deploy', 'converge', 'edge', 'edge-converge', 'verify', 'accept']);
   assert.equal(doc.outcome, 'accepted');
   assert.equal(doc.releaseId, OLD_RELEASE);
   assert.equal(records.lock, null);

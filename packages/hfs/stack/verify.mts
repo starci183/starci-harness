@@ -105,7 +105,7 @@ async function verifyDrift(ctx: StackContext, config: DeployConfig, results: Che
   await runCheck(ctx, results, 'drift: the services run the digests of the stack file', () => {
     const live = observedServices(ctx, config);
     const drift = compareWithRelease({ stackYaml, release: {} }, live).filter((entry) => entry.kind !== 'not in the release');
-    expect(drift.length === 0, drift.map((entry) => `${entry.service}: ${entry.kind}`).join('; '));
+    expect(drift.length === 0, drift.map((entry) => `${entry.service}: ${entry.kind} (${entry.detail})`).join('; '));
     return `${live.length} service(s)`;
   });
 }
