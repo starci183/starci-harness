@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 1.1.0-alpha.209 - 2026-11-28
+
+- Fixed (h-ci-host-state, `cli/src/harness/host-needs.ts` `requireHostServices`): `starci app stack deploy` judges the environment's hostServices before it deploys, and evaluated `readMachines()` and `locateOps()` as default parameters, before it knew whether the app declared any. On a CI runner the app's published CLI has no harness home, so the release deploy refused HOST_STATE_NOT_FOUND before it started, for an app that declares no hostServices. config.yaml and the ops catalog are now read only when an environment declares hostServices, and a host with no harness home judges them `unjudged`, as a host with no config.yaml already did. This train also releases @starci/grammar 0.64.9.
+
 ## 1.1.0-alpha.208 - 2026-11-28
 
 - Changed: the CLI requires @starci/hfs@6.17.21, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
