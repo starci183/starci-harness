@@ -2558,48 +2558,19 @@
     }
 
     /*
-     * GlossaryTerm (owner 2026-11-23): the term keeps the words around it, a dotted underline under it; its definition is a small overlay
-     * bubble under the term, shown on hover, on focus and while a tap holds it open. The bubble is always in the document (the term's
-     * description), only unseen while closed.
+     * GlossaryTerm (owner 2026-11-23, 2026-11-28): the term keeps the words around it, a dotted underline under it; its definition is
+     * HeroUI's Tooltip above it (a portal overlay, styled like every Grammar tooltip), so nothing here positions a bubble.
      */
-    .starci-core-glossary-term { position: relative; display: inline; }
     .starci-core-glossary-term-word {
         display: inline;
-        padding: 0;
-        border: 0;
-        background: transparent;
-        color: inherit;
         cursor: help;
-        font: inherit;
         text-decoration-line: underline;
         text-decoration-style: dotted;
         text-decoration-thickness: var(--grammar-hairline);
         text-underline-offset: 0.2em;
     }
 
-    .starci-core-glossary-term-word:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-    .starci-core-glossary-term-definition {
-        position: absolute;
-        z-index: 1;
-        inset-block-start: calc(100% + var(--grammar-identity-gap));
-        inset-inline-start: 0;
-        inline-size: max-content;
-        max-inline-size: min(20rem, 80vw);
-        padding: var(--grammar-inline-gap);
-        border-radius: var(--grammar-radius-md);
-        background: var(--overlay);
-        box-shadow: var(--overlay-shadow);
-        color: var(--overlay-foreground, var(--foreground));
-        font-size: var(--grammar-type-caption-size);
-        font-weight: var(--grammar-weight-regular);
-        line-height: var(--grammar-type-caption-line);
-        opacity: 0;
-        pointer-events: none;
-        visibility: hidden;
-        white-space: normal;
-    }
-
-    .starci-core-glossary-term:is(:hover, :focus-within, [data-grammar-term-open="true"]) > .starci-core-glossary-term-definition { opacity: 1; visibility: visible; }
+    .starci-core-glossary-term-word:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
 
     .starci-core-fenced-code-header {
         display: flex;
