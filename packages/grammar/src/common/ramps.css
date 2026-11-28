@@ -377,8 +377,8 @@
         --grammar-icon-head: 1.5rem;
         --grammar-tile-row-size: 2.5rem;
         /* The checklist line's round tile (0.64.9) and its glyph. */
-        --grammar-tile-item-size: 1.5rem;
-        --grammar-icon-item: 0.875rem;
+        --grammar-tile-item-size: 1.25rem;
+        --grammar-icon-item: 0.75rem;
         --grammar-tile-row-radius: 0.625rem;
         --grammar-tile-head-size: 3rem;
         --grammar-tile-head-radius: 0.75rem;

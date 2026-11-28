@@ -26,15 +26,15 @@ type IconTileShared = NoChildren & {
     /**
      * The tile by the place it leads (the icon table, ramps.css): `row` (default) the 40 tile, radius 10, with a 20 glyph, leading a list row (a run,
      * a document); `head` the 48 tile, radius 12, with a 24 glyph, leading a page head or an empty state. A status mark is the round 40, or the
-     * round 24 of `item`.
-     * `item` (owner 2026-11-28: "icon tile 24"): the round 24 tile that leads ONE LINE of a checklist (what a case must hold, what a lesson teaches),
-     * with a 14 glyph or the item's number; never a list row's or a page's tile. A status mark at this size that has not run (`notRun`, `skipped`)
+     * round 20 of `item`.
+     * `item` (owner 2026-11-28: "icon tile 24", then "size = 20"): the round 20 tile that leads ONE LINE of a checklist (what a case must hold, what a lesson teaches),
+     * with a 12 glyph or the item's number; never a list row's or a page's tile. A status mark at this size that has not run (`notRun`, `skipped`)
      * is the empty circle alone, no glyph inside it (owner: "chưa chạy là hình tròn thôi").
      */
     readonly size?: IconTileSize
 }
 
-/** The tiles of the icon table: the list row's 40, the page head's 48 and the checklist line's round 24. */
+/** The tiles of the icon table: the list row's 40, the page head's 48 and the checklist line's round 20. */
 export type IconTileSize = "row" | "head" | "item"
 
 /** An identity tile: the app's glyph on the tone's soft plate (an agent, a feature, a graph node's kind). */
