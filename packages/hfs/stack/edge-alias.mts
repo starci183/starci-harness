@@ -83,13 +83,11 @@ const unreadable = (network: string, what: string): Error => refusal('STACK_DEPL
 function serviceNames(ctx: DockerCtx, network: string, id: string): string[] {
   const listed = tool(ctx, 'docker', ['service', 'ls', '--quiet']);
   if (listed.status !== 0) throw unreadable(network, 'docker service ls failed');
-  const ids = listed.stdout.split(/?
-/u).map((line) => line.trim()).filter(Boolean);
+  const ids = listed.stdout.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
   if (ids.length === 0) return [];
   const inspected = tool(ctx, 'docker', ['service', 'inspect', '--format', SERVICE_FORMAT, ...ids]);
   if (inspected.status !== 0) throw unreadable(network, 'docker service inspect failed');
-  return inspected.stdout.split(/?
-/u).filter((line) => line.trim() !== '').map((line) => {
+  return inspected.stdout.split(/\r?\n/u).filter((line) => line.trim() !== '').map((line) => {
     const model = parseJson<ServiceModel>(line);
     if (model === null || typeof model !== 'object' || typeof model.name !== 'string') throw unreadable(network, 'docker service inspect printed an unexpected line');
     return model;

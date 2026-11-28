@@ -133,20 +133,15 @@ function edgeNetworkDouble(services: LiveService[], containers: string[] = ['edg
     const out = (stdout: string) => ({ status: 0, stdout, stderr: '' });
     if (args.includes('--verbose')) {
       const verbose = JSON.stringify({ Id: EDGE_ID, Services: { 'edge-traefik': { VIP: '<nil>' } } });
-      return verbose.includes('"VIP":"<nil>"') ? { status: 1, stdout: '', stderr: 'ParseAddr("<nil>"): unable to parse IP
-' } : out(verbose);
+      return verbose.includes('"VIP":"<nil>"') ? { status: 1, stdout: '', stderr: 'ParseAddr("<nil>"): unable to parse IP\n' } : out(verbose);
     }
     if (args[0] === 'network' && args[1] === 'inspect' && args[2] === 'edge') {
-      return out(`${JSON.stringify({ Id: EDGE_ID, Containers: Object.fromEntries(containers.map((name, index) => [`c${index}`, { Name: name, IPv4Address: `10.0.1.${index + 2}/24` }])) })}
-`);
+      return out(`${JSON.stringify({ Id: EDGE_ID, Containers: Object.fromEntries(containers.map((name, index) => [`c${index}`, { Name: name, IPv4Address: `10.0.1.${index + 2}/24` }])) })}\n`);
     }
-    if (args[0] === 'network' && args[1] === 'inspect') return { status: 1, stdout: '', stderr: `Error response from daemon: network ${args[2]} not found
-` };
-    if (args[0] === 'service' && args[1] === 'ls') return out(services.map((_, index) => `s${index}
-`).join(''));
+    if (args[0] === 'network' && args[1] === 'inspect') return { status: 1, stdout: '', stderr: `Error response from daemon: network ${args[2]} not found\n` };
+    if (args[0] === 'service' && args[1] === 'ls') return out(services.map((_, index) => `s${index}\n`).join(''));
     if (args[0] === 'service' && args[1] === 'inspect') {
-      return out(services.map((service) => `${JSON.stringify({ name: service.name, networks: service.targets.map((target) => ({ Target: target, Aliases: [] })) })}
-`).join(''));
+      return out(services.map((service) => `${JSON.stringify({ name: service.name, networks: service.targets.map((target) => ({ Target: target, Aliases: [] })) })}\n`).join(''));
     }
     return { status: 1, stdout: '', stderr: `unexpected docker ${args.join(' ')}` };
   };
