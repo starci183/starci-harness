@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 0.64.9 - 2026-11-28
 
+- Fixed (owner 2026-11-28 "sao lại có hình tròn đồng tâm thế?"): at the item size (20) a `waiting` status mark is the empty outline circle too, like `notRun` and `skipped`; it drew the warning plate with a small ring inside it, a circle in a circle.
 - Changed (owner 2026-11-28 "sao logo… vuông không phải tròn"): a `LogoChip` outside a diagram is round (`--grammar-radius-pill`), like every mark that rides a line; inside a diagram it keeps its small rounded square beside the node's words.
 - Fixed: `LogoChip` draws outside a diagram (a reference card's tech stack row): the chip declares its own size, mark and tint (the diagram's values), and its ink falls back to the foreground; before, its custom properties lived only on `.starci-graph-diagram`, so a chip elsewhere had a sizeless svg and showed nothing.
 - Docs (owner 2026-11-28, chốt "luật 48 40 20"): the IconTile size law is written down: `head` 48 for a page head or an empty state, `row` 40 for a row the reader presses or selects, `item` 20 for a mark riding a line of read-only content (pressable 40, read only 20, page head 48), in the `IconTileSize` doc and contexts/ui/components/identity-mark.md "IconTile sizes" (law `DNA-COMMON-ICON-TILE-SIZE-BY-ROLE`).
