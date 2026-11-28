@@ -5967,7 +5967,9 @@
     }
 
     /* Authored overflow behaviour: wrap is the resting answer, the other two are opted into. */
+    /* An explicit wrap wraps even where its host keeps one line (a DataTable cell is nowrap): white-space returns to normal (0.64.11). */
     .starci-core-text[data-overflow="wrap"] {
+        white-space: normal;
         overflow-wrap: anywhere;
         word-break: break-word;
     }

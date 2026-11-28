@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 0.64.11 - 2026-11-28
 
+- Fixed (a lesson audit's paths table pushed its last column out of the reading measure): `Text overflow="wrap"` sets `white-space: normal`, so a cell's words wrap inside a `DataTable` cell (cells keep one line by default) instead of widening the table past its frame. A `Text` with no `overflow` is unchanged.
 - Added (owner 2026-11-28, a quote whose words name code showed its backticks raw): `Quote` takes its words as inline `children` (a sentence holding `Code`, strong words or a `Link`), drawn in the words element exactly where `text` stands, so a quote with code names looks identical to a plain one (the block's mark, its accent rule, body-size words when nested). `text` stays for every caller with plain words; when both are given `children` wins. Inline content only, never a block. The `tier-props` rule counts `Quote` with `Text` as inline content.
 
 ## 0.64.10 - 2026-11-28
