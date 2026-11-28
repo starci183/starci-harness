@@ -16,7 +16,11 @@ export type HeadingProps = {
     readonly isVisuallyHidden?: boolean
 }
 
-/** font.md Scale: FONT-4/FONT-3/FONT-2/FONT-1 for level 1..4; level 4 also matches tone.md TONE-2 (muted). The look is the stylesheet's, keyed on `data-level` and `data-scale`. */
+/**
+ * font.md Scale: FONT-4/FONT-3/FONT-2/FONT-1 for level 1..4; level 4 also matches tone.md TONE-2 (muted). The look is the stylesheet's,
+ * keyed on `data-level` and `data-scale`: level 1 the page title (18 / 500), levels 2 and 3 the title.section role (16 / 24 / 500, a
+ * Section title's type, so a bare heading and a Section of one level match), level 4 the muted 12.
+ */
 const FONT_RULE_BY_LEVEL = {
     1: "FONT-4",
     2: "FONT-3",

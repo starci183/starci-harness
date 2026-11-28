@@ -195,7 +195,7 @@ const Outline = () => {
         {SECTIONS.map((section) => (
           <section key={section.id} id={section.id} style={{ minBlockSize: 360 }}>
             <G.Text as="p" role="title.section">{section.label}</G.Text>
-            <G.Text as="p" role="reading.body">Đoạn văn của phần “{section.label}”.</G.Text>
+            <G.Text as="p">Đoạn văn của phần “{section.label}”.</G.Text>
           </section>
         ))}
       </G.Stack>

@@ -1522,6 +1522,25 @@ mustKeep:
       law: "A field label and a table column header are the label.field role, 13 / 18 / 500 muted; a field's description is the caption role, 12 / 16 / 400 muted."
       measure: { kind: style, select: ':is(.starci-core-field-label, .starci-core-data-table .starci-core-data-table-column)', checks: [{ metric: font-size, op: "=", value: { token: --grammar-type-label-field-size } }, { metric: font-weight, op: "=", value: 500 }, { metric: color, op: "=", value: { token: --muted } }] }
       owner: ui/presentation.md
+    # The three type laws of nesting (owner 2026-11-28). The measures below hold a Section's lines against its title and every
+    # section-level heading to one type; a card, an Accordion item, a Disclosure, the weight and sibling lines across blocks are
+    # measured on the live page by the app's lesson type probe (starci-next scripts/integration/lesson-type-probe.mjs); the static
+    # half is lint:starci-grammar/type-nesting. A figure (a value) and the site's display roles are no lines of copy and are exempt.
+    - id: DNA-COMMON-TYPE-NESTED-NOT-LARGER
+      role: root
+      law: "Text inside a block (a Section, a card, an Accordion item, a Disclosure) is never larger than that block's own heading, in size or weight, at any depth (ui/presentation.md T1)."
+      measure: { kind: relation, select: '[data-component="Section"] :is([data-component="Text"]:not([data-role="figure"], [data-role^="display."]), [data-component="Quote"]):not(.starci-core-section-header *)', metric: font-size, op: "<=", ref: { within: '[data-component="Section"]', select: '.starci-core-section-title', metric: font-size } }
+      owner: ui/presentation.md
+    - id: DNA-COMMON-TYPE-SIBLINGS-SAME
+      role: root
+      law: "Blocks of one level draw their heading, and each role of their own lines, in one size and weight; a bare Heading level 2 or 3 is the title.section role, the type of a Section title (ui/presentation.md T2)."
+      measure: { kind: uniform, select: ':is(:is(h2, h3, h4).starci-core-section-title, [data-component="Heading"][data-scale="standard"]:is([data-level="2"], [data-level="3"]))', metric: [font-size, font-weight], op: "=" }
+      owner: ui/presentation.md
+    - id: DNA-COMMON-TYPE-LEAD-PAGE-ONLY
+      role: root
+      law: "The reading.body, reading.title and lead roles are the page's own narration, standing directly on the page; inside a Section, a card, an Accordion item or a Disclosure the copy is body (ui/presentation.md T3)."
+      measure: { kind: source, check: "lint:starci-grammar/type-nesting" }
+      owner: ui/presentation.md
     - id: DNA-COMMON-TYPE-STAT
       role: list
       law: "A stat cell's label is the label.group role (12 / 16 / 500 muted) and its value the figure role (24 / 32 / 500, tabular)."

@@ -37,6 +37,7 @@ import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
 import { rules as surfaceInSurfaceRules } from "./surface-in-surface.ts"
+import { rules as typeNestingRules } from "./type-nesting.ts"
 import { rules as tabsRules } from "./tabs.ts"
 import { rules as tableCellTypeRules } from "./table-cell-type.ts"
 import { rules as textRules } from "./text-rules.ts"
@@ -109,6 +110,7 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
   { law: "tabs", rules: tabsRules },
   { law: "table-cell-type", rules: tableCellTypeRules },
   { law: "text-rules", rules: textRules },
+  { law: "type-nesting", rules: typeNestingRules },
   { law: "tokens", rules: tokensRules },
   { law: "vendor-boundary", rules: vendorRules },
 ]

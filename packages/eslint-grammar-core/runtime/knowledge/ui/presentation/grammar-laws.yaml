@@ -299,6 +299,21 @@ rules:
           title.section, label.item, body, label.field, label.group, caption, badge, code; dots as dashes in the class). A Tailwind
           text-size utility, a `fontSize` or a CSS `font-size` in app source is reported (`starci-grammar/no-raw-type-size`, a
           counting rule at warn until both apps migrate, then blocking).
+  - id: TYPE-NESTING
+    title: Type steps down as blocks nest
+    governs: The type role of copy inside a Section, a SurfaceCard, an Accordion or a Disclosure, and the heading level of a block inside another.
+    cases:
+      - id: case-1
+        when: A Text inside a headed block takes a reading or lead role
+        assert: |-
+          `reading.body`, `reading.title` and `lead` are the page's own narration and stand directly on the page; inside a
+          Section, SurfaceCard, Accordion or Disclosure the copy is `body`, so nothing in a block draws larger than its heading
+          (DNA-COMMON-TYPE-NESTED-NOT-LARGER, DNA-COMMON-TYPE-LEAD-PAGE-ONLY). Refused by `starci-grammar/type-nesting`.
+      - id: case-2
+        when: A headed block stands inside another headed block
+        assert: |-
+          Its literal `headingLevel` is deeper than the enclosing block's, so the outline and the type step down together.
+          Refused by `starci-grammar/type-nesting` when both levels are literal.
   - id: SITE-TYPE-ROLES
     title: The site group is the public site's
     governs: Where the five site type roles are drawn.

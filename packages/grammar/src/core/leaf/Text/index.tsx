@@ -17,7 +17,16 @@ export type TextProps = {
     readonly children?: ReactNode
     /** App-owned glyph or other inline meaning placed before the copy. */
     readonly startContent?: ReactNode
-    /** The type role of the line: its size, line height, weight and (for the muted roles) its tone. Without one the line is `body`. */
+    /**
+     * The type role of the line: its size, line height, weight and (for the muted roles) its tone. Without one the line is `body`.
+     *
+     * Three laws hold the roles together (contexts/ui/presentation.md "Nesting and siblings"):
+     * - NESTED NOT LARGER (DNA-COMMON-TYPE-NESTED-NOT-LARGER): a line inside a block (a `Section`, a `SurfaceCard`, an `Accordion`
+     *   item, a `Disclosure`) is never larger than that block's own heading, in size or weight, at any depth.
+     * - SIBLINGS SAME (DNA-COMMON-TYPE-SIBLINGS-SAME): blocks of one level draw the same role in the same size and weight.
+     * - LEAD PAGE ONLY (DNA-COMMON-TYPE-LEAD-PAGE-ONLY): `reading.body`, `reading.title` and `lead` are the page's own narration,
+     *   standing directly on the page; inside a block the copy is `body`. `starci-grammar/type-nesting` refuses the static case.
+     */
     readonly role?: TextRole
     readonly tone?: TextTone
     /** One stronger weight for a value or a term inside a line (never a title: a title comes from the frame that owns it). */

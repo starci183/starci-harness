@@ -212,6 +212,11 @@ export const why: Record<string, WhyEntry> = {
     en: "`<file>` sets a type size of its own: a Tailwind text-size utility (`text-sm`, `text-[13px]`), a `fontSize` or a CSS `font-size`.",
     fix: "Type is a Grammar role: use `<Text role=\"label.item\">` or the class of the role, `starci-type-<role>` with dots as dashes (`starci-type-label-item`). The roles: figure, title.page, title.section, label.item, body, label.field, label.group, caption, badge, code; on the public site also display.hero, display.section, display.figure, lead and title.card.",
   },
+  "type-nesting": {
+    code: "FE_TYPE_NESTING",
+    en: "`<file>` draws a reading or lead role (`reading.body`, `reading.title`, `lead`) inside a Section, SurfaceCard, Accordion or Disclosure, or a block that heads no deeper than the block around it.",
+    fix: "Inside a block the copy is `body` (a `Text` with no role); keep the reading roles for narration standing directly on the page. A block inside another heads one level deeper (`headingLevel` of the outer block plus one).",
+  },
   "site-type-role": {
     code: "FE_SITE_TYPE_ROLE",
     en: "`<file>` is not the public site, and it draws a role of the site group: `display.hero`, `display.section`, `display.figure`, `lead` or `title.card` (`<Text role>` or `starci-type-<role>`).",
