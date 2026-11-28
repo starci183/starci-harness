@@ -76,7 +76,7 @@ interface OptionInput { flags: Flags; positional: string[]; cwd: string }
 type Handler = (ctx: StackContext, config: DeployConfig, options: Record<string, unknown>) => Promise<ActionResult>;
 
 /** The actions that drive the docker CLI of the operator machine (pointed at the manager by docker-transport.mts when the key is sealed). */
-const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollback', 'prune', 'status', 'volume', 'standby', 'resume', 'db-upgrade']);
+const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollback', 'prune', 'status', 'volume', 'standby', 'resume', 'db-upgrade', 'jobs', 'task']);
 
 export const ACTIONS = Object.freeze(['prepare', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept', 'status', 'ci-key', 'volume', 'standby', 'resume', 'db-upgrade'] as const);
 

@@ -32,12 +32,12 @@ export async function ciKey(_ctx: StackContext, config: DeployConfig, options: C
   return {
     ok: true,
     lines: [
-      'the CI key reaches Docker, which is root on the manager: its authorized_keys line forces starci-ssh-gate, which admits docker system dial-stdio and the release store\'s named operations only.',
+      'the CI key reaches Docker, which is root on the manager: its authorized_keys line forces starci-ssh-gate, which admits docker system dial-stdio and the named operations of the release store and the manager backup only.',
       'owner-run steps on the manager (as root; <ops> is your own ssh access):',
       `  1. starci app stack ci-key --env ${env} --print-gate | ssh <ops> 'install -m 0755 -o root -g root /dev/stdin ${GATE_PATH}'`,
       `  2. starci app stack ci-key --env ${env} --public-key <ci-key.pub> --print-authorized-keys | ssh <ops> 'cat >> ~<ci-account>/.ssh/authorized_keys'`,
       '  3. seal VPS_GATE=1 in the vps-ci member of the environment, so `stack connect` tells the deploy to use the gate (STARCI_SSH_GATE=1); remove it to go back.',
-      'not yet admitted by the gate: the post-deploy tasks and the manager backup/decrypt of a stack database run free commands; keep those environments on an ungated key until they are named operations.',
+      `a harness upgrade that changes the gate prints a different text: install it again with step 1 (compare first: ssh <ops> cat ${GATE_PATH}); every docker command of a deploy runs on the runner through DOCKER_HOST=ssh://<alias> (dial-stdio), never as a shell.`,
     ],
     data: { gatePath: GATE_PATH },
   };

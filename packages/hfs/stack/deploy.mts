@@ -166,8 +166,8 @@ function refuseSharedAliases(config: DeployConfig, bytes: string): void {
  * Read-only preflight on the live edge networks: the implicit short name of a service (`api` for shop_api) must not equal a name another container or
  * service of the same external network resolves (docker stack deploy adds it as an alias, and the other tenant's `http://api` would reach this stack).
  */
-async function refuseEdgeCollisions(run: Runner, config: DeployConfig, bytes: string): Promise<void> {
-  const { clashes } = await edgeCollisions(run, config, bytes);
+async function refuseEdgeCollisions(ctx: StackContext, config: DeployConfig, bytes: string): Promise<void> {
+  const { clashes } = await edgeCollisions(ctx, config, bytes);
   const [first] = clashes;
   if (first) throw refusal('STACK_DEPLOY_ALIAS_SHARED', describeClash(first));
 }
@@ -359,13 +359,13 @@ const hasSourceSha = (options: DeployOptions): options is DeployOptions & { sour
 
 /** Everything before the stack deploy: any failure here leaves the services untouched. Returns { ok, lines, releaseId, images, previous }. */
 async function prepareRelease(ctx: StackContext, config: DeployConfig, options: DeployOptions, d: DeployDeps, out: string, seams: { run: Runner; store: ReleaseStore; rec: Recorder; adopted?: AdoptedFrom | null }): Promise<{ ok: boolean; lines: string[]; releaseId: string; previous: string; stepsDone: StepRecord[] }> {
-  const { run, store, rec } = seams;
+  const { store, rec } = seams;
   const previous = await store.current();
   rec.note({ previous: previous || null });
   const prepared = await rec.phase('render', async () => {
     const rendered = await d.renderRelease(ctx, config, renderOptions(options, out, previous || null));
     const inspected = inspectRendered(out, config);
-    await refuseEdgeCollisions(run, config, inspected.bytes);
+    await refuseEdgeCollisions(ctx, config, inspected.bytes);
     return { rendered, ...inspected };
   });
   const { releaseId, images } = prepared;
