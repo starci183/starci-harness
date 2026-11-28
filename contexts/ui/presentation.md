@@ -286,6 +286,37 @@ refuse the Grammar's private type tokens (`starci/no-grammar-private-token`). Me
 Where the rows above disagree with this table (FONT-7, FONT-7a, FONT-7b and FONT-9 on row titles, section titles, table
 headers and figures), this table wins.
 
+### Nesting and siblings
+
+Type steps down, or stays equal, each time a block sits inside another, the way an inset does ("Four inset levels"). A block is a
+part that owns a heading: the page (its header title), a `Section`, a `SurfaceCard`, an `Accordion` item and a `Disclosure`.
+
+| Level | Block | Its heading |
+| --- | --- | --- |
+| 0 page | the page header and what stands directly on the page | the page title, 18 / 500 (`Heading` level 1) |
+| 1 section | a `Section`, a card, a bare `Heading` level 2 | `title.section`, 16 / 24 / 500 |
+| 2 sub-block | a `Section` or card inside one, an `Accordion` item whose title is a section's part | `title.section` 16 / 500 (a sub-section), or `label.item` 14 / 500 (an item) |
+| 3 part | the named parts inside an item, a `Disclosure` | `label.item` 14 / 500, or the disclosure's own 14 |
+
+Laws (owner 2026-11-28: "phông chữ label lúc nhỏ lúc to, audit lại font chữ toàn bộ sao cho đồng nhất"):
+
+- **T1 Nesting steps down or stays equal** (`DNA-COMMON-TYPE-NESTED-NOT-LARGER`). Text inside a block is never larger than that
+  block's own heading, in font size or in weight, at any depth: a 17 reading line under a 16 section title, or a 16 `Quote` under a
+  14 item title, reads as the heading of its own block. Repair it by raising the block's heading to the role its rank owns
+  (`title.section` for a sub-section) or by drawing the line in `body`; never by shrinking a heading below its role.
+- **T2 Siblings share the type** (`DNA-COMMON-TYPE-SIBLINGS-SAME`). Blocks of one level (the sections of a page, the cards of a
+  list, the parts of a case) draw their heading, and each role of their own lines, in one size and weight. `Heading` levels 2 and
+  3 are the `title.section` role, the type of a `Section` title, so a bare heading never stands smaller than the Section beside it.
+- **T3 The reading and lead sizes are the page's own** (`DNA-COMMON-TYPE-LEAD-PAGE-ONLY`). `reading.body`, `reading.title` and
+  `lead` are for the narration of the page itself, standing directly on the page (a lesson's hook, the landing's line under its
+  hero); inside a `Section`, a card, an item or a disclosure the copy is `body`. A label above a list is `label.item`, never a
+  `caption`, which is a meta line.
+
+Who enforces them: `starci-grammar/type-nesting` (`FE_TYPE_NESTING`) refuses what one file states (a reading role inside a headed
+block, a nested block whose `headingLevel` is not deeper); the drawn sizes, which cross files, are the DNA laws above, and an app's
+lesson pages are measured whole by its lesson type probe (starci-next `scripts/integration/lesson-type-probe.mjs`). Where FONT-7's
+table names "card or section title md 14 / 600" for `Heading` levels 2 and 3, this subsection and "The type roles" win.
+
 ### The site group
 
 The display group is for the public marketing site

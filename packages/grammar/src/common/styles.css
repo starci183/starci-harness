@@ -5881,23 +5881,23 @@
      * declaration that a later family layer can still own.
      */
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="1"] {
-        /* The final type scale: level 1 is the page title display size (18), levels 2 and 3 the 14 titles, all semibold. */
+        /* The final type scale: level 1 is the page title display size (18); levels 2 and 3 the title.section role (16 / 500), below. */
         font-size: var(--grammar-text-xl) !important;
         font-weight: var(--grammar-weight-semibold) !important;
         letter-spacing: var(--grammar-tracking-tight) !important;
         line-height: var(--grammar-leading-page-title) !important;
     }
 
-    .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="2"] {
-        font-size: var(--grammar-text-md) !important;
-        font-weight: var(--grammar-weight-semibold) !important;
-        line-height: var(--grammar-leading-md) !important;
-    }
-
+    /*
+     * Levels 2 and 3 are the title.section role (16 / 24 / 500), the same type as a Section title and a card label at every
+     * level (owner 2026-11-28 "phông chữ label lúc nhỏ lúc to"): a bare Heading drew 14 beside 16 Section titles of the same
+     * level, so siblings of one level differed (DNA-COMMON-TYPE-SIBLINGS-SAME).
+     */
+    .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="2"],
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="3"] {
-        font-size: var(--grammar-text-md) !important;
-        font-weight: var(--grammar-weight-semibold) !important;
-        line-height: var(--grammar-leading-md) !important;
+        font-size: var(--grammar-type-title-section-size) !important;
+        font-weight: var(--grammar-type-title-section-weight) !important;
+        line-height: var(--grammar-type-title-section-line) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="4"] {
