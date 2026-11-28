@@ -312,7 +312,9 @@ void test("an app's hostServices are judged by config.yaml: served by an ordered
 
 void test("requireHostServices reads no host state for an app that declares no hostServices: a CI runner without a harness home deploys (HOST_STATE_NOT_FOUND)", (t) => {
     const dir = mkdtempSync(join(tmpdir(), "host-needs-ci-"))
-    t.after(() => rmSync(dir, { recursive: true, force: true }))
+    t.after(() => {
+        rmSync(dir, { recursive: true, force: true })
+    })
     mkdirSync(join(dir, ".starcistacks"), { recursive: true })
     writeFileSync(join(dir, ".starcistacks", "application-stacks.yaml"), stacks({ production: { deploy: {} } }))
     const saved = { local: process.env.STARCI_LOCAL_ROOT, ops: process.env.STARCI_OPS_DIR }
