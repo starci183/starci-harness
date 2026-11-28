@@ -8,7 +8,7 @@ import { gitCommonDir, resolveSha } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
 import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import type { VerbContext } from "../../shared/verb.js"
-import { ghReader, requireCiRun, requiredJobsAt } from "./ci-evidence.js"
+import { findCiRun, ghReader, requireCiRun, requiredJobsAt } from "./ci-evidence.js"
 import type { CiRunEvidence, GithubReader, RequiredJobs } from "./ci-evidence.js"
 
 /** One GitHub Actions run of a commit, as `gh run list` reports it. */
@@ -175,6 +175,14 @@ export interface CiRunDeps {
  */
 export const requireCiRunGreen = async (root: string, sha: string, ciRun: string, deps: CiRunDeps = {}): Promise<CiRunEvidence> =>
     requireCiRun(deps.read ?? ghReader(root), sha, ciRun, deps.standard ?? (await requiredJobsAt(root, sha)))
+
+/**
+ * The same evidence gate with no run named (`--ci-run` given empty, or a production deploy whose commit-wide CI reading is red only because
+ * an auto-deploy after the verdict failed): finds the newest run of the managed CI of exactly `sha` that the judgement accepts (verdict and
+ * images green; the deploy jobs and the rollback are not read). Refuses CI_NOT_GREEN with each run's reason, CI_RUN_UNREADABLE or CI_RUN_USAGE.
+ */
+export const findCiRunGreen = async (root: string, sha: string, deps: CiRunDeps = {}): Promise<CiRunEvidence> =>
+    findCiRun(deps.read ?? ghReader(root), sha, deps.standard ?? (await requiredJobsAt(root, sha)))
 
 /**
  * `starci check ci`: the GitHub Actions verdict of one pushed commit (green, red, pending, cancelled, none or unreadable) with its

@@ -328,7 +328,11 @@ the API with the job's token and accepts only when every job the CI standard req
 `codecov`), is the same table the renderer idles the job by, so an app that declares those gates off is deployable from its own CI run. An
 idled job that is in the run may not be red. A gate declared on stays required (missing or red blocks), and the floor stays
 required whatever the declaration says: `plan`, `fast`, `build`, `verdict` (the harness's own gates hfs, secrets and db are never
-switchable). The verb then runs
+switchable), and every job of `images` (the reusable workflow that pushes the digests: one skipped, red or missing refuses). The run's own
+conclusion is never read, nor the `deploy-<env>` jobs and the `rollback`: they come after the verdict, so a failed auto-deploy turns the run red
+without saying anything about the commit, and a manual `stack deploy --ci-run <that run>` that repairs it is accepted. An empty `--ci-run` names
+no run: the CLI lists the `ci.yml` runs of the sha, judges each the same way and forwards the newest accepted one; a production deploy without
+`--ci-run` whose `requireCi` reading is red falls back to the same search. The verb then runs
 its phases, each one a recorded step:
 
 | phase | does | on failure |
