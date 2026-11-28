@@ -4,7 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 0.64.1 - 2026-11-28
 
-- Changed: peers @starci/eslint-grammar-core 0.64.1 (the `starci-grammar/type-nesting` rule), so the family installs together; no rule of its own changed.
+- Changed: peers @starci/eslint-grammar-core `~0.64.0`, the same-minor range the canon pins hold (a patch of the core lint, 0.64.1 with `starci-grammar/type-nesting`, stays inside it and needs no new pin); it peered 0.64.0 exactly, which refused core 0.64.1 beside it. No rule of its own changed.
 
 ## 0.64.0 - 2026-11-26
 

@@ -44,7 +44,7 @@
   "peerDependencies": {
     "eslint": ">=9",
     "typescript": ">=5.9",
-    "@starci/eslint-grammar-core": "0.64.1"
+    "@starci/eslint-grammar-core": "~0.64.0"
   },
   "devDependencies": {
     "@starci/eslint-canon-fe": "file:../eslint-canon-fe",
