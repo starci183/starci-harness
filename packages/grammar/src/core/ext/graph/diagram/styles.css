@@ -552,64 +552,15 @@
     }
 }
 
-/*
- * The brief card (owner 2026-11-28: hover or press a node for a short brief; it replaces the one-line description): docked in the canvas's top right
- * corner, the node's logo, name and kind, its brief, its facts. Empty it takes no room; it never catches the pointer, so the canvas under it still pans.
- */
+/* The body of a node's drawer (owner 2026-11-28: pressing a node opens a drawer): its brief, then its facts. */
 .starci-graph-diagram-brief {
-    position: absolute;
-    inset-block-start: var(--grammar-inline-gap);
-    inset-inline-end: var(--grammar-inline-gap);
-    z-index: 6;
-    margin: 0;
-    pointer-events: none;
-}
-
-.starci-graph-diagram-brief[data-open="true"] {
-    box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: var(--grammar-identity-gap);
-    inline-size: min(20rem, calc(100% - 2 * var(--grammar-inline-gap)));
-    padding: var(--grammar-inline-gap);
-    color: var(--foreground);
-    font-size: var(--grammar-type-caption-size);
-    line-height: var(--grammar-type-caption-line);
-    background: var(--surface);
-    border: var(--grammar-hairline) solid var(--border);
-    border-radius: var(--grammar-radius-md);
-}
-
-/* Pressed open, the card keeps an accent edge: it stays until a second press or Escape. */
-.starci-graph-diagram-brief[data-pinned="true"] {
-    border-color: var(--accent);
-}
-
-.starci-graph-diagram-brief-head {
-    display: flex;
-    align-items: center;
-    gap: var(--grammar-inline-gap);
-    min-inline-size: 0;
-}
-
-.starci-graph-diagram-brief-name {
-    min-inline-size: 0;
-    font-size: var(--grammar-type-label-field-size);
-    font-weight: var(--grammar-weight-medium);
-    line-height: var(--grammar-type-label-field-line);
-    overflow-wrap: anywhere;
-}
-
-.starci-graph-diagram-brief-kind {
-    flex: none;
-    margin-inline-start: auto;
-    padding-inline: var(--grammar-identity-gap);
-    color: var(--muted);
-    background: var(--starci-graph-diagram-chip-fill);
-    border-radius: var(--grammar-radius-pill);
+    gap: var(--grammar-row-gap);
 }
 
 .starci-graph-diagram-brief-text {
+    margin: 0;
     white-space: pre-line;
 }
 
