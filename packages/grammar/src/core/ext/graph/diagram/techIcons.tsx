@@ -40,6 +40,7 @@ const ALIASES: Readonly<Record<string, string>> = {
     elastic: "elasticsearch",
     ts: "typescript",
     js: "javascript",
+    rs: "rust",
 }
 
 const BRANDS: Readonly<Record<string, ReactElement>> = Object.fromEntries(Object.entries(TECH_ICON_PATHS).map(([name, path]) => [name, brand(path)]))
@@ -96,6 +97,8 @@ const TECH_NAMES: Readonly<Record<string, string>> = {
     nextdotjs: "Next.js",
     elasticsearch: "Elasticsearch",
     minio: "MinIO",
+    jest: "Jest",
+    rust: "Rust",
 }
 
 /**
@@ -110,7 +113,7 @@ export const techNameOf = (icon: string | undefined): string | undefined => {
 /**
  * The icon names a node may use and what each draws: the simple-icons logos (`postgresql`, `mongodb`, `mysql`, `redis`, `express`, `nestjs`, `nodedotjs`,
  * `docker`, `kubernetes`, `rabbitmq`, `apachekafka`, `nginx`, `graphql`, `typescript`, `javascript`, `go`, `python`, `react`, `nextdotjs`, `elasticsearch`,
- * `minio`), a few aliases (`postgres`, `nodejs`, `kafka`, `k8s`, ...) and the generic `database` and `service`. `MermaidDiagram` uses it for every name
+ * `minio`, `jest`, `rust`), a few aliases (`postgres`, `nodejs`, `kafka`, `k8s`, ...) and the generic `database` and `service`. `MermaidDiagram` uses it for every name
  * its `icons` prop does not give.
  */
 export const techIcons: Readonly<Record<string, ReactNode>> = {
