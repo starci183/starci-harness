@@ -18,6 +18,9 @@ import type { StackContext } from '../stack/context.mjs';
 const posix = (file: string) => (process.platform === 'win32' ? file.replace(/^([A-Za-z]):/u, (_all, drive: string) => `/${drive.toLowerCase()}`) : file).split(path.sep).join('/');
 const TOKEN = 'c'.repeat(32);
 const RELEASE = '0123456789abcdef';
+const BACKUP = 'shop-20261031T100000000Z';
+const CONTAINER = 'abcdef012345';
+const AGE = `age1${'q'.repeat(58)}`;
 const PUBLIC_KEY = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeFakeFakeFakeFakeFakeFakeFakeFakeFakeFake starci-ci-demo';
 
 function scene(t: TestContext) {
@@ -62,6 +65,13 @@ test('the gate refuses a shell, an unknown name, a wrong count and every argumen
     `starci-op lock-acquire ${base} ${TOKEN} root 10`, `starci-op lock-acquire ${base} ${TOKEN} ci -1`, `starci-op lock-acquire ${base} ${TOKEN} ci 1000000`,
     `starci-op lock-acquire ${base} ${TOKEN.slice(1)} ci 10`, `starci-op journal-write ${base} 2026-10-31`, `starci-op journal-write ${base} 20261031T083015Z-zzzzzzzz`,
     `STARCI-OP pointer ${base} current`,
+    // the manager backup's operations: a free path, a name without its stamp, a container, role or database outside its alphabet, a bad recipient list
+    `starci-op db-measure ${base} shop`, `starci-op db-measure ${base} ../${BACKUP}`, `starci-op db-measure ${base} ${BACKUP}.tar.age`, `starci-op db-measure ${base}/../etc ${BACKUP}`,
+    `starci-op db-decrypt ${base} ${BACKUP} ABCDEF012345`, `starci-op db-decrypt ${base} ${BACKUP} abc`, `starci-op db-decrypt ${base} ${BACKUP} ${'a'.repeat(65)}`,
+    `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app;id app ${AGE}`, `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} 1app app ${AGE}`, `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app app`,
+    `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app app ${AGE},`, `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app app ,${AGE}`, `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app app ${AGE},,${AGE}`,
+    `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app app age1short`, `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app app ${AGE.toUpperCase()}`,
+    `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app app ${Array.from({ length: 17 }, () => AGE).join(',')}`, `starci-op db-dump ${base} ${BACKUP} ${CONTAINER} app app ${AGE} extra`,
   ];
   for (const command of refused) {
     const answer = viaGate(command);
@@ -77,6 +87,8 @@ test('the client refuses to compose an operation the gate would refuse', () => {
   assert.throws(() => gatedCommand('shell', []), (error: { code?: string }) => error.code === 'STACK_GATE_OP');
   assert.throws(() => inlineCommand('read', ['/srv/../app', RELEASE]), (error: { code?: string }) => error.code === 'STACK_GATE_ARGUMENT');
   assert.equal(gatedCommand('read', ['/srv/app', RELEASE]), `starci-op read /srv/app ${RELEASE}`);
+  assert.throws(() => gatedCommand('db-dump', ['/srv/b', BACKUP, CONTAINER, 'app', 'app', Array.from({ length: 17 }, () => AGE).join(',')]), (error: { code?: string }) => error.code === 'STACK_GATE_ARGUMENT');
+  assert.equal(gatedCommand('db-dump', ['/srv/b', BACKUP, CONTAINER, 'app', 'app', `${AGE},${AGE}`]), `starci-op db-dump /srv/b ${BACKUP} ${CONTAINER} app app ${AGE},${AGE}`);
 });
 
 test('every named operation is a script that swallows no failure and the gate has a case for each', () => {

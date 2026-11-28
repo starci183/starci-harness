@@ -5507,6 +5507,19 @@
         box-shadow: inset 0 0 0 var(--grammar-stroke-fine) var(--border);
     }
 
+    /* Running at 20: the empty circle whose edge turns, a success arc on the outline going round (still under reduced motion: a full ring). */
+    .starci-core-icon-tile[data-size="item"][data-grammar-mark-subject="false"][data-artwork="false"][data-loading="false"][data-grammar-mark-state="running"] {
+        background: transparent;
+        box-shadow: none;
+        border: var(--grammar-ring-width) solid var(--border);
+        border-block-start-color: var(--success);
+        animation: starci-core-spin var(--grammar-loop-spin) var(--grammar-loop-easing) infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-icon-tile[data-size="item"][data-grammar-mark-state="running"] { animation: none; border-color: var(--success); }
+    }
+
     /* A tone pair is painted only when the plate draws its own glyph. */
     .starci-core-icon-tile[data-tone="neutral"][data-artwork="false"][data-loading="false"] {
         background: var(--default);

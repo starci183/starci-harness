@@ -2,17 +2,20 @@
 // The CI key reaches the manager's Docker socket, which is root on that host; its line in authorized_keys is therefore
 //   restrict,command="starci-ssh-gate" ssh-ed25519 AAAA... <comment>
 // and the gate admits exactly two kinds of request:
-//   `docker system dial-stdio`                   the transport of DOCKER_HOST=ssh://<alias> (the docker CLI starts it itself)
+//   `docker system dial-stdio`                   the transport of DOCKER_HOST=ssh://<alias> (the docker CLI starts it itself): every docker command of
+//                                                a deploy (inspect, ps, exec, service, stack) runs on the runner through it, never as a shell over ssh
 //   `starci-op <name> <argument>...`             one of the named operations below, each argument validated by its kind
 // Everything else - a shell, an unknown name, a wrong argument count, an argument outside its closed alphabet - is refused with exit 126 and no echo of
-// the request. The operations are the release store's remote protocol (release-store.mts): the same script bodies run for the owner's key (through
-// `sh -c`, without the gate) and for the CI key (through the gate), so the gate admits no script the store does not itself run.
+// the request. The operations are the release store's remote protocol (release-store.mts) and the manager-side database backup (backup-ops.mts),
+// the only work a deploy must do on the host itself: the same script bodies run for the owner's key (through `sh -c`, without the gate) and for the
+// CI key (through the gate), so the gate admits no script the harness does not itself run.
 // A body reads its arguments as $1... ($0 is `starci-op`) and its stdin; it holds no free text.
 import { refusal } from './errors.mjs';
 import { shellQuote } from './remote.mjs';
+import { BACKUP_OPS } from './backup-ops.mjs';
 
 /** What an argument is: each kind is a closed alphabet, checked by the client (TypeScript) and by the gate (POSIX sh) alike. */
-export type ArgKind = 'base' | 'release' | 'pointer' | 'token' | 'trigger' | 'attempt' | 'seconds';
+export type ArgKind = 'base' | 'release' | 'pointer' | 'token' | 'trigger' | 'attempt' | 'seconds' | 'backup' | 'container' | 'ident' | 'recipients';
 
 /** One named operation: its arguments by kind, whether it reads stdin, and the sh body that runs with the arguments as $1.... */
 export interface GateOp { readonly name: string; readonly args: readonly ArgKind[]; readonly stdin: boolean; readonly body: string }
@@ -21,6 +24,13 @@ const RELEASE_ID = /^[0-9a-f]{16}$/u;
 const TOKEN = /^[0-9a-f]{32}$/u;
 const ATTEMPT = /^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$/u;
 const BASE = /^\/[A-Za-z0-9._/-]+$/u;
+/** A backup's name: the project, then the UTC stamp of its ISO time without separators (manager-backup.mts). */
+const BACKUP = /^[A-Za-z0-9_-]{1,80}-[0-9]{8}T[0-9]{9}Z$/u;
+const CONTAINER = /^[0-9a-f]{12,64}$/u;
+const IDENT = /^[A-Za-z_][A-Za-z0-9_]{0,62}$/u;
+const RECIPIENT = /^age1[0-9a-z]{50,90}$/u;
+/** At most this many age recipients in one `recipients` argument. */
+export const MAX_RECIPIENTS = 16;
 
 /** The closed alphabet of each argument kind. */
 export const ARG_TESTS: Readonly<Record<ArgKind, (value: string) => boolean>> = Object.freeze({
@@ -31,6 +41,13 @@ export const ARG_TESTS: Readonly<Record<ArgKind, (value: string) => boolean>> = 
   trigger: (value) => value === 'ci' || value === 'dispatch' || value === 'urgent',
   attempt: (value) => ATTEMPT.test(value),
   seconds: (value) => /^[0-9]{1,6}$/u.test(value),
+  backup: (value) => BACKUP.test(value),
+  container: (value) => CONTAINER.test(value),
+  ident: (value) => IDENT.test(value),
+  recipients: (value) => {
+    const keys = value.split(',');
+    return keys.length <= MAX_RECIPIENTS && keys.every((key) => RECIPIENT.test(key));
+  },
 });
 
 const OWNER_READ = 'if [ -r "$l/owner" ]; then read -r held_token held_trigger held_stamp < "$l/owner"; else held_token=none; held_trigger=unknown; held_stamp=$(stat -c %Y "$l" 2>/dev/null) || held_stamp=0; fi; case "$held_stamp" in \'\'|*[!0-9]*) held_stamp=0;; esac';
@@ -39,7 +56,7 @@ const OWNER_READ = 'if [ -r "$l/owner" ]; then read -r held_token held_trigger h
 const POINTER = 'if [ -L "$1/$2" ]; then basename "$(readlink "$1/$2")"; else printf \'\\n\'; fi';
 
 /**
- * The named operations of the release store. `lock-acquire`: `mkdir` is the atomic claim, the owner file (token, trigger, epoch) is replaced by
+ * The named operations: the release store's, then the manager backup's (backup-ops.mts). `lock-acquire`: `mkdir` is the atomic claim, the owner file (token, trigger, epoch) is replaced by
  * rename, a lock unrefreshed for $4 seconds is moved aside (one rename wins) and claimed anew; prints `acquired` or `busy <trigger> <age>`.
  */
 export const GATE_OPS: readonly GateOp[] = Object.freeze([
@@ -65,6 +82,7 @@ export const GATE_OPS: readonly GateOp[] = Object.freeze([
   { name: 'journal-index', args: ['base'], stdin: true, body: 'set -e; mkdir -p "$1/deploys"; IFS= read -r line; printf \'%s\\n\' "$(printf \'%s\' "$line" | base64 -d)" >> "$1/deploys.jsonl"' },
   // The newest 500 attempt documents, one base64 line each, oldest first (attempt ids sort by their UTC time).
   { name: 'journal-read', args: ['base'], stdin: false, body: 'd="$1/deploys"; [ -d "$d" ] || exit 0; names=$(ls -1 "$d") || exit 1; printf \'%s\\n\' "$names" | tail -n 500 | while IFS= read -r f; do case "$f" in ' + `${'[0-9]'.repeat(8)}T${'[0-9]'.repeat(6)}Z-${'[0-9a-f]'.repeat(8)}.json` + ') base64 < "$d/$f" | tr -d \'\\n\'; printf \'\\n\';; esac; done' },
+  ...BACKUP_OPS,
 ]);
 
 const BY_NAME: ReadonlyMap<string, GateOp> = new Map(GATE_OPS.map((op) => [op.name, op]));
@@ -103,6 +121,7 @@ export function inlinePrefix(name: string): string {
 
 const VALIDATOR = Object.freeze({
   base: 'v_base', release: 'v_release', pointer: 'v_pointer', token: 'v_token', trigger: 'v_trigger', attempt: 'v_attempt', seconds: 'v_seconds',
+  backup: 'v_backup', container: 'v_container', ident: 'v_ident', recipients: 'v_recipients',
 } satisfies Record<ArgKind, string>);
 
 /** The sh variable that holds the body of an operation. */
@@ -119,7 +138,8 @@ export function gateScript(): string {
   return [
     '#!/bin/sh',
     '# starci-ssh-gate: the forced command of the CI key (generated by `starci app stack ci-key --print-gate`; do not edit, regenerate).',
-    '# Admits `docker system dial-stdio` and the named operations of the release store, nothing else. A refusal says nothing about the request.',
+    '# Admits `docker system dial-stdio` and the named operations of the release store and the manager backup, nothing else. A refusal says nothing',
+    '# about the request.',
     'PATH="$PATH:/usr/local/bin:/usr/bin:/bin"',
     "refuse() { echo 'starci-ssh-gate: command refused' >&2; exit 126; }",
     'v_base() { case "$1" in /*) ;; *) return 1;; esac; case "$1" in *[!A-Za-z0-9._/-]*|*..*) return 1;; esac; }',
@@ -130,6 +150,11 @@ export function gateScript(): string {
     'v_trigger() { case "$1" in ci|dispatch|urgent) ;; *) return 1;; esac; }',
     `v_attempt() { case "$1" in ${digits(8)}T${digits(6)}Z-${digits(8, '[0-9a-f]')}) ;; *) return 1;; esac; v_hex 8 "\${1#*Z-}"; }`,
     'v_seconds() { case "$1" in \'\'|*[!0-9]*) return 1;; esac; [ "${#1}" -le 6 ]; }',
+    `v_backup() { case "$1" in *[!A-Za-z0-9_-]*) return 1;; esac; case "$1" in ?*-${digits(8)}T${digits(9)}Z) ;; *) return 1;; esac; [ "\${#1}" -le 100 ]; }`,
+    'v_container() { case "$1" in \'\'|*[!0-9a-f]*) return 1;; esac; [ "${#1}" -ge 12 ] && [ "${#1}" -le 64 ]; }',
+    'v_ident() { case "$1" in [A-Za-z_]*) ;; *) return 1;; esac; case "$1" in *[!A-Za-z0-9_]*) return 1;; esac; [ "${#1}" -le 63 ]; }',
+    // a subshell body, so the IFS it splits with never reaches the gate; globbing is already off (set -f) when a validator runs
+    `v_recipients() ( case "$1" in ''|,*|*,|*,,*|*[!0-9a-z,]*) exit 1;; esac; IFS=,; n=0; for r in $1; do n=$((n + 1)); case "$r" in age1*) ;; *) exit 1;; esac; [ "\${#r}" -ge 54 ] && [ "\${#r}" -le 94 ] || exit 1; done; [ "$n" -le ${MAX_RECIPIENTS} ] )`,
     ...bodies,
     'cmd=${SSH_ORIGINAL_COMMAND-}',
     '[ -n "$cmd" ] || refuse',
