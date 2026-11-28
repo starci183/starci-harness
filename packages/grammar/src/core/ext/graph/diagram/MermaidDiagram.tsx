@@ -2,7 +2,7 @@
 
 import { Background, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore, type Edge, type EdgeProps, type EdgeTypes, type Node, type NodeProps, type NodeTypes } from "@xyflow/react"
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode, type RefObject } from "react"
-import { Alert, FencedCodeBlock, Icon, Skeleton, Text } from "../../../index.js"
+import { Alert, Drawer, FencedCodeBlock, Icon, Skeleton, Text } from "../../../index.js"
 import { TablerPencil } from "../../../leaf/Icon/tabler.js"
 import type { NoChildren } from "../../../tier.js"
 import type { FlowLayout, SizedNode } from "../layout.js"
@@ -46,17 +46,19 @@ export interface MermaidDiagramLabels {
     readonly messages: string
     /** How a node marked "the learner edits here" (`class O edit`) is named to a screen reader, after its words. */
     readonly edit: string
-    /** The name of each node kind of an architecture drawing: the brief card's tag, and the tag a cache wears over its name ("cache"). */
+    /** The name of each node kind of an architecture drawing: the drawer's kind line, and the tag a cache wears over its name ("cache"). */
     readonly client: string
     readonly service: string
     readonly database: string
     readonly cache: string
     readonly queue: string
-    /** The names of the brief card's facts: the node's technology, its port, a store's tables and any other node's detail line. */
+    /** The names of the drawer's facts: the node's technology, its port, a store's tables and any other node's detail line. */
     readonly tech: string
     readonly port: string
     readonly tables: string
     readonly detail: string
+    /** The close button of a node's drawer. */
+    readonly close: string
 }
 
 export type { MermaidTone } from "./model.js"
@@ -135,6 +137,7 @@ const LABELS: MermaidDiagramLabels = {
     port: "Port",
     tables: "Tables",
     detail: "Details",
+    close: "Close",
 }
 
 /** The reserved box of each height step. */
@@ -191,7 +194,7 @@ const pointable = (node: DiagramNode): boolean => node.shape !== "container" && 
 /** What a node is called by its button: its words, its port and the edit mark, as the text version says it. */
 const spokenName = (node: DiagramNode, editWord: string): string => `${node.label}${node.port === undefined ? "" : ` :${node.port}`}${node.edit === true ? ` (${editWord})` : ""}`
 
-/** Whether a node has a brief card to show: an architecture node always (its kind, tech, port, tables), any other node only with a tooltip. */
+/** Whether a node has a drawer to open: an architecture node always (its kind, tech, port, tables), any other node only with a tooltip. */
 const hasBrief = (node: DiagramNode): boolean => node.kind !== undefined || node.description !== undefined
 
 type Drawn =
@@ -262,8 +265,8 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
                 )}
             </span>
         )
-    // A step or store is a Tab stop: pointing at it or focusing it lights its neighbours and shows its brief card; pressing it (click, Enter, Space) keeps
-    // the card open.
+    // A step or store is a Tab stop: pointing at it or focusing it lights its neighbours; pressing it (click, Enter, Space) opens
+    // its drawer.
     const interactive =
         focus === null || !pointable(node)
             ? {}
@@ -271,7 +274,7 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
                   tabIndex: 0,
                   role: "button" as const,
                   "aria-label": spokenName(node, focus.editWord),
-                  ...(hasBrief(node) ? { "aria-expanded": focus.opened === node.id, "aria-controls": focus.describedBy } : {}),
+                  ...(hasBrief(node) ? { "aria-expanded": focus.opened === node.id, "aria-haspopup": "dialog" as const } : {}),
                   // The pointer reaches the canvas's own node handlers (onNodeMouseEnter, onNodeClick): they also give xyflow's node its pointer events.
                   onFocus: () => focus.focus(node.id),
                   onBlur: () => focus.focus(null),
@@ -714,13 +717,12 @@ const KindLegend = ({ kinds, words, edit }: { readonly kinds: readonly EdgeKind[
 )
 
 /**
- * The brief card of a node (owner 2026-11-28: hover or press a node for a short brief), docked in the canvas's top right corner so it never covers the
- * node it speaks of on a wide canvas (across the top on a narrow one): the node's logo, name and kind; its brief (Mermaid's tooltip, `click O call note()
- * "…"`), what it is and what it does in this lesson; then its facts: the technology its logo names, its port, a store's tables or any other node's detail
- * line. It follows the pointer and the keyboard focus, and stays while the node is pressed open (Escape or a second press closes it). It is the node
- * button's `aria-controls` and a polite status, so a screen reader hears the brief once it opens; empty, it takes no room and catches no pointer.
+ * The drawer of a node (owner 2026-11-28: "diagram bấm vào mở drawer"): pressing a node (click, Enter, Space) opens Grammar's right `Drawer` with the
+ * node's logo, its name as the title and its kind under it; then its brief (Mermaid's tooltip, `click O call note() "…"`), what it is and what it does
+ * in this lesson, and its facts: the technology its logo names, its port, a store's tables or any other node's detail line. Pointing at a node only lights
+ * it and its neighbours; the close button, Escape or a press outside closes the drawer and the focus goes back to the node.
  */
-const BriefCard = ({ id, node, data, words, pinned }: { readonly id: string; readonly node: DiagramNode | undefined; readonly data: ShapeData | undefined; readonly words: MermaidDiagramLabels; readonly pinned: boolean }): ReactElement => {
+const NodeDrawer = ({ node, data, words, onClose }: { readonly node: DiagramNode | undefined; readonly data: ShapeData | undefined; readonly words: MermaidDiagramLabels; readonly onClose: () => void }): ReactElement => {
     const tech = techNameOf(node?.icon)
     const facts: readonly (readonly [string, string])[] =
         node === undefined
@@ -732,28 +734,31 @@ const BriefCard = ({ id, node, data, words, pinned }: { readonly id: string; rea
               ]
     const icon = data?.icon
     return (
-        <div id={id} className="starci-graph-diagram-brief" role="status" data-open={node === undefined ? undefined : "true"} data-pinned={pinned ? "true" : undefined} data-grammar-mermaid-brief="true">
-            {node === undefined ? null : (
-                <>
-                    <span className="starci-graph-diagram-brief-head">
-                        {icon === undefined || icon === null ? null : <LogoChip icon={icon} color={data?.logoColor} plate={data?.logoPlate === true} />}
-                        <span className="starci-graph-diagram-brief-name">{node.label}</span>
-                        {node.kind === undefined ? null : <span className="starci-graph-diagram-brief-kind">{words[node.kind]}</span>}
-                    </span>
-                    {node.description === undefined ? null : <span className="starci-graph-diagram-brief-text">{node.description}</span>}
-                    {facts.length === 0 ? null : (
-                        <dl className="starci-graph-diagram-brief-facts">
-                            {facts.map(([name, value]) => (
-                                <div key={name} className="starci-graph-diagram-brief-fact">
-                                    <dt>{name}</dt>
-                                    <dd>{value}</dd>
-                                </div>
-                            ))}
-                        </dl>
-                    )}
-                </>
-            )}
-        </div>
+        <Drawer
+            isOpen={node !== undefined}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) onClose()
+            }}
+            title={node?.label ?? ""}
+            closeLabel={words.close}
+            placement="right"
+            {...(node?.kind === undefined ? {} : { description: words[node.kind] })}
+            {...(icon === undefined || icon === null ? {} : { leading: <LogoChip icon={icon} color={data?.logoColor} plate={data?.logoPlate === true} /> })}
+        >
+            <div className="starci-graph-diagram-brief" data-grammar-mermaid-brief="true">
+                {node?.description === undefined ? null : <p className="starci-graph-diagram-brief-text">{node.description}</p>}
+                {facts.length === 0 ? null : (
+                    <dl className="starci-graph-diagram-brief-facts">
+                        {facts.map(([name, value]) => (
+                            <div key={name} className="starci-graph-diagram-brief-fact">
+                                <dt>{name}</dt>
+                                <dd>{value}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                )}
+            </div>
+        </Drawer>
     )
 }
 
@@ -783,8 +788,8 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
     const lit = useMemo((): Lit | null => (graph === null || active === null ? null : { id: active, ...neighbourhood(graph, active) }), [active, graph])
     const pointableIds = useMemo(() => new Set(graph === null ? [] : graph.nodes.filter(pointable).map((node) => node.id)), [graph])
     const describedBy = `${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}-description`
-    // The brief card follows the focus (owner 2026-11-28: hover or press a node): the node pointed at, else the one focused, else the one pressed open.
-    const briefNode = active === null ? undefined : graph?.nodes.find((node) => node.id === active && hasBrief(node))
+    // The drawer shows the node pressed open (owner 2026-11-28: "bấm vào mở drawer"); pointing or focusing only lights the neighbourhood.
+    const briefNode = opened === null ? undefined : graph?.nodes.find((node) => node.id === opened && hasBrief(node))
     /** A node focused by Tab that stands outside the view is panned into it (the canvas never scrolls; the view moves). */
     const reveal = useCallback(
         (id: string) => {
@@ -905,7 +910,7 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
                     </ReactFlow>
                 </FocusContext.Provider>
             </div>
-            {graph === null ? null : <BriefCard id={describedBy} node={briefNode} data={briefData} words={words} pinned={briefNode !== undefined && briefNode.id === opened} />}
+            {graph === null ? null : <NodeDrawer node={briefNode} data={briefData} words={words} onClose={() => setOpened(null)} />}
             <div className="starci-graph-diagram-controls">
                 <ZoomButtons
                     words={{ zoomIn: words.zoomIn, zoomOut: words.zoomOut, fit: words.fit }}
@@ -1032,7 +1037,7 @@ const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HT
  * with an open head (`order.paid`), a service reaching its own store dotted with a small head; a legend chip in the canvas corner names the kinds drawn.
  * Other flowcharts keep their calls (solid accent) and data (`-.->`, dashed neutral) and a service's port as a muted pill (`O[orders :4001]`).
  *
- * Pointing at or focusing a step lights it, its neighbours and their edges and dims the rest, and opens its brief card (`BriefCard`: name, kind, its
+ * Pointing at or focusing a step lights it, its neighbours and their edges and dims the rest, and pressing it opens its drawer (`NodeDrawer`: name, kind, its
  * Mermaid tooltip `click O call note() "..."`, its tech, port and tables); pressing it keeps the card open. Loading keeps the canvas box with a Skeleton; a
  * source Mermaid refuses is an error inside the same region, the title then the source as code. A visually hidden text version (the nodes and links, or
  * the messages in order) follows the canvas. Import `@starci/grammar/core/ext/graph.css` once.
