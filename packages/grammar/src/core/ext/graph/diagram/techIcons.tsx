@@ -58,13 +58,54 @@ export const brandColorOf = (name: string | undefined, icons: Readonly<Record<st
 
 /**
  * A node's logo in its own small rounded chip (26px, the neutral tint of its node), the mark 18px inside it, before the node's words. `color` is the fill the
- * contrast rule chose (`logoFill`): a brand hex, or undefined for the node's ink. Hidden from a screen reader: the node's words name it.
+ * contrast rule chose (`logoPaint`): a brand hex, or undefined for the node's ink; `plate` turns the chip into the inverse plate (the foreground's tint) for
+ * a brand colour that would vanish on the plain chip (Express black in the dark theme). Hidden from a screen reader: the node's words name it.
  */
-export const LogoChip = ({ icon, color }: { readonly icon: ReactNode; readonly color?: string | undefined }): ReactElement => (
-    <span className="starci-graph-diagram-chip starci-graph-diagram-icon" data-logo-fill={color === undefined ? "ink" : "brand"} aria-hidden="true" style={color === undefined ? undefined : ({ color } satisfies CSSProperties)}>
+export const LogoChip = ({ icon, color, plate = false }: { readonly icon: ReactNode; readonly color?: string | undefined; readonly plate?: boolean }): ReactElement => (
+    <span
+        className="starci-graph-diagram-chip starci-graph-diagram-icon"
+        data-logo-fill={color === undefined ? "ink" : plate ? "plate" : "brand"}
+        aria-hidden="true"
+        style={color === undefined ? undefined : ({ color } satisfies CSSProperties)}
+    >
         {icon}
     </span>
 )
+
+/** The names a reader knows each built-in logo by, for the brief card's "Tech" line (`techNameOf`). */
+const TECH_NAMES: Readonly<Record<string, string>> = {
+    postgresql: "PostgreSQL",
+    mongodb: "MongoDB",
+    mysql: "MySQL",
+    mariadb: "MariaDB",
+    redis: "Redis",
+    express: "Express",
+    nestjs: "NestJS",
+    nodedotjs: "Node.js",
+    docker: "Docker",
+    kubernetes: "Kubernetes",
+    rabbitmq: "RabbitMQ",
+    apachekafka: "Kafka",
+    nginx: "Nginx",
+    graphql: "GraphQL",
+    typescript: "TypeScript",
+    javascript: "JavaScript",
+    go: "Go",
+    python: "Python",
+    react: "React",
+    nextdotjs: "Next.js",
+    elasticsearch: "Elasticsearch",
+    minio: "MinIO",
+}
+
+/**
+ * The name of the technology an icon name stands for (`express` gives `Express`, the alias `kafka` gives `Kafka`); a name the Grammar does not know is
+ * returned as written, and the generic `database` and `service` marks name no technology (undefined).
+ */
+export const techNameOf = (icon: string | undefined): string | undefined => {
+    if (icon === undefined || icon === "database" || icon === "service") return undefined
+    return TECH_NAMES[ALIASES[icon] ?? icon] ?? icon
+}
 
 /**
  * The icon names a node may use and what each draws: the simple-icons logos (`postgresql`, `mongodb`, `mysql`, `redis`, `express`, `nestjs`, `nodedotjs`,

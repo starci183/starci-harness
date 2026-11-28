@@ -281,6 +281,111 @@ export const ArchitectureRows: Story = {
   ),
 };
 
+// The one architecture concept (owner 2026-11-28), all in plain Mermaid so an app changes only its generated text: a node's kind from its logo
+// (`postgresql` a database, `redis` a cache, `rabbitmq` a queue) or its shape (`([ ])` with no logo the client), its name over its port and tables
+// (`<br>`), the edge kinds from the strokes (`-->` an HTTP call, any link through the queue a message, `-.->` a store link), the briefs from the tooltips.
+const ARCHITECTURE_CONCEPT = `flowchart LR
+  F(["Frontend"])
+  subgraph D["Docker trên máy bạn"]
+    O["Order Service<br>:4001"]
+    OD[("orders<br>orders, order_items")]
+    P["Payment Service<br>:4002"]
+    PD[("payments<br>charges")]
+    R(["sessions"])
+    Q(["order-events"])
+    E["Email Service<br>:4003"]
+    O -->|"2 POST /charges"| P
+    O -.-> OD
+    P -.-> PD
+    P -.-> R
+    O -.->|"order.paid"| Q
+    Q -.->|"order.paid"| E
+  end
+  F -->|"1 POST /orders"| O
+  D@{ icon: "docker" }
+  O@{ icon: "express" }
+  P@{ icon: "nestjs" }
+  E@{ icon: "express" }
+  OD@{ icon: "postgresql" }
+  PD@{ icon: "postgresql" }
+  R@{ icon: "redis" }
+  Q@{ icon: "rabbitmq" }
+  class O edit
+  click F call note() "Trang checkout của khách: gửi đơn tới Order Service."
+  click O call note() "Nhận đơn, gọi Payment Service thu tiền, rồi báo order.paid qua hàng đợi. File bạn sửa nằm ở đây."
+  click P call note() "Thu tiền thẻ; giữ phiên thanh toán trong Redis để không thu hai lần."
+  click R call note() "Bộ nhớ đệm của Payment Service: phiên thanh toán, sống 15 phút."
+  click Q call note() "Hàng đợi RabbitMQ: giữ sự kiện order.paid tới khi Email Service nhận."
+  click E call note() "Nghe order.paid và gửi email xác nhận cho khách."`;
+
+/**
+ * The architecture concept (owner 2026-11-28): Docker's frame dashed with no fill, its logo in colour top left; the Frontend a pill; each service a
+ * rounded box with its framework's logo in colour (Express, NestJS; Express on the inverse plate in the dark theme so it never goes grey), its name and
+ * its port as a muted second line; each database an upright cylinder with its tables under its name; Redis a cylinder in its own tint tagged "cache";
+ * RabbitMQ a horizontal tube. Calls are solid accent with a filled head and their request (`1 POST /orders`); the event through the queue is dashed with
+ * an open head (`order.paid`); each store link is dotted with a small head. Point at or Tab to a node for its brief card; click or Enter keeps it open.
+ */
+export const ArchitectureConcept: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram
+        source={ARCHITECTURE_CONCEPT}
+        label="Hệ thống trên máy bạn"
+        height="lg"
+        labels={{
+          calls: 'Request HTTP',
+          messages: 'Message qua hàng đợi',
+          data: 'Đọc ghi dữ liệu riêng',
+          edit: 'Nơi có file bạn sửa',
+          client: 'client',
+          service: 'service',
+          database: 'database',
+          cache: 'cache',
+          queue: 'queue',
+          tech: 'Công nghệ',
+          port: 'Cổng',
+          tables: 'Bảng',
+          detail: 'Chi tiết',
+        }}
+        caption="Frontend gọi Order Service; Order Service thu tiền qua Payment Service rồi báo order.paid qua RabbitMQ cho Email Service."
+      />
+    </Both>
+  ),
+};
+
+// The same concept on the architecture rows (a hub calling its services, each over its own stores): the request words on the drops.
+const ARCHITECTURE_ROWS = `flowchart LR
+  F(["Frontend"])
+  subgraph D["Docker trên máy bạn"]
+    O["Order Service<br>:4001"]
+    OD[("orders<br>orders")]
+    O -.- OD
+    P["Payment Service<br>:4002"]
+    PD[("payments<br>charges")]
+    P -.- PD
+    P -.-> R(["sessions"])
+    N["Email Service<br>:4003"]
+    O -->|"2 POST /charges"| P
+    O -->|"3 POST /emails"| N
+  end
+  F -->|"1 POST /orders"| O
+  D@{ icon: "docker" }
+  O@{ icon: "express" }
+  P@{ icon: "express" }
+  N@{ icon: "express" }
+  OD@{ icon: "postgresql" }
+  PD@{ icon: "postgresql" }
+  R@{ icon: "redis" }`;
+
+/** The concept on the architecture rows: the same kinds, frame and edges, laid out by rows. */
+export const ArchitectureConceptRows: Story = {
+  render: () => (
+    <Both>
+      <MermaidDiagram source={ARCHITECTURE_ROWS} label="Hệ thống trên máy bạn" height="lg" />
+    </Both>
+  ),
+};
+
 /**
  * Hover focus (owner 2026-11-26): pointing at a step lights it, its neighbours and their edges, and dims the rest; Tab focus does the same, and Enter
  * opens the step's description line (its Mermaid tooltip), Escape closes it. Point at payments, or Tab to orders and press Enter, to see it.

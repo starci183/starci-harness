@@ -103,3 +103,30 @@ export const logoFill = (hex: string | undefined, chip: Rgb | null): string | un
     if (brand === null) return undefined
     return contrastRatio(brand, chip) >= LOGO_CONTRAST ? `#${hex.replace("#", "").toUpperCase()}` : undefined
 }
+
+/** The least contrast a brand colour keeps against its chip before the chip turns into a plate (`logoPaint`): the mark is named by the node's words. */
+export const LOGO_PLATE_BELOW = 2
+
+/** How a built-in logo is painted (`logoPaint`): always in its brand colour, on the plain chip or, when it would vanish there, on the inverse plate. */
+export interface LogoPaint {
+    /** The brand hex, `#` and six upper-case digits. */
+    readonly color: string
+    /** True when the brand colour stands on the inverse plate (the foreground's tint) instead of the plain chip. */
+    readonly plate: boolean
+}
+
+/**
+ * The paint of a built-in logo (owner 2026-11-28: "logos render in their brand colours", Express drawn grey was the bug): the brand hex ALWAYS, never the
+ * node's ink. On the plain chip while it keeps `LOGO_PLATE_BELOW` (2:1) against it, which every mid-tone brand does (Docker's blue, Redis's red on a
+ * light chip); under it (Express and Next.js black on a dark chip, React and JavaScript pale on a light one) the chip becomes the inverse plate, the
+ * foreground's tint, where the same hex stands out, provided it keeps that contrast there too. Undefined (the ink) only when neither surface holds it, when
+ * there is no hex, or while the chip's colour is unknown (before the canvas is measured), so a logo never flashes a colour it would not keep.
+ */
+export const logoPaint = (hex: string | undefined, chip: Rgb | null, plate: Rgb | null): LogoPaint | undefined => {
+    if (hex === undefined || chip === null) return undefined
+    const brand = parseCssColor(hex.startsWith("#") ? hex : `#${hex}`)
+    if (brand === null) return undefined
+    const color = `#${hex.replace("#", "").toUpperCase()}`
+    if (contrastRatio(brand, chip) >= LOGO_PLATE_BELOW) return { color, plate: false }
+    return plate !== null && contrastRatio(brand, plate) >= LOGO_PLATE_BELOW ? { color, plate: true } : undefined
+}
