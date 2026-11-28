@@ -18,14 +18,29 @@ Choice `identity-mark.choose.role`: which mark anchors the name (an avatar or in
 | floating | the reader's own identity as a floating entry point (an account or assistant launcher over the page) | `AvatarButton size="floating"` (56px, overlay shadow) with `status={{ tone, label }}`: a StatusDot at the top end on a surface ring, its `label` the button's accessible description | story `Navigation & Data/Spotlight/AvatarButtonFloating` |
 | kind | a feature, product area or entity kind | `IconTile` with a reviewed semantic glyph | candidate: an `IconTile` is painted neutral |
 
+## IconTile sizes: 48, 40, 20 (owner 2026-11-28, chốt)
+
+One question picks the size: **can the reader press it?**
+
+| Size | When | Examples |
+| --- | --- | --- |
+| **48** `size="head"` | the identity beside a page title, an empty state | a workflow's page head, "nothing here yet" |
+| **40** `size="row"` (default) | a row the reader presses or selects in a list: it leads something that opens, navigates or is chosen | each case head of an accordion, a navigation row, a list row with its action |
+| **20** `size="item"` | a mark that rides ONE line of content the reader only reads | the steps of a procedure (install, pair, choose a folder), the stages of a run, an order's flow, the requests a file sends, the situations a lab tests, the parts of an open case, conditions, what a lesson teaches, the conditions of a submission |
+
+- Pressable → 40; read only → 20; page head → 48. A list of read-only lines is drawn as lines (the 20 mark, the words, a muted line under them), never as the list section's pressable rows (their leading tile is 40).
+- Inside one row, the parts below its 40 head are 20: the head is what is pressed, the parts are read.
+- The 20 tile is round in every form (an identity glyph, a `step` number at the caption size, a status mark); not run is the outline circle alone.
+- Law: `DNA-COMMON-ICON-TILE-SIZE-BY-ROLE`. Story `Status marks/ItemTiles`.
+
 ## Status marks: (A) inline and (B) the round 40px tile 
 
 One style for every status in every situation:
 
 - **(A) Inline status** — `InlineStatus state label meta?`: a bare outline glyph at the icon size of the text beside it, 24px beside its own 14px words and 20px inside a 12px line (a caption, a Badge), derived from the text and never a prop ([situations](../situations.md) "Icon and mark sizes") (circle-check, spinner, circle-pause, circle-x, circle-minus, circle-dashed) and its words, both in the state's ink (`text-<tone>`), with NO plate. For a status word in a row or a cell, a legend, a graph edge label, a Badge with an icon, and the status that trails a (B) tile: glyph, then words, then time.
-- **(B) Standalone status mark** — `IconTile state` (and the markers of `Timeline`, `Stepper`, the setup checklist and the all-clear; never an `Alert`, whose mark is the bare 24px Heroicon in its soft foreground on its soft box, [toast-alert](toast-alert.md)): the ROUND tile on the `<tone>-soft` plate at **40px only** (there is no 32px status mark). The PLATE TONE is the state: success done, SUCCESS running (running is green everywhere; done and running are told apart by the glyph, the check against a spinner or a spinning ring around a subject; accent stays the brand for selection, links and the primary action; `info` stays a built-in tone for other uses), warning waiting, danger error, neutral skipped or not run.
+- **(B) Standalone status mark** — `IconTile state` (and the markers of `Timeline`, `Stepper`, the setup checklist and the all-clear; never an `Alert`, whose mark is the bare 24px Heroicon in its soft foreground on its soft box, [toast-alert](toast-alert.md)): the ROUND tile on the `<tone>-soft` plate at **40px**, or **20px** (`size="item"`, Grammar 0.64.9) when it leads one line of read-only content (see "IconTile sizes" below; there is no 32px status mark). The PLATE TONE is the state: success done, SUCCESS running (running is green everywhere; done and running are told apart by the glyph, the check against a spinner or a spinning ring around a subject; accent stays the brand for selection, links and the primary action; `info` stays a built-in tone for other uses), warning waiting, danger error, neutral skipped or not run.
 
-**Three status glyphs.** circle-check is done; circle-x is error, stopped, cancelled or overdue; the plain circle is waiting (warning), skipped and not run (muted): the colour tells them apart. Running is the same circle as a spinning ring (still under reduced motion). No pause, clock, minus, dashed or info glyph is a status, in InlineStatus, Badge or Chip icons, a legend or a graph. Inside the round 40px tile (B) the glyph is the BARE equivalent, so no circle sits in a circle: check, x, a small ring (spinning while running) (`STATUS_GLYPH.tile` and `STATUS_GLYPH.inline`). Sizes: inline (InlineStatus, beside or inside a line) the glyph is text-sized, 1em of its words; in the 40px tile 20, in an empty state's 48 tile 24. No bare ✓ or ✗ as an inline mark.
+**Three status glyphs.** circle-check is done; circle-x is error, stopped, cancelled or overdue; the plain circle is waiting (warning), skipped and not run (muted): the colour tells them apart. Running is the same circle as a spinning ring (still under reduced motion). No pause, clock, minus, dashed or info glyph is a status, in InlineStatus, Badge or Chip icons, a legend or a graph. Inside the round 40px tile (B) the glyph is the BARE equivalent, so no circle sits in a circle: check, x, a small ring (spinning while running) (`STATUS_GLYPH.tile` and `STATUS_GLYPH.inline`). Sizes: inline (InlineStatus, beside or inside a line) the glyph is text-sized, 1em of its words; in the 20px item tile 12, in the 40px tile 20, in an empty state's 48 tile 24. At 20px a line not run yet (`notRun`, `skipped`, no subject) is the outline circle alone: no plate, no ring inside. No bare ✓ or ✗ as an inline mark.
 
 **Standard tokens only**: a status tile's plate is the tone's `--<tone>-soft`; an Alert's box is the tone's `--<tone>-soft` with its glyph and copy `--<tone>-soft-foreground`; a card face that waits on the reader draws its edge in `--<tone>-border` (`SurfaceCard tone`, `MessageBubble content="card" tone`, one rule: `toneEdge.ts`). Grammar defines the border step for every tone with one derivation (`common/tones-border.css`); no component mixes its own colour.
 
@@ -53,7 +68,7 @@ role's soft pair, the role's soft foreground glyph on its soft plate (Grammar to
 warning arc spinning round the plate's edge (the run page head's spinner in warning; under reduced motion it stands still as a full ring); `error`
 (failed, stopped, needs a person) danger, soft too, never a solid plate. The status still trails as (A). This supersedes, for a workflow's own mark only, the (B) "which thing is which?" tile and its green running;
 a step, a graph node and a Timeline keep (B).
-- Laws: `DNA-COMMON-ICON-TILE-ROUND`, `DNA-COMMON-STATUS-MARK-40`, `DNA-COMMON-INLINE-STATUS-NO-PLATE`, `DNA-COMMON-TIMELINE-STATUS-TILE`. Story `Status marks`.
+- Laws: `DNA-COMMON-ICON-TILE-ROUND`, `DNA-COMMON-STATUS-MARK-40`, `DNA-COMMON-ICON-TILE-SIZE-BY-ROLE`, `DNA-COMMON-INLINE-STATUS-NO-PLATE`, `DNA-COMMON-TIMELINE-STATUS-TILE`. Story `Status marks`.
 
 ## Variants
 Tiles are neutral; a tile takes a status tone only when it reports a real outcome, never accent for identity
@@ -75,7 +90,7 @@ Story `Navigation/Shell gaps (0.46.0)` `AvatarPlates`.
 A caret on the lockup is not provided (the lockup is drawn with no caret or button chrome); an app that wants one asks for it.
 
 ## Size
-A round mark takes `size="sm" | "md"` only, on the ramp [../scale.md](../scale.md) owns (`md` 40, the common size; `sm` 24, the icon size). `AvatarButton size="floating"` (56px) is the launcher, not a mark. An IconTile is the row tile (40, radius 10, a 20 glyph) leading a list row, or the head tile (48, radius 12, a 24 glyph, `size="head"`) beside a page title or in an empty state; a status mark (`state`) stays the round 40, its running ring spinning on the plate's edge ([../scale.md](../scale.md) "The icon table").
+A round mark takes `size="sm" | "md"` only, on the ramp [../scale.md](../scale.md) owns (`md` 40, the common size; `sm` 24, the icon size). `AvatarButton size="floating"` (56px) is the launcher, not a mark. An IconTile is the row tile (40, radius 10, a 20 glyph) leading a list row the reader presses, the head tile (48, radius 12, a 24 glyph, `size="head"`) beside a page title or in an empty state, or the item tile (20, round, a 12 glyph, `size="item"`) leading a line of read-only content ("IconTile sizes" above); a status mark (`state`) is the round 40 or the round 20, its running ring spinning on the plate's edge ([../scale.md](../scale.md) "The icon table").
 
 ## States
 Skeleton keeps the mark's footprint.
