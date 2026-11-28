@@ -6995,6 +6995,20 @@
     .starci-core-quote-mark { grid-column: 1; grid-row: 1 / span 3; inline-size: 1.5rem; block-size: 1.5rem; color: var(--accent); }
     .starci-core-quote[data-grammar-quote-variant="block"] .starci-core-quote-words { font-size: var(--grammar-text-lg); line-height: var(--grammar-leading-lg); }
 
+    /*
+     * A nested block quote speaks at the body (owner 2026-11-28 "sao size unhappy = stock?", law DNA-COMMON-TYPE-NESTED-NOT-LARGER): inside an
+     * Accordion or Disclosure body, a Section within a Section, or a card, the block's heading is an item label (14 / 500), so words at `lg`
+     * (16) read as that block's heading. There they take the body role (14, its line, 400) and stay prominent by the accent rule and the
+     * quote mark. A block quote standing on the page (a lesson's opening mentor quote) keeps `lg`. Context only, no prop: :where() keeps the
+     * rule at the base rule's weight and it wins by order.
+     */
+    :where(.starci-core-generic-accordion-body, .starci-core-disclosure-body, .starci-core-section .starci-core-section, .starci-core-surface-card)
+        .starci-core-quote[data-grammar-quote-variant="block"] .starci-core-quote-words {
+        font-size: var(--grammar-type-body-size);
+        line-height: var(--grammar-type-body-line);
+        font-weight: var(--grammar-type-body-weight);
+    }
+
     .starci-core-inset { gap: var(--grammar-inline-gap); }
     .starci-core-inset-label { color: var(--muted); font-size: var(--grammar-text-xs); font-weight: var(--grammar-weight-semibold); line-height: var(--grammar-leading-xs); }
 

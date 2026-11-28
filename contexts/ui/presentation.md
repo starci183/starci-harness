@@ -312,6 +312,14 @@ Laws (owner 2026-11-28: "phông chữ label lúc nhỏ lúc to, audit lại font
   hero); inside a `Section`, a card, an item or a disclosure the copy is `body`. A label above a list is `label.item`, never a
   `caption`, which is a meta line.
 
+- **T4 At most four type levels** (owner 2026-11-28, option D "chọn D carbon"). A view shows at most four type levels; a heading that
+  repeats the tab or page title is dropped to a caption, never given its own level. At the deepest level a heading and its body share
+  the size and differ by weight (as Carbon heading-01/body-01, M3 Title Small/Body Medium). A lesson's case page: the page title, the
+  case title (`title.section` 16 / 500), its parts (`label.item` 14 / 500), everything inside a part in `body` (14 / 400).
+- **A nested block `Quote` speaks at the body.** A `Quote variant="block"` inside an `Accordion` or `Disclosure` body, a `Section`
+  within a `Section` or a `SurfaceCard` draws its words in `body` (its size, line and weight), prominent by its accent rule and quote
+  mark; on the page itself it keeps `lg`. The CSS reads the context, so no prop asks for it.
+
 Who enforces them: `starci-grammar/type-nesting` (`FE_TYPE_NESTING`) refuses what one file states (a reading role inside a headed
 block, a nested block whose `headingLevel` is not deeper); the drawn sizes, which cross files, are the DNA laws above, and an app's
 lesson pages are measured whole by its lesson type probe (starci-next `scripts/integration/lesson-type-probe.mjs`). Where FONT-7's
