@@ -2,7 +2,7 @@
 
 Versioned history starts at beta; earlier history is in git.
 
-## 0.64.9 - 2026-11-28
+## 0.64.10 - 2026-11-28
 
 - Changed (owner 2026-11-28 "sao size unhappy = stock?", law `DNA-COMMON-TYPE-NESTED-NOT-LARGER`): a `Quote variant="block"` inside a nested block (an `Accordion` or `Disclosure` body, a `Section` within a `Section`, a `SurfaceCard`) draws its words at the body role (`--grammar-type-body-size`, its line and weight) instead of `lg`, so a case's question no longer stands larger than the part heading above it; the accent rule and the quote mark keep it prominent. A block quote on the page itself keeps `lg`. CSS by context, no new prop. Docs: contexts/ui/presentation.md "Nesting and siblings" gains T4 (at most four type levels; a heading repeating the tab drops to a caption; the deepest heading and its body share the size, differ by weight) and the nested quote rule.
 - Changed (owner 2026-11-28 "phông chữ label lúc nhỏ lúc to, audit lại font chữ toàn bộ sao cho đồng nhất"): `Heading` levels 2 and 3 are the title.section role (16 / 24 / 500), the type of a `Section` title and a card label; they drew 14, so a bare heading stood smaller than the Section beside it at the same level. Level 1 (18) and level 4 (12 muted) are unchanged.
@@ -17,6 +17,9 @@ Versioned history starts at beta; earlier history is in git.
 - Fixed: the open accordion section's caret turns up: the rule reads HeroUI's `data-expanded` on the indicator (0.64.9-dev.3 read only the item's state attribute, which the vendor does not write there, so the caret stayed down).
 - Added (owner 2026-11-28 "đủ logo docker nestjs… chưa"): the tech logos `jest` (#C21325) and `rust` (#000000, alias `rs`), vendored from simple-icons 16.38.1 (CC0) like the others, so a reference card's stack row (TypeScript, NestJS, PostgreSQL, Redis, Docker, Jest; Go and Rust as the languages to come) draws every mark through `techIcons` / `LogoChip`.
 - Changed (owner 2026-11-28 "đọc kĩ accordion của heroui"): `Accordion` reads as HeroUI's: the title fills the head and the caret stands at its end, pointing down closed and turned up (-180) open; sections are split by the hairline between them, no frame. A head that leads with a row tile (a numbered item) indents its open body to the title's column. `Disclosure` keeps its caret before the words.
+
+## 0.64.9 - 2026-11-28
+
 - Fixed (owner 2026-11-28 "none là check hình tròn không có bg chứ", "size = 20"): the item tile is 20 (`--grammar-tile-item-size` 1.25rem, glyph `--grammar-icon-item` 0.75rem), and a line not run yet is the outline alone: its rule names `data-artwork` and `data-loading` so it outranks the neutral plate rule written after it (0.64.9-dev.1 drew the grey plate).
 - Added (owner 2026-11-28 "icon tile 24", "chưa chạy là hình tròn thôi"): `IconTile size="item"`, the round 24 tile that leads one line of a checklist (what a case must hold, what a lesson teaches): an identity glyph or `step` number on its round plate, or a status mark (`state`) at 24 with a 14 glyph. A line not run yet (`notRun`, `skipped`, no `source`) is the empty circle alone, its outline in the border ink, no ring inside. New tokens `--grammar-tile-item-size` (1.5rem) and `--grammar-icon-item` (0.875rem). The 40 and 48 tiles are unchanged.
 
