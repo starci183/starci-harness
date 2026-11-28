@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 0.64.9 - 2026-11-28
 
+- Fixed: `LogoChip` draws outside a diagram (a reference card's tech stack row): the chip declares its own size, mark and tint (the diagram's values), and its ink falls back to the foreground; before, its custom properties lived only on `.starci-graph-diagram`, so a chip elsewhere had a sizeless svg and showed nothing.
 - Docs (owner 2026-11-28, chốt "luật 48 40 20"): the IconTile size law is written down: `head` 48 for a page head or an empty state, `row` 40 for a row the reader presses or selects, `item` 20 for a mark riding a line of read-only content (pressable 40, read only 20, page head 48), in the `IconTileSize` doc and contexts/ui/components/identity-mark.md "IconTile sizes" (law `DNA-COMMON-ICON-TILE-SIZE-BY-ROLE`).
 - Fixed: the open accordion section's caret turns up: the rule reads HeroUI's `data-expanded` on the indicator (0.64.9-dev.3 read only the item's state attribute, which the vendor does not write there, so the caret stayed down).
 - Added (owner 2026-11-28 "đủ logo docker nestjs… chưa"): the tech logos `jest` (#C21325) and `rust` (#000000, alias `rs`), vendored from simple-icons 16.38.1 (CC0) like the others, so a reference card's stack row (TypeScript, NestJS, PostgreSQL, Redis, Docker, Jest; Go and Rust as the languages to come) draws every mark through `techIcons` / `LogoChip`.
