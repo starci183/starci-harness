@@ -4,6 +4,8 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.211 - 2026-11-28
 
+- Changed: the CLI requires @starci/hfs@6.17.23, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Pre-beta: this train releases @starci/hfs 6.17.23 (the edge preflight of a deploy reads the network without `--verbose`, so a runner with docker CLI 29 against an older daemon no longer stops at STACK_DEPLOY_EDGE_UNREADABLE on a VIP `<nil>`).
 
 ## 1.1.0-alpha.210 - 2026-11-28
