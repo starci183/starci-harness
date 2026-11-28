@@ -4,6 +4,8 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.208 - 2026-11-28
 
+- Changed: the CLI requires @starci/hfs@6.17.21, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Pre-beta: this train releases @starci/hfs 6.17.21 (ci.yml passes its secrets to stack-deploy.yml, so the release job reads its Environment's SOPS_AGE_KEY; an inline SOPS_AGE_KEY pasted as a whole keys.txt opens the sealed members) and @starci/grammar 0.64.8.
 
 ## 1.1.0-alpha.207 - 2026-11-28
