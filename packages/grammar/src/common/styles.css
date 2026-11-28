@@ -6943,6 +6943,25 @@
         background: var(--starci-core-quote, var(--surface-secondary));
     }
 
+    /*
+     * Quote variant="block" (owner 2026-11-28 "quote bự lên, có icon quote, border left no round"): a pull quote. The quote mark in the
+     * accent in its own column, the words one step above the body (lg), a straight 3px accent rule on the start edge (`--starci-core-quote-block-edge` overrides it; the older
+     * `--starci-core-quote-edge` styles only the line variant now) and square corners: a rule is never rounded.
+     */
+    .starci-core-quote[data-grammar-quote-variant="block"] {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: var(--grammar-inline-gap);
+        row-gap: var(--grammar-identity-gap);
+        align-items: start;
+        border-inline-start: var(--starci-core-quote-block-edge, 3px solid var(--accent));
+        border-radius: 0;
+    }
+
+    .starci-core-quote[data-grammar-quote-variant="block"] > :not(.starci-core-quote-mark) { grid-column: 2; }
+    .starci-core-quote-mark { grid-column: 1; grid-row: 1 / span 3; inline-size: 1.5rem; block-size: 1.5rem; color: var(--accent); }
+    .starci-core-quote[data-grammar-quote-variant="block"] .starci-core-quote-words { font-size: var(--grammar-text-lg); line-height: var(--grammar-leading-lg); }
+
     .starci-core-inset { gap: var(--grammar-inline-gap); }
     .starci-core-inset-label { color: var(--muted); font-size: var(--grammar-text-xs); font-weight: var(--grammar-weight-semibold); line-height: var(--grammar-leading-xs); }
 

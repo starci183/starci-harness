@@ -204,3 +204,6 @@ export const TablerArrowUp = tabler(["M12 5l0 14","M18 11l-6 -6","M6 11l6 -6"])
 
 /** Tabler `chevron-up`. */
 export const TablerChevronUp = tabler(["M6 15l6 -6l6 6"])
+
+/** Tabler `quote`. */
+export const TablerQuote = tabler(["M10 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5","M19 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"])
