@@ -5502,7 +5502,7 @@
     .starci-core-icon-tile[data-size="item"] :is(.starci-core-icon, .starci-core-status-glyph) { width: var(--grammar-icon-item); height: var(--grammar-icon-item); }
     .starci-core-icon-tile[data-size="item"] .starci-core-icon-tile-step { font-size: var(--grammar-type-caption-size); line-height: var(--grammar-tile-item-size); }
 
-    .starci-core-icon-tile[data-size="item"][data-grammar-mark-subject="false"][data-artwork="false"][data-loading="false"]:is([data-grammar-mark-state="notRun"], [data-grammar-mark-state="skipped"]) {
+    .starci-core-icon-tile[data-size="item"][data-grammar-mark-subject="false"][data-artwork="false"][data-loading="false"]:is([data-grammar-mark-state="notRun"], [data-grammar-mark-state="skipped"], [data-grammar-mark-state="waiting"]) {
         background: transparent;
         box-shadow: inset 0 0 0 var(--grammar-stroke-fine) var(--border);
     }

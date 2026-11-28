@@ -150,7 +150,8 @@ export const IconTile = (props: IconTileProps) => {
         const { state, source, ariaLabel } = props
         const isItem = props.size === "item"
         // At the checklist's 24 a line not run yet is the empty circle alone: its plate is the outline, no ring drawn inside it.
-        const isEmpty = isItem && source === undefined && (state === "notRun" || state === "skipped")
+        // Waiting at 20 is a line not reached yet, the same empty circle (owner 2026-11-28: no ring inside a ring).
+        const isEmpty = isItem && source === undefined && (state === "notRun" || state === "skipped" || state === "waiting")
         return (
             <StatusTile tone={MARK_STATE_TONE[state]} state={state} hasSubject={source !== undefined} label={ariaLabel} size={isItem ? "item" : "row"}>
                 {isEmpty ? null : source === undefined ? <StatusGlyph kind={state} /> : <Icon source={source} usage="row" />}
