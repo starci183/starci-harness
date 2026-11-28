@@ -138,8 +138,9 @@ test('a deploy with migrations, a rollback, verify, seed, jobs and task send ove
     renderRelease: async (_ctx, _config, options) => {
       renders += 1;
       const tag = renders === 1 ? 'one' : 'two';
-      fs.writeFileSync(path.join(options.out, 'stack.yaml'), stackOf(tag));
-      fs.writeFileSync(path.join(options.out, 'release.json'), `${JSON.stringify({ sourceSha: tag.repeat(10) })}\n`);
+      const out = String(options.out);
+      fs.writeFileSync(path.join(out, 'stack.yaml'), stackOf(tag));
+      fs.writeFileSync(path.join(out, 'release.json'), `${JSON.stringify({ sourceSha: tag.repeat(10) })}\n`);
       return { ok: true, lines: [] };
     },
     provisionRelease: ok, convergeStack: ok, pruneStack: ok, observedServices: () => [], ssh: async () => viaGate, releaseStore,
