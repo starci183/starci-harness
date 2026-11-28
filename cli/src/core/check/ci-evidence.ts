@@ -11,6 +11,10 @@ import { git } from "../../shared/git.js"
  * jobs that CI standard requires passed for the exact commit being deployed. The required jobs come from the CI standard of the
  * @starci/hfs this CLI runs with (knowledge/hfs/ci-standard.yaml `jobs`), never from the workflow file of the checkout, so a workflow
  * edited to skip a check gains nothing: the job is missing or skipped in the run, and a missing or skipped job is not a green one.
+ *
+ * The evidence of a commit is its verdict (and the required jobs it judged) plus the images jobs that pushed the digests, never the run's
+ * own conclusion: the `deploy-<env>` jobs and their `rollback` come after the verdict in the same run, so an auto-deploy that failed turns the
+ * run red without saying anything about the commit. Judging the conclusion would refuse every manual deploy after a failed auto-deploy.
  */
 
 /** Reads one GitHub REST path (relative to the API root) and returns its parsed json; a seam so the judgement runs on recorded answers. */
@@ -20,6 +24,11 @@ export type GithubReader = (path: string) => Promise<unknown>
 export interface RequiredJobs {
     readonly required: readonly string[]
     readonly optional: readonly string[]
+    /**
+     * The pipeline jobs (`images`): reusable workflows whose every job must have passed (`images / image (api)`, `images / collect`, the
+     * jobs that build and push the digests a deploy pins); one skipped or missing means no digest was pushed, so the commit is not deployable.
+     */
+    readonly pipeline?: readonly string[]
 }
 
 /** One job of a workflow run, as the Actions API reports it. */
@@ -56,6 +65,9 @@ const EVIDENCE_EVENTS: readonly string[] = ["push", "workflow_dispatch"]
 const CI_STANDARD = "@starci/hfs/runtime/knowledge/hfs/ci-standard.yaml"
 const PAGE_SIZE = 100
 const MAX_PAGES = 10
+/** The jobs that follow the verdict in the same run (ci-standard.yaml `deployJobPrefix`, and stack-deploy.yml's `rollback`): never evidence of the commit. */
+const DEPLOY_JOB_PREFIX = "deploy-"
+const ROLLBACK_JOB = "rollback"
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value)
 const text = (value: unknown): string => (typeof value === "string" ? value : "")
@@ -101,7 +113,7 @@ export const requiredJobsOf = (declaration?: unknown): RequiredJobs => {
     if (required.length === 0) throw new Refusal("CI_RUN_UNREADABLE", "the CI standard of @starci/hfs names no required job; it cannot be judged")
     const idle = new Set(idleJobsOfDeclaration(declaration, IDLE_JOBS))
     // A job the app idles is not required, but when the run has it, it may not be red (judgeJobs treats an optional job that ran red as a problem; skipped is fine).
-    return { required: required.filter((job) => !idle.has(job)), optional: [...names(entry.optional), ...required.filter((job) => idle.has(job))] }
+    return { required: required.filter((job) => !idle.has(job)), optional: [...names(entry.optional), ...required.filter((job) => idle.has(job))], pipeline: names(entry.pipeline) }
 }
 
 /** The jobs required for the app at `root` deploying `sha`: the standard's, less the jobs the declaration of that commit idles (gates it declares off with a reason). */
@@ -159,17 +171,38 @@ export const jobsNamed = (jobs: readonly RunJob[], id: string): RunJob[] =>
     })
 
 const describe = (job: RunJob): string => `${job.name}: ${job.status === "completed" ? job.conclusion : job.status}`
+const green = (job: RunJob): boolean => job.status === "completed" && job.conclusion === "success"
+
+/** The calling job of a run's job: `deploy-production` of `deploy-production / deploy`, `images` of `images / image (api)`, else the job id itself. */
+const callerOf = (job: RunJob): string => {
+    const cut = job.name.indexOf(" / ")
+    const head = cut < 0 ? job.name : job.name.slice(0, cut)
+    const leg = head.indexOf(" (")
+    return leg < 0 ? head : head.slice(0, leg)
+}
+
+/** Whether a job of the run is a deploy (`deploy-<env>` and every job its stack-deploy.yml call runs) or the rollback: what follows the verdict, never evidence. */
+export const isDeployJob = (job: RunJob): boolean => {
+    const caller = callerOf(job)
+    return caller.startsWith(DEPLOY_JOB_PREFIX) || caller === ROLLBACK_JOB
+}
+
+/** The jobs of a run a pipeline job id stands for: the job itself, its matrix legs, or every job of the reusable workflow it calls (`images / collect`). */
+export const pipelineJobsNamed = (jobs: readonly RunJob[], id: string): RunJob[] => jobs.filter((job) => callerOf(job) === id)
 
 /** Every required job of the standard that is green in the run, and what is wrong with a required job that is not or an optional one that is red. */
-const judgeJobs = (jobs: readonly RunJob[], standard: RequiredJobs): { readonly checked: { job: string; names: string[] }[]; readonly problems: string[] } => {
+const judgeJobs = (all: readonly RunJob[], standard: RequiredJobs): { readonly checked: { job: string; names: string[] }[]; readonly problems: string[] } => {
     const checked: { job: string; names: string[] }[] = []
     const problems: string[] = []
-    for (const id of standard.required) {
-        const found = jobsNamed(jobs, id)
-        if (found.length === 0) problems.push(`required job ${id} is not in the run (a job the run never had is not a green one)`)
-        else if (found.some((job) => job.status !== "completed" || job.conclusion !== "success")) problems.push(`required job ${id} is not green: ${found.filter((job) => job.status !== "completed" || job.conclusion !== "success").map(describe).join(", ")}`)
+    // The deploy jobs and the rollback run after the verdict: a failed auto-deploy says nothing about the commit, so they are not read at all.
+    const jobs = all.filter((job) => !isDeployJob(job))
+    const judgeFound = (id: string, found: readonly RunJob[], kind: string): void => {
+        if (found.length === 0) problems.push(`${kind} job ${id} is not in the run (a job the run never had is not a green one)`)
+        else if (!found.every(green)) problems.push(`${kind} job ${id} is not green: ${found.filter((job) => !green(job)).map(describe).join(", ")}`)
         else checked.push({ job: id, names: found.map((job) => job.name) })
     }
+    for (const id of standard.required) judgeFound(id, jobsNamed(jobs, id), "required")
+    for (const id of standard.pipeline ?? []) judgeFound(id, pipelineJobsNamed(jobs, id), "pipeline")
     for (const id of standard.optional) {
         const red = jobsNamed(jobs, id).filter((job) => job.status !== "completed" || (job.conclusion !== "success" && job.conclusion !== "skipped"))
         if (red.length > 0) problems.push(`optional job ${id} is in the run and not green: ${red.map(describe).join(", ")}`)
@@ -177,13 +210,15 @@ const judgeJobs = (jobs: readonly RunJob[], standard: RequiredJobs): { readonly 
     return { checked, problems }
 }
 
-/** Refuses a run that concluded red or cancelled, or that is not running yet. */
+/**
+ * Refuses a run that is not running yet. A finished run is not judged by its conclusion: a run whose verdict and images passed and whose
+ * auto-deploy then failed concludes `failure`, and its jobs decide (judgeJobs), so a manual deploy after a failed auto-deploy is not refused.
+ */
 const assertRunState = (sha: string, run: RunFacts, here: string): void => {
-    if (run.status === "completed" && run.conclusion !== "success") throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} concluded ${run.conclusion === "" ? "without a verdict" : run.conclusion}`)
     if (run.status !== "completed" && run.status !== "in_progress") throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} is ${run.status === "" ? "in an unknown state" : run.status}, not running yet`)
 }
 
-/** Refuses a run that is not the managed CI workflow's push run of exactly this commit, or that is red, cancelled or not running yet. */
+/** Refuses a run that is not the managed CI workflow's push run of exactly this commit, or that is not running yet. */
 const assertEvidence = (sha: string, run: RunFacts, here: string): void => {
     if (run.sha !== sha) throw new Refusal("CI_RUN_SHA_MISMATCH", `${here} is a run of ${run.sha === "" ? "an unknown commit" : run.sha.slice(0, 9)}, not of the commit being deployed (${sha.slice(0, 9)}); only a run of that exact commit is evidence`)
     if (run.path !== CI_WORKFLOW_PATH) throw new Refusal("CI_RUN_WORKFLOW", `${here} is a run of ${run.path === "" ? "an unknown workflow" : run.path}; the evidence is a run of ${CI_WORKFLOW_PATH}`)
@@ -192,16 +227,19 @@ const assertEvidence = (sha: string, run: RunFacts, here: string): void => {
 }
 
 /**
- * Judges a run for `sha`: it is a run of the managed CI workflow, of a push (or a dispatch) event, of exactly this commit; it is not red or
- * cancelled; and every required job concluded `success` (a skipped, cancelled, failed or unfinished one is refused; a job the run never had
- * is refused), and an optional job the run has is not red. Returns what was checked, or refuses with the first reason. Pure: the run's facts and jobs are given.
+ * Judges a run for `sha`: it is a run of the managed CI workflow, of a push (or a dispatch) event, of exactly this commit, started; every
+ * required job (the verdict among them) concluded `success` (a skipped, cancelled, failed or unfinished one is refused; a job the run never had
+ * is refused), every job of each pipeline job (the images that pushed the digests) concluded `success`, and an optional job the run has is
+ * not red. The deploy jobs and the rollback are never read, nor the run's own conclusion they turn red. Returns what was checked, or refuses
+ * with every reason. Pure: the run's facts and jobs are given.
  */
 export const judgeRun = (sha: string, run: RunFacts, jobs: readonly RunJob[], standard: RequiredJobs): CiRunEvidence => {
     const urlSuffix = run.url === "" ? "" : ` (${run.url})`
     const here = `run ${String(run.id)}${urlSuffix}`
     assertEvidence(sha, run, here)
     const { checked, problems } = judgeJobs(jobs, standard)
-    if (problems.length > 0) throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} is not deployable: ${problems.join("; ")}`)
+    const concluded = run.status === "completed" && run.conclusion !== "success" ? ` (the run concluded ${run.conclusion === "" ? "without a verdict" : run.conclusion})` : ""
+    if (problems.length > 0) throw new Refusal("CI_NOT_GREEN", `${here} of ${sha.slice(0, 9)} is not deployable${concluded}: ${problems.join("; ")}`)
     return { runId: run.id, url: run.url, sha, checked }
 }
 
@@ -217,4 +255,29 @@ export const requireCiRun = async (read: GithubReader, sha: string, ciRun: strin
     const run = factsOf(await read(`actions/runs/${ciRun}`), runId)
     if (run.sha !== sha) return judgeRun(sha, run, [], standard)
     return judgeRun(sha, run, await jobsOf(read, runId), standard)
+}
+
+/**
+ * Finds the CI evidence of `sha` when no run is named (`--ci-run` given empty): the runs of the managed CI workflow for exactly this commit,
+ * newest first as GitHub lists them, each judged as a named run is (judgeRun: same sha, same workflow, verdict and images green, the deploy
+ * jobs not read), and the first accepted one is the evidence. Refuses CI_NOT_GREEN with every run's reason when none is accepted, or when the
+ * commit has no push or dispatch run of the workflow.
+ */
+export const findCiRun = async (read: GithubReader, sha: string, standard: RequiredJobs): Promise<CiRunEvidence> => {
+    if (!/^[0-9a-f]{40}$/u.test(sha)) throw new Refusal("CI_RUN_USAGE", "--ci-run judges one exact commit: --sha must be its full 40-hex sha")
+    const workflow = CI_WORKFLOW_PATH.slice(CI_WORKFLOW_PATH.lastIndexOf("/") + 1)
+    const raw = await read(`actions/workflows/${workflow}/runs?head_sha=${sha}&per_page=${String(PAGE_SIZE)}`)
+    if (!isRecord(raw) || !Array.isArray(raw.workflow_runs)) throw new Refusal("CI_RUN_UNREADABLE", `GitHub's run list of ${CI_WORKFLOW_PATH} for ${sha.slice(0, 9)} is not a run list`)
+    const runs = raw.workflow_runs.filter(isRecord).flatMap((entry) => (typeof entry.id === "number" ? [factsOf(entry, entry.id)] : []))
+    const reasons: string[] = []
+    for (const candidate of runs.filter((each) => each.sha === sha && each.path === CI_WORKFLOW_PATH && EVIDENCE_EVENTS.includes(each.event))) {
+        try {
+            return judgeRun(sha, candidate, await jobsOf(read, candidate.id), standard)
+        } catch (error: unknown) {
+            if (!(error instanceof Refusal) || error.code !== "CI_NOT_GREEN") throw error
+            reasons.push(error.message)
+        }
+    }
+    if (reasons.length === 0) throw new Refusal("CI_NOT_GREEN", `${sha.slice(0, 9)} has no ${EVIDENCE_EVENTS.join(" or ")} run of ${CI_WORKFLOW_PATH}; push it, or wait for its run`)
+    throw new Refusal("CI_NOT_GREEN", `no run of ${CI_WORKFLOW_PATH} proves ${sha.slice(0, 9)}: ${reasons.join(" | ")}`)
 }
