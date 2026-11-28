@@ -13,15 +13,15 @@ import { ZoomButtons } from "../shared/zoom.js"
 import { STYLE_RANK, dedupeRuns } from "../shared/overlap.js"
 import { PHONE_LAYOUT_WIDTH } from "../shared/phone.js"
 import type { StepEdgeData } from "../build.js"
-import { branchesWithoutDecision, describeDiagram, edgeKind, needsKindLegend, neighbourhood, type DiagramEdge, type DiagramGraph, type DiagramNode, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
+import { branchesWithoutDecision, describeDiagram, edgeKind, kindsDrawn, needsKindLegend, neighbourhood, type DiagramEdge, type DiagramGraph, type DiagramNode, type EdgeKind, type MermaidTone, type ParsedDiagram, type SequenceModel, type SequenceRow } from "./model.js"
 import { INSETS, LEAST_OPEN_ZOOM, betterTopDown, canvasHeight, needsTopDown, openView, openZoom, type Box } from "./open.js"
 import { parseDiagram, renderSvg, svgNode } from "./mermaid.js"
-import { layoutDiagram } from "./graph.js"
+import { layoutDiagram, metaLines } from "./graph.js"
 import { layoutArchitecture } from "./architecture.js"
 import { layoutSequence, type Rect, type SequenceLayout } from "./sequence.js"
 import { resolveMermaidTheme } from "./theme.js"
-import { LogoChip, brandColorOf, withTechIcons } from "./techIcons.js"
-import { logoFill, parseCssColor, type Rgb } from "./logoInk.js"
+import { LogoChip, brandColorOf, techNameOf, withTechIcons } from "./techIcons.js"
+import { logoPaint, parseCssColor, type Rgb } from "./logoInk.js"
 
 /** The least height of the canvas, kept by the loading, ready and error states alike: `sm` 16rem, `md` 24rem, `lg` 32rem. */
 export type MermaidDiagramHeight = "sm" | "md" | "lg"
@@ -37,11 +37,26 @@ export interface MermaidDiagramLabels {
     readonly end: string
     /** How the text version joins the two ends of a link or a message ("Alice to Bob: hi"). */
     readonly to: string
-    /** The legend chip of a flowchart with both kinds of edge: a solid accent line is a call, a dashed neutral one carries data. */
+    /**
+     * The legend chip of a flowchart with two or more kinds of edge: a solid accent line with a filled head is a call (an HTTP request), a dashed line
+     * with an open head a message through a queue, a dotted neutral one a service reaching its own store.
+     */
     readonly calls: string
     readonly data: string
+    readonly messages: string
     /** How a node marked "the learner edits here" (`class O edit`) is named to a screen reader, after its words. */
     readonly edit: string
+    /** The name of each node kind of an architecture drawing: the brief card's tag, and the tag a cache wears over its name ("cache"). */
+    readonly client: string
+    readonly service: string
+    readonly database: string
+    readonly cache: string
+    readonly queue: string
+    /** The names of the brief card's facts: the node's technology, its port, a store's tables and any other node's detail line. */
+    readonly tech: string
+    readonly port: string
+    readonly tables: string
+    readonly detail: string
 }
 
 export type { MermaidTone } from "./model.js"
@@ -99,7 +114,28 @@ export type MermaidDiagramProps = NoChildren & {
 
 const isProduction = (): boolean => typeof process !== "undefined" && process.env.NODE_ENV === "production"
 
-const LABELS: MermaidDiagramLabels = { zoomIn: "Zoom in", zoomOut: "Zoom out", fit: "Fit to frame", reset: "Reset view", start: "start", end: "end", to: "to", calls: "Calls", data: "Data", edit: "you edit this" }
+const LABELS: MermaidDiagramLabels = {
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    fit: "Fit to frame",
+    reset: "Reset view",
+    start: "start",
+    end: "end",
+    to: "to",
+    calls: "Calls",
+    data: "Data",
+    messages: "Messages",
+    edit: "you edit this",
+    client: "client",
+    service: "service",
+    database: "database",
+    cache: "cache",
+    queue: "queue",
+    tech: "Tech",
+    port: "Port",
+    tables: "Tables",
+    detail: "Details",
+}
 
 /** The reserved box of each height step. */
 const RESERVED: Readonly<Record<MermaidDiagramHeight, number>> = { sm: 256, md: 384, lg: 512 }
@@ -121,8 +157,14 @@ interface ShapeData extends Record<string, unknown> {
     node: DiagramNode
     /** What the app draws for the node's icon, before its words. */
     icon?: ReactNode
-    /** The fill of a built-in logo: its brand hex when it keeps 3:1 against its chip, else undefined, the node's ink (`logoFill`). */
+    /** The fill of a built-in logo: its brand hex (`logoPaint`), else undefined, the node's ink (an app's own art, or no surface holds the hex). */
     logoColor?: string
+    /** The logo's chip is the inverse plate: the brand colour would vanish on the plain chip (`logoPaint`). */
+    logoPlate?: boolean
+    /** The word of the node's kind in the app's language: the tag a cache wears over its name. */
+    kindWord?: string
+    /** A container that frames an architecture drawing (Docker on the learner's machine): dashed, no fill, its logo and name in its top corner. */
+    frame?: boolean
     width: number
     height: number
     direction: "LR" | "TB"
@@ -149,6 +191,9 @@ const pointable = (node: DiagramNode): boolean => node.shape !== "container" && 
 /** What a node is called by its button: its words, its port and the edit mark, as the text version says it. */
 const spokenName = (node: DiagramNode, editWord: string): string => `${node.label}${node.port === undefined ? "" : ` :${node.port}`}${node.edit === true ? ` (${editWord})` : ""}`
 
+/** Whether a node has a brief card to show: an architecture node always (its kind, tech, port, tables), any other node only with a tooltip. */
+const hasBrief = (node: DiagramNode): boolean => node.kind !== undefined || node.description !== undefined
+
 type Drawn =
     | { readonly kind: "graph"; readonly graph: DiagramGraph; readonly layout: FlowLayout; readonly sizes: readonly SizedNode[]; readonly entry?: Box; readonly width: number; readonly height: number; readonly merged?: ReadonlySet<string> }
     | { readonly kind: "sequence"; readonly model: SequenceModel; readonly layout: SequenceLayout; readonly width: number; readonly height: number }
@@ -165,27 +210,31 @@ const toneProps = (tone: MermaidTone | undefined): Record<string, string> => (to
 
 /** The depth of a store's elliptic cap: its lid and its base (the cylinder's room for it is `nodeSize` in graph.ts). */
 const STORE_CAP = 12
+/** The depth of a queue tube's end caps, left and right (the tube's room for them is `TUBE_ROOM` in graph.ts). */
+const TUBE_CAP = 12
 
 /** A node of a flowchart or a state diagram in its shape: the words centred, the shape drawn from the tokens. */
 const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
-    const { node, icon, logoColor, width, height, direction } = data
+    const { node, icon, logoColor, logoPlate, kindWord, width, height, direction } = data
     const focus = useContext(FocusContext)
     // A bar is the mark of a parallel: its words (a fork's "Song song") stand beside it, never in it.
     const text = node.label === "" ? null : <span className={node.shape === "bar" ? "starci-graph-diagram-bar-words" : "starci-graph-diagram-words"}>{node.label}</span>
     const hasIcon = icon !== undefined && icon !== null
+    // An architecture node keeps its port on its muted second line (`metaLines`); any other node shows it as a pill beside its name.
+    const portPill = node.port !== undefined && node.kind === undefined
     // One row: the logo in its chip before the words, the port pill and the edit chip after them; the text version names the node by its words.
-    const words =
-        !hasIcon && node.port === undefined && node.edit !== true ? (
+    const row =
+        !hasIcon && !portPill && node.edit !== true ? (
             text
         ) : (
             <span className="starci-graph-diagram-labelled">
-                {hasIcon ? <LogoChip icon={icon} color={logoColor} /> : null}
+                {hasIcon ? <LogoChip icon={icon} color={logoColor} plate={logoPlate === true} /> : null}
                 {text}
-                {node.port === undefined ? null : (
+                {portPill ? (
                     <span className="starci-graph-diagram-port" aria-hidden="true">
                         :{node.port}
                     </span>
-                )}
+                ) : null}
                 {node.edit === true ? (
                     <span className="starci-graph-diagram-chip starci-graph-diagram-edit" data-grammar-mermaid-edit="true" aria-hidden="true">
                         <Icon source={TablerPencil} usage="text" />
@@ -193,7 +242,28 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
                 ) : null}
             </span>
         )
-    // A step or store is a Tab stop: pointing at it or focusing it lights its neighbours; pressing it (click, Enter, Space) opens its description line.
+    // An architecture node (owner 2026-11-28): a cache's tag over the row, the name row, then its muted lines (port, tables) under it.
+    const meta = metaLines(node)
+    const words =
+        node.kind === undefined ? (
+            row
+        ) : (
+            <span className="starci-graph-diagram-stack">
+                {node.kind === "cache" && kindWord !== undefined ? (
+                    <span className="starci-graph-diagram-tag" aria-hidden="true">
+                        {kindWord}
+                    </span>
+                ) : null}
+                {row}
+                {meta.length === 0 ? null : (
+                    <span className="starci-graph-diagram-meta" aria-hidden="true">
+                        {meta.join("\n")}
+                    </span>
+                )}
+            </span>
+        )
+    // A step or store is a Tab stop: pointing at it or focusing it lights its neighbours and shows its brief card; pressing it (click, Enter, Space) keeps
+    // the card open.
     const interactive =
         focus === null || !pointable(node)
             ? {}
@@ -201,7 +271,7 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
                   tabIndex: 0,
                   role: "button" as const,
                   "aria-label": spokenName(node, focus.editWord),
-                  ...(node.description === undefined ? {} : { "aria-expanded": focus.opened === node.id, "aria-controls": focus.describedBy }),
+                  ...(hasBrief(node) ? { "aria-expanded": focus.opened === node.id, "aria-controls": focus.describedBy } : {}),
                   // The pointer reaches the canvas's own node handlers (onNodeMouseEnter, onNodeClick): they also give xyflow's node its pointer events.
                   onFocus: () => focus.focus(node.id),
                   onBlur: () => focus.focus(null),
@@ -223,11 +293,18 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
                 <path d={`M1 ${String(STORE_CAP)} A${String(width / 2 - 1)} ${String(STORE_CAP - 1)} 0 0 1 ${String(width - 1)} ${String(STORE_CAP)} V${String(height - STORE_CAP)} A${String(width / 2 - 1)} ${String(STORE_CAP - 1)} 0 0 1 1 ${String(height - STORE_CAP)} Z`} />
                 <ellipse className="starci-graph-diagram-lid" cx={width / 2} cy={STORE_CAP} rx={width / 2 - 1} ry={STORE_CAP - 1} />
             </svg>
+        ) : node.shape === "tube" ? (
+            // A queue is a cylinder lying down (owner 2026-11-28): messages pass through it left to right, its right end the tinted lid.
+            <svg className="starci-graph-diagram-outline" viewBox={`0 0 ${String(width)} ${String(height)}`} aria-hidden="true">
+                <path d={`M${String(TUBE_CAP)} 1 H${String(width - TUBE_CAP)} A${String(TUBE_CAP - 1)} ${String(height / 2 - 1)} 0 0 1 ${String(width - TUBE_CAP)} ${String(height - 1)} H${String(TUBE_CAP)} A${String(TUBE_CAP - 1)} ${String(height / 2 - 1)} 0 0 1 ${String(TUBE_CAP)} 1 Z`} />
+                <ellipse className="starci-graph-diagram-lid" cx={width - TUBE_CAP} cy={height / 2} rx={TUBE_CAP - 1} ry={height / 2 - 1} />
+            </svg>
         ) : null
     return (
         <div
             className="starci-graph-diagram-node"
             data-shape={node.shape}
+            data-kind={node.kind}
             data-direction={node.shape === "bar" ? direction : undefined}
             data-edit={node.edit === true ? "true" : undefined}
             {...toneProps(node.tone)}
@@ -241,12 +318,23 @@ const ShapeNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => {
     )
 }
 
-/** A subgraph or a composite state: a quiet tinted field, its name in its top corner. */
+/**
+ * A subgraph or a composite state: a quiet tinted field, its name in its top corner. The frame of an architecture drawing (owner 2026-11-28: Docker on the
+ * learner's machine) is a dashed line with no fill instead, its logo in its chip in the brand's colour and its name in the foreground, top left.
+ */
 const GroupNode = ({ data }: NodeProps<Node<ShapeData>>): ReactElement => (
-    <div className="starci-graph-diagram-group" data-repeat={data.node.repeat === true ? "true" : undefined} {...toneProps(data.node.tone)} style={{ inlineSize: data.width, blockSize: data.height }}>
+    <div
+        className="starci-graph-diagram-group"
+        data-repeat={data.node.repeat === true ? "true" : undefined}
+        data-frame={data.frame === true ? "true" : undefined}
+        {...toneProps(data.node.tone)}
+        style={{ inlineSize: data.width, blockSize: data.height }}
+    >
         {handles(data.direction)}
         <span className="starci-graph-diagram-group-label">
-            {data.icon === undefined || data.icon === null ? null : (
+            {data.icon === undefined || data.icon === null ? null : data.frame === true ? (
+                <LogoChip icon={data.icon} color={data.logoColor} plate={data.logoPlate === true} />
+            ) : (
                 <span className="starci-graph-diagram-icon" aria-hidden="true" style={data.logoColor === undefined ? undefined : { color: data.logoColor }}>
                     {data.icon}
                 </span>
@@ -400,6 +488,9 @@ interface Lit {
     readonly edges: ReadonlySet<string>
 }
 
+/** The arrowhead of each kind of flowchart edge: a call's is filled, a message's the open V, a store link's a small V. */
+const HEADS: Readonly<Record<EdgeKind, "open" | "filled" | "small">> = { call: "filled", message: "open", data: "small" }
+
 /** A loop's back edge and an author's dotted link are dashed (dashes mean something); every other edge is plain. */
 const edgeStyle = (edge: DiagramEdge): "back" | "fallback" | "plain" => (edge.back === true ? "back" : edge.dashed ? "fallback" : "plain")
 
@@ -412,11 +503,14 @@ const graphElements = (
     drawn: Extract<Drawn, { readonly kind: "graph" }>,
     icons: Readonly<Record<string, ReactNode>> | undefined,
     appIcons: Readonly<Record<string, ReactNode>> | undefined,
-    chip: Rgb | null,
+    paints: { readonly chip: Rgb | null; readonly plate: Rgb | null },
     focus: Lit | null,
+    words: MermaidDiagramLabels,
 ): { readonly nodes: Node[]; readonly edges: Edge[] } => {
     const { graph, layout, sizes } = drawn
     const size = new Map(sizes.map((each) => [each.id, each] as const))
+    // An architecture drawing (any node has a kind): its containers are frames, dashed with no fill.
+    const architecture = graph.nodes.some((node) => node.kind !== undefined)
     const nodes = parentsFirst(graph.nodes).map((node): Node => {
         const box = layout.boxes[node.id]
         const own = size.get(node.id)
@@ -424,9 +518,18 @@ const graphElements = (
         const width = isGroup ? (box?.width ?? own?.width ?? 120) : (own?.width ?? 80)
         const height = isGroup ? (box?.height ?? own?.height ?? 40) : (own?.height ?? 40)
         const icon = node.icon === undefined ? undefined : icons?.[node.icon]
-        // A built-in logo takes its brand colour where it keeps 3:1 on its chip; the app's own art (`icons`) keeps its own colours.
-        const logoColor = icon === undefined ? undefined : logoFill(brandColorOf(node.icon, appIcons), chip)
-        const data: ShapeData = { node, ...(icon === undefined ? {} : { icon }), ...(logoColor === undefined ? {} : { logoColor }), width, height, direction: graph.direction }
+        // A built-in logo is always in its brand colour, on the inverse plate where the plain chip would lose it; the app's own art keeps its own colours.
+        const paint = icon === undefined ? undefined : logoPaint(brandColorOf(node.icon, appIcons), paints.chip, paints.plate)
+        const data: ShapeData = {
+            node,
+            ...(icon === undefined ? {} : { icon }),
+            ...(paint === undefined ? {} : { logoColor: paint.color, logoPlate: paint.plate }),
+            ...(node.kind === undefined ? {} : { kindWord: words[node.kind] }),
+            ...(isGroup && (architecture || node.icon !== undefined) ? { frame: true } : {}),
+            width,
+            height,
+            direction: graph.direction,
+        }
         // While a node is pointed at, its neighbours stand out and every other step dims; a container stays as it is.
         const lit = focus === null || isGroup ? undefined : node.id === focus.id ? "starci-graph-diagram-focus" : focus.nodes.has(node.id) ? "starci-graph-diagram-near" : "starci-graph-diagram-dim"
         return {
@@ -457,9 +560,22 @@ const graphElements = (
         const route = layout.routes[edge.id]
         const drawn = merged.has(edge.id) ? route : once.get(edge.id)
         const dimmed = focus !== null && !focus.edges.has(edge.id)
-        const data: StepEdgeData = { style, pill: edge.label, dangerPort: false, dimmed, route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points }, joinStart: false, joinEnd: false, ...(edge.tone === undefined ? {} : { pillTone: edge.tone }) }
-        // A flowchart's edge says what it carries: a call solid in the accent, data (`-.->`) dashed and neutral; a state's transition keeps the quiet line.
-        const kind = graph.kind === "flowchart" ? ` starci-graph-diagram-edge--${edgeKind(edge)}` : ""
+        // A flowchart's edge says what it carries (owner 2026-11-28): a call solid in the accent with a filled head, a message through a queue dashed with an
+        // open head, a service reaching its own store dotted and neutral with a small head; a state's transition keeps the quiet line and the open V.
+        const carried = graph.kind === "flowchart" ? edgeKind(edge, graph) : undefined
+        const head = carried === undefined ? undefined : HEADS[carried]
+        const data: StepEdgeData = {
+            style,
+            pill: edge.label,
+            dangerPort: false,
+            dimmed,
+            route: route === undefined || drawn === undefined ? route : { ...route, points: drawn.points },
+            joinStart: false,
+            joinEnd: false,
+            ...(edge.tone === undefined ? {} : { pillTone: edge.tone }),
+            ...(head === undefined ? {} : { head }),
+        }
+        const kind = carried === undefined ? "" : ` starci-graph-diagram-edge--${carried}`
         const lit = focus === null ? "" : dimmed ? " starci-graph-edge--dimmed" : " starci-graph-diagram-edge--near"
         const className = `${edgeClassName(style)}${kind}${edge.thick ? " starci-graph-diagram-edge--thick" : ""}${edge.tone === undefined ? "" : ` starci-graph-diagram-edge--${edge.tone}`}${lit}`
         return { id: edge.id, source: edge.source, target: edge.target, type: "step", sourceHandle: "out", targetHandle: "in", className, zIndex: 2, data, ...still }
@@ -569,15 +685,22 @@ const paintedColor = (css: string): Rgb | null => {
     return [r, g, b]
 }
 
-/** The calls-and-data legend chip of a flowchart that has both kinds of edge, in the canvas's bottom right corner, clear of the drawing. */
-const KindLegend = ({ words, edit }: { readonly words: MermaidDiagramLabels; readonly edit: boolean }): ReactElement => (
+/** The legend word of each edge kind. */
+const legendWord = (kind: EdgeKind, words: MermaidDiagramLabels): string => (kind === "call" ? words.calls : kind === "message" ? words.messages : words.data)
+
+/**
+ * The edge-kind legend chip of a flowchart that draws two or more kinds (calls, messages, data), in the canvas's bottom right corner, clear of the
+ * drawing: each kind its line and its head, as the drawing draws them.
+ */
+const KindLegend = ({ kinds, words, edit }: { readonly kinds: readonly EdgeKind[]; readonly words: MermaidDiagramLabels; readonly edit: boolean }): ReactElement => (
     <ul className="starci-graph-diagram-kinds" data-grammar-mermaid-kinds="true">
-        {(["call", "data"] as const).map((kind) => (
+        {kinds.map((kind) => (
             <li key={kind} className="starci-graph-diagram-kind" data-kind={kind}>
-                <svg width={20} height={8} viewBox="0 0 20 8" aria-hidden="true">
-                    <path d="M1 4H19" />
+                <svg width={24} height={10} viewBox="0 0 24 10" aria-hidden="true">
+                    <path d="M1 5H20" />
+                    <path className="starci-graph-diagram-kind-head" d={kind === "data" ? "M17 2.5L21 5L17 7.5" : kind === "call" ? "M16 1.5L23 5L16 8.5Z" : "M16 1.5L23 5L16 8.5"} />
                 </svg>
-                {kind === "call" ? words.calls : words.data}
+                {legendWord(kind, words)}
             </li>
         ))}
         {/* The node the learner edits (`class O edit`), the third thing the drawing marks: its accent frame. */}
@@ -590,6 +713,50 @@ const KindLegend = ({ words, edit }: { readonly words: MermaidDiagramLabels; rea
     </ul>
 )
 
+/**
+ * The brief card of a node (owner 2026-11-28: hover or press a node for a short brief), docked in the canvas's top right corner so it never covers the
+ * node it speaks of on a wide canvas (across the top on a narrow one): the node's logo, name and kind; its brief (Mermaid's tooltip, `click O call note()
+ * "…"`), what it is and what it does in this lesson; then its facts: the technology its logo names, its port, a store's tables or any other node's detail
+ * line. It follows the pointer and the keyboard focus, and stays while the node is pressed open (Escape or a second press closes it). It is the node
+ * button's `aria-controls` and a polite status, so a screen reader hears the brief once it opens; empty, it takes no room and catches no pointer.
+ */
+const BriefCard = ({ id, node, data, words, pinned }: { readonly id: string; readonly node: DiagramNode | undefined; readonly data: ShapeData | undefined; readonly words: MermaidDiagramLabels; readonly pinned: boolean }): ReactElement => {
+    const tech = techNameOf(node?.icon)
+    const facts: readonly (readonly [string, string])[] =
+        node === undefined
+            ? []
+            : [
+                  ...(tech === undefined ? [] : [[words.tech, tech] as const]),
+                  ...(node.port === undefined ? [] : [[words.port, `:${node.port}`] as const]),
+                  ...(node.detail === undefined ? [] : [[node.kind === "database" || node.kind === "cache" ? words.tables : words.detail, node.detail.replace(/\n/gu, ", ")] as const]),
+              ]
+    const icon = data?.icon
+    return (
+        <div id={id} className="starci-graph-diagram-brief" role="status" data-open={node === undefined ? undefined : "true"} data-pinned={pinned ? "true" : undefined} data-grammar-mermaid-brief="true">
+            {node === undefined ? null : (
+                <>
+                    <span className="starci-graph-diagram-brief-head">
+                        {icon === undefined || icon === null ? null : <LogoChip icon={icon} color={data?.logoColor} plate={data?.logoPlate === true} />}
+                        <span className="starci-graph-diagram-brief-name">{node.label}</span>
+                        {node.kind === undefined ? null : <span className="starci-graph-diagram-brief-kind">{words[node.kind]}</span>}
+                    </span>
+                    {node.description === undefined ? null : <span className="starci-graph-diagram-brief-text">{node.description}</span>}
+                    {facts.length === 0 ? null : (
+                        <dl className="starci-graph-diagram-brief-facts">
+                            {facts.map(([name, value]) => (
+                                <div key={name} className="starci-graph-diagram-brief-fact">
+                                    <dt>{name}</dt>
+                                    <dd>{value}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                    )}
+                </>
+            )}
+        </div>
+    )
+}
+
 /** The canvas of a drawn diagram: xyflow with the graph's dot grid, panned by drag or touch and the arrow keys, zoomed by pinch, the controls or + and -. */
 const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision }: CanvasProps): ReactElement => {
     const flow = useReactFlow()
@@ -598,12 +765,14 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
     const flowHeight = useStore((state) => state.height)
     // The reader may zoom out as far as the first view went, so a very large drawing still opens whole.
     const least = flowWidth === 0 ? LEAST_OPEN_ZOOM : Math.min(LEAST_OPEN_ZOOM, openZoom({ width: flowWidth, height }, drawn))
-    // The colour of a logo chip in the theme in force, read from a probe chip: the surface every brand colour is judged against (`logoFill`).
+    // The colours of a logo chip and of the inverse plate in the theme in force, read from two probes: the surfaces every brand colour is judged
+    // against (`logoPaint`).
     const probe = useRef<HTMLSpanElement | null>(null)
-    const [chip, setChip] = useState<Rgb | null>(null)
+    const plateProbe = useRef<HTMLSpanElement | null>(null)
+    const [paints, setPaints] = useState<{ readonly chip: Rgb | null; readonly plate: Rgb | null }>({ chip: null, plate: null })
     useLayoutEffect(() => {
-        const element = probe.current
-        if (element !== null) setChip(paintedColor(getComputedStyle(element).backgroundColor))
+        const read = (element: HTMLSpanElement | null): Rgb | null => (element === null ? null : paintedColor(getComputedStyle(element).backgroundColor))
+        setPaints({ chip: read(probe.current), plate: read(plateProbe.current) })
     }, [scheme, themeRevision])
     // The hover focus: the node pointed at wins over the node focused by keyboard, which wins over the node whose description is open.
     const [hovered, setHovered] = useState<string | null>(null)
@@ -614,7 +783,8 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
     const lit = useMemo((): Lit | null => (graph === null || active === null ? null : { id: active, ...neighbourhood(graph, active) }), [active, graph])
     const pointableIds = useMemo(() => new Set(graph === null ? [] : graph.nodes.filter(pointable).map((node) => node.id)), [graph])
     const describedBy = `${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}-description`
-    const openedNode = graph?.nodes.find((node) => node.id === opened && node.description !== undefined)
+    // The brief card follows the focus (owner 2026-11-28: hover or press a node): the node pointed at, else the one focused, else the one pressed open.
+    const briefNode = active === null ? undefined : graph?.nodes.find((node) => node.id === active && hasBrief(node))
     /** A node focused by Tab that stands outside the view is panned into it (the canvas never scrolls; the view moves). */
     const reveal = useCallback(
         (id: string) => {
@@ -638,7 +808,10 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
                 setFocused(id)
                 if (id !== null) reveal(id)
             },
-            press: (id) => setOpened((now) => (now === id || graph?.nodes.find((node) => node.id === id)?.description === undefined ? null : id)),
+            press: (id) => setOpened((now) => {
+                const node = graph?.nodes.find((each) => each.id === id)
+                return now === id || node === undefined || !hasBrief(node) ? null : id
+            }),
             close: () => setOpened(null),
             describedBy,
             editWord: words.edit,
@@ -646,11 +819,13 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
         [describedBy, graph, opened, reveal, words.edit],
     )
     const elements = useMemo(() => {
-        if (drawn.kind === "graph") return graphElements(drawn, icons, own, chip, lit)
+        if (drawn.kind === "graph") return graphElements(drawn, icons, own, paints, lit, words)
         if (drawn.kind === "sequence") return sequenceElements(drawn)
         const data = { label: "", width: drawn.width, height: drawn.height, svg: drawn.svg }
         return { nodes: [{ id: "drawing", type: "mermaid-svg", position: { x: 0, y: 0 }, data, width: drawn.width, height: drawn.height, ...still }], edges: [] }
-    }, [chip, drawn, icons, lit, own])
+    }, [drawn, icons, lit, own, paints, words])
+    // The brief's logo is the node's own chip, painted as on the canvas.
+    const briefData = briefNode === undefined ? undefined : (elements.nodes.find((node) => node.id === briefNode.id)?.data as ShapeData | undefined)
     const reset = (): void => open()?.set()
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
         if (event.target !== event.currentTarget) return
@@ -685,6 +860,7 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
             style={{ blockSize: height }}
         >
             <span ref={probe} className="starci-graph-diagram-chip starci-graph-diagram-probe" aria-hidden="true" />
+            <span ref={plateProbe} className="starci-graph-diagram-chip starci-graph-diagram-probe" data-logo-fill="plate" aria-hidden="true" />
             <div className="starci-graph-canvas" role={drawingRole} aria-label={label}>
                 <FocusContext.Provider value={graph === null ? null : focusApi}>
                     <ReactFlow
@@ -729,15 +905,7 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
                     </ReactFlow>
                 </FocusContext.Provider>
             </div>
-            {graph === null ? null : (
-                <p id={describedBy} className="starci-graph-diagram-describe" role="status" data-open={openedNode === undefined ? undefined : "true"}>
-                    {openedNode === undefined ? null : (
-                        <>
-                            <span className="starci-graph-diagram-describe-name">{openedNode.label}</span> {openedNode.description}
-                        </>
-                    )}
-                </p>
-            )}
+            {graph === null ? null : <BriefCard id={describedBy} node={briefNode} data={briefData} words={words} pinned={briefNode !== undefined && briefNode.id === opened} />}
             <div className="starci-graph-diagram-controls">
                 <ZoomButtons
                     words={{ zoomIn: words.zoomIn, zoomOut: words.zoomOut, fit: words.fit }}
@@ -747,7 +915,7 @@ const Canvas = ({ drawn, icons, own, label, words, height, scheme, themeRevision
                     reset={{ label: words.reset, onPress: reset }}
                 />
             </div>
-            {graph !== null && needsKindLegend(graph) ? <KindLegend words={words} edit={graph.nodes.some((node) => node.edit === true)} /> : null}
+            {graph !== null && needsKindLegend(graph) ? <KindLegend kinds={kindsDrawn(graph)} words={words} edit={graph.nodes.some((node) => node.edit === true)} /> : null}
         </div>
     )
 }
@@ -853,12 +1021,19 @@ const draw = async (given: ParsedDiagram, source: string, id: string, anchor: HT
  * journey, ...) is Mermaid's own SVG in the Grammar's diagram theme, as one node of the same canvas. Every edge of a flowchart is its own line: two edges
  * never leave or enter a node at one point and never share a stretch, so no junction dot is drawn and each keeps its arrowhead. Tones paint a node
  * (`tones`, `class B danger`), a message (`messageTones`) or an edge (`edgeTones`, or `A r1@--> B` then `class r1 info`); `legend` says under the canvas
- * what each edge tone means; a node's `R@{ icon: "name" }` draws `icons[name]` (a built-in logo in its brand colour where it keeps 3:1 on its chip) in a
- * logo chip before its words. A flowchart's edges say what they carry (owner 2026-11-26): a call solid in the accent, data (`-.->`) dashed and neutral,
- * with a legend chip in the canvas corner when both are there; a service shows its port (`O[orders :4001]`) as a muted pill, `class O edit` marks the
- * node the learner edits with a pencil chip, and a store (`[( )]`) is a rounder tinted cylinder. Pointing at or focusing a step lights it, its
- * neighbours and their edges and dims the rest; pressing it opens its description line (Mermaid's tooltip, `click O call note() "..."`). Loading keeps
- * the canvas box with a Skeleton; a
+ * what each edge tone means; a node's `R@{ icon: "name" }` draws `icons[name]` (a built-in logo always in its brand colour, on the inverse plate where
+ * its chip would lose it) in a logo chip before its words. `class O edit` marks the node the learner edits with a pencil chip.
+ *
+ * An architecture drawing (owner 2026-11-28, one concept for every one: a flowchart where some node names its technology with `X@{ icon }` or its kind
+ * with `class X queue`) draws five node kinds, one shape each (`archKindOf`): a client a pill, a service a rounded box with its framework's logo, a
+ * database an upright cylinder, a cache a cylinder in its own tint with a "cache" tag, a queue a horizontal tube; each its name over a muted line, its
+ * port and its tables (`Order Service<br>:4001`). Its frame (the subgraph) is a dashed line with no fill, its logo and name top left. Its edges are three
+ * kinds, each with an arrowhead (`edgeKind`): an HTTP call solid in the accent with a filled head (`1 POST /emails`), a message through a queue dashed
+ * with an open head (`order.paid`), a service reaching its own store dotted with a small head; a legend chip in the canvas corner names the kinds drawn.
+ * Other flowcharts keep their calls (solid accent) and data (`-.->`, dashed neutral) and a service's port as a muted pill (`O[orders :4001]`).
+ *
+ * Pointing at or focusing a step lights it, its neighbours and their edges and dims the rest, and opens its brief card (`BriefCard`: name, kind, its
+ * Mermaid tooltip `click O call note() "..."`, its tech, port and tables); pressing it keeps the card open. Loading keeps the canvas box with a Skeleton; a
  * source Mermaid refuses is an error inside the same region, the title then the source as code. A visually hidden text version (the nodes and links, or
  * the messages in order) follows the canvas. Import `@starci/grammar/core/ext/graph.css` once.
  * Contract: overflow OVERFLOW-4; loading and failure keep the anatomy STATE-8.
@@ -877,7 +1052,9 @@ export const MermaidDiagram = ({ source, label, height = "sm", errorTitle = "Thi
     const width = useWidth(frame)
     // The layout waits for the frame's width: a phone lays a graph out top-down.
     const isPhone = width === null ? null : width < PHONE_LAYOUT_WIDTH
-    const words = { ...LABELS, ...labels }
+    // The words are read by value too: an inline `labels` object passed each render builds the canvas's elements again only when a word changed.
+    const labelKey = JSON.stringify(labels ?? {})
+    const words = useMemo((): MermaidDiagramLabels => ({ ...LABELS, ...(JSON.parse(labelKey) as Partial<MermaidDiagramLabels>) }), [labelKey])
     const id = `grammar-mermaid-${useId().replace(/[^a-zA-Z0-9_-]/gu, "")}`
     // The tones and the icon names are read by value: an inline object passed each render redraws nothing unless what it says changed.
     const iconMap = useMemo(() => withTechIcons(icons), [icons])

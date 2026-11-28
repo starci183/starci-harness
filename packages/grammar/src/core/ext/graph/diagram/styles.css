@@ -521,7 +521,7 @@
     opacity: var(--grammar-opacity-dimmed);
 }
 
-.starci-graph-diagram-canvas .react-flow__node:is(.starci-graph-diagram-focus, .starci-graph-diagram-near) .starci-graph-diagram-node:not([data-shape="diamond"], [data-shape="cylinder"]) {
+.starci-graph-diagram-canvas .react-flow__node:is(.starci-graph-diagram-focus, .starci-graph-diagram-near) .starci-graph-diagram-node:not([data-shape="diamond"], [data-shape="cylinder"], [data-shape="tube"]) {
     border-color: var(--accent);
 }
 
@@ -539,21 +539,26 @@
     }
 }
 
-/* A step's description line (Mermaid's tooltip), opened by pressing the step: one line at the top of the canvas, announced as a status. */
-.starci-graph-diagram-describe {
+/*
+ * The brief card (owner 2026-11-28: hover or press a node for a short brief; it replaces the one-line description): docked in the canvas's top right
+ * corner, the node's logo, name and kind, its brief, its facts. Empty it takes no room; it never catches the pointer, so the canvas under it still pans.
+ */
+.starci-graph-diagram-brief {
     position: absolute;
     inset-block-start: var(--grammar-inline-gap);
-    inset-inline: var(--grammar-inline-gap);
+    inset-inline-end: var(--grammar-inline-gap);
     z-index: 6;
     margin: 0;
     pointer-events: none;
 }
 
-.starci-graph-diagram-describe[data-open="true"] {
+.starci-graph-diagram-brief[data-open="true"] {
     box-sizing: border-box;
-    inline-size: fit-content;
-    margin-inline: auto;
-    padding: var(--grammar-identity-gap) var(--grammar-inline-gap);
+    display: flex;
+    flex-direction: column;
+    gap: var(--grammar-identity-gap);
+    inline-size: min(20rem, calc(100% - 2 * var(--grammar-inline-gap)));
+    padding: var(--grammar-inline-gap);
     color: var(--foreground);
     font-size: var(--grammar-type-caption-size);
     line-height: var(--grammar-type-caption-line);
@@ -562,8 +567,60 @@
     border-radius: var(--grammar-radius-md);
 }
 
-.starci-graph-diagram-describe-name {
+/* Pressed open, the card keeps an accent edge: it stays until a second press or Escape. */
+.starci-graph-diagram-brief[data-pinned="true"] {
+    border-color: var(--accent);
+}
+
+.starci-graph-diagram-brief-head {
+    display: flex;
+    align-items: center;
+    gap: var(--grammar-inline-gap);
+    min-inline-size: 0;
+}
+
+.starci-graph-diagram-brief-name {
+    min-inline-size: 0;
+    font-size: var(--grammar-type-label-field-size);
     font-weight: var(--grammar-weight-medium);
+    line-height: var(--grammar-type-label-field-line);
+    overflow-wrap: anywhere;
+}
+
+.starci-graph-diagram-brief-kind {
+    flex: none;
+    margin-inline-start: auto;
+    padding-inline: var(--grammar-identity-gap);
+    color: var(--muted);
+    background: var(--starci-graph-diagram-chip-fill);
+    border-radius: var(--grammar-radius-pill);
+}
+
+.starci-graph-diagram-brief-text {
+    white-space: pre-line;
+}
+
+.starci-graph-diagram-brief-facts {
+    display: grid;
+    gap: 0;
+    margin: 0;
+}
+
+.starci-graph-diagram-brief-fact {
+    display: flex;
+    gap: var(--grammar-inline-gap);
+}
+
+.starci-graph-diagram-brief-fact dt {
+    flex: none;
+    min-inline-size: 4rem;
+    color: var(--muted);
+}
+
+.starci-graph-diagram-brief-fact dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
 }
 
 /* ---------------------------------------------------------------- a sequence */
@@ -788,7 +845,160 @@
 }
 
 /* The node the learner edits (`class O edit`) wears the accent frame, so the eye finds it first; the pencil chip stays beside its words. */
-.starci-graph-diagram-node[data-edit="true"]:not([data-shape="diamond"], [data-shape="cylinder"]) {
+.starci-graph-diagram-node[data-edit="true"]:not([data-shape="diamond"], [data-shape="cylinder"], [data-shape="tube"]) {
     border-color: var(--accent);
     border-width: 1.5px;
+}
+
+/* ---------------------------------------------------------------- an architecture drawing (owner 2026-11-28) */
+
+/*
+ * One concept for every architecture drawing: five node kinds, one shape each (a client a pill, a service a rounded box, a database an upright cylinder,
+ * a cache a cylinder in its own tint with a "cache" tag, a queue a horizontal tube), each its name over a muted line (port, tables); the frame a dashed
+ * line with no fill; three edge kinds, each with an arrowhead.
+ */
+.starci-graph-diagram {
+    /* A cache reads apart from a database: the danger hue's quiet tint (the family of Redis's red) on its side and lid, never an alarm. */
+    --starci-graph-diagram-cache-fill: color-mix(in oklab, var(--danger) 6%, var(--surface));
+    --starci-graph-diagram-cache-lid: color-mix(in oklab, var(--danger) 14%, var(--surface));
+
+    /* A queue: the warning hue's quiet tint (the family of RabbitMQ's orange). */
+    --starci-graph-diagram-queue-fill: color-mix(in oklab, var(--warning) 6%, var(--surface));
+    --starci-graph-diagram-queue-lid: color-mix(in oklab, var(--warning) 16%, var(--surface));
+
+    /* The inverse plate a logo stands on when its brand colour would vanish on the plain chip (Express black in the dark theme). */
+    --starci-graph-diagram-plate-fill: color-mix(in oklab, var(--foreground) 88%, var(--surface));
+}
+
+.starci-graph-diagram-node[data-kind="service"] {
+    border-radius: var(--grammar-radius-lg);
+}
+
+.starci-graph-diagram-node[data-kind="cache"] {
+    --starci-graph-diagram-fill: var(--starci-graph-diagram-cache-fill);
+}
+
+.starci-graph-diagram-node[data-kind="cache"]:not([data-tone]) .starci-graph-diagram-outline .starci-graph-diagram-lid {
+    fill: var(--starci-graph-diagram-cache-lid);
+}
+
+/* A queue draws its tube as an outline, like a store; the box itself is clear. */
+.starci-graph-diagram-node[data-shape="tube"] {
+    --starci-graph-diagram-fill: var(--starci-graph-diagram-queue-fill);
+
+    padding-inline: var(--grammar-row-gap);
+    background: transparent;
+    border-color: transparent;
+}
+
+.starci-graph-diagram-node[data-shape="tube"]:not([data-tone]) .starci-graph-diagram-outline .starci-graph-diagram-lid {
+    fill: var(--starci-graph-diagram-queue-lid);
+}
+
+/* The tube's words stand left of its lid, inside its body. */
+.starci-graph-diagram-node[data-shape="tube"] > .starci-graph-diagram-stack {
+    margin-inline-end: var(--grammar-inline-gap);
+}
+
+/* An architecture node's column: a cache's tag, the name row, the muted lines, centred in the shape. */
+.starci-graph-diagram-stack {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    min-inline-size: 0;
+}
+
+.starci-graph-diagram-node[data-shape="cylinder"] > .starci-graph-diagram-stack {
+    margin-block-start: var(--grammar-inline-gap);
+}
+
+/* The muted line under an architecture node's name: its port and its tables, in the caption size. */
+.starci-graph-diagram-meta {
+    color: var(--muted);
+    font-size: var(--grammar-type-caption-size);
+    font-weight: var(--grammar-weight-regular);
+    font-variant-numeric: tabular-nums;
+    line-height: var(--grammar-type-caption-line);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+/* A cache's tag over its name ("cache"): small, in the cache's tint. */
+.starci-graph-diagram-tag {
+    padding-inline: var(--grammar-identity-gap);
+    color: var(--danger-soft-foreground);
+    font-size: var(--grammar-type-caption-size);
+    font-weight: var(--grammar-weight-regular);
+    line-height: var(--grammar-type-caption-line);
+    background: var(--starci-graph-diagram-cache-lid);
+    border-radius: var(--grammar-radius-pill);
+}
+
+/* A logo whose brand colour would vanish on the plain chip stands on the inverse plate, still in its brand colour (`logoPaint`). */
+.starci-graph-diagram-chip[data-logo-fill="plate"] {
+    background: var(--starci-graph-diagram-plate-fill);
+}
+
+/* The frame of an architecture drawing (Docker on the learner's machine): a dashed line, no fill, its logo and name in the foreground, top left. */
+.starci-graph-diagram-group[data-frame="true"] {
+    --starci-graph-diagram-edge: var(--muted);
+    --starci-graph-diagram-ink: var(--foreground);
+
+    background: transparent;
+    border-style: dashed;
+    border-width: 1.5px;
+}
+
+.starci-graph-diagram-group[data-frame="true"] .starci-graph-diagram-group-label {
+    gap: var(--grammar-inline-gap);
+    inset-block-start: var(--grammar-identity-gap);
+}
+
+/* The three edge kinds each draw their head in their own line's colour; a call's head is filled. */
+.starci-graph :is(.starci-graph-diagram-edge--call, .starci-graph-diagram-edge--message, .starci-graph-diagram-edge--data) .starci-graph-edge-arrow {
+    stroke: currentcolor;
+}
+
+.starci-graph .starci-graph-edge-arrow[data-head="filled"] {
+    fill: currentcolor;
+    stroke-linejoin: round;
+}
+
+/* A message through a queue: dashed, an open head, in the info hue so it reads apart from a call. */
+.starci-graph .react-flow__edge.starci-graph-diagram-edge--message {
+    color: var(--info);
+}
+
+.starci-graph .starci-graph-diagram-edge--message .react-flow__edge-path {
+    stroke: currentcolor;
+    stroke-dasharray: 7 5;
+}
+
+/* A service reaching its own store: dotted, neutral, a small head. */
+.starci-graph .starci-graph-diagram-edge--data .react-flow__edge-path {
+    stroke-dasharray: 1.5 4;
+    stroke-linecap: round;
+}
+
+/* The legend's heads follow the lines: a call's filled, a message's open in the info hue, data's small. */
+.starci-graph-diagram-kind .starci-graph-diagram-kind-head {
+    stroke-linejoin: round;
+}
+
+.starci-graph-diagram-kind[data-kind="call"] .starci-graph-diagram-kind-head {
+    fill: var(--accent);
+}
+
+.starci-graph-diagram-kind[data-kind="message"] path {
+    stroke: var(--info);
+}
+
+.starci-graph-diagram-kind[data-kind="message"] path:first-child {
+    stroke-dasharray: 4 3;
+}
+
+.starci-graph-diagram-kind[data-kind="data"] .starci-graph-diagram-kind-head {
+    stroke-dasharray: none;
+    stroke-linecap: round;
 }

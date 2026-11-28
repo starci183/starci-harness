@@ -14,7 +14,16 @@ export type MermaidTone = "danger" | "success" | "accent" | "info"
 export const MERMAID_TONES: readonly MermaidTone[] = ["danger", "success", "accent", "info"]
 
 /** The shape a node is drawn in. */
-export type DiagramShape = "box" | "round" | "stadium" | "diamond" | "circle" | "cylinder" | "start" | "end" | "bar" | "note" | "container"
+export type DiagramShape = "box" | "round" | "stadium" | "diamond" | "circle" | "cylinder" | "tube" | "start" | "end" | "bar" | "note" | "container"
+
+/**
+ * What a node of an architecture drawing is (owner 2026-11-28, the one concept of every architecture diagram), each kind one shape: a `client` (the
+ * caller from outside, a frontend) a pill; a `service` a rounded box with its framework's logo; a `database` an upright cylinder; a `cache` a cylinder
+ * too, in its own tint and with a "cache" tag; a `queue` (a message broker) a horizontal tube. See `archKindOf` for how the source says it.
+ */
+export type ArchKind = "client" | "service" | "database" | "cache" | "queue"
+
+export const ARCH_KINDS: readonly ArchKind[] = ["client", "service", "database", "cache", "queue"]
 
 export interface DiagramNode {
     readonly id: string
@@ -31,8 +40,12 @@ export interface DiagramNode {
     readonly port?: string
     /** "The learner edits here" (`class O edit`): a pencil chip in the accent tint after the words, no file name. */
     readonly edit?: true
-    /** The node's description line, Mermaid's own tooltip (`click O call note() "Takes the order"`): shown when the reader presses the node. */
+    /** The node's brief, Mermaid's own tooltip (`click O call note() "Takes the order"`): shown in the brief card when the reader points at or presses the node. */
     readonly description?: string
+    /** What the node is in an architecture drawing (`archKindOf`); undefined in any other flowchart, in a state diagram and on a container. */
+    readonly kind?: ArchKind
+    /** The muted second line of an architecture node: the words after its first line (a database's tables, a service's files), its port kept apart. */
+    readonly detail?: string
 }
 
 export interface DiagramEdge {
@@ -172,6 +185,56 @@ export const loopBackEdges = (nodes: readonly DiagramNode[], edges: readonly Dia
     return back
 }
 
+/** The logos that name a message broker, a cache and a database: a node with one of them is that kind whatever its shape (`archKindOf`). */
+const QUEUE_ICONS: ReadonlySet<string> = new Set(["rabbitmq", "apachekafka", "kafka", "nats", "amazonsqs", "sqs", "queue"])
+const CACHE_ICONS: ReadonlySet<string> = new Set(["redis", "valkey", "memcached", "cache"])
+const DATABASE_ICONS: ReadonlySet<string> = new Set(["postgresql", "postgres", "pg", "mysql", "mariadb", "mongodb", "mongo", "sqlite", "database", "elasticsearch", "elastic", "minio"])
+
+/**
+ * What a node is in an architecture drawing, from the source alone (so an app changes only its Mermaid text): Mermaid's own `class X queue` (or `client`,
+ * `service`, `database`, `cache`) says it outright; else its logo (`X@{ icon: "rabbitmq" }` a queue, `redis` a cache, `postgresql` or `mongodb` a
+ * database); else its shape (`[( )]` a database, `([ ])` with no logo a client, any other box a service). A decision, a circle, a bar and a container are
+ * never one. Only an architecture drawing has kinds (`isArchitecture`): a plain flow's `([Done])` stays a flow's end, not a client.
+ */
+export const archKindOf = (shape: DiagramShape, icon: string | undefined, classes: readonly string[]): ArchKind | undefined => {
+    if (shape === "container" || shape === "diamond" || shape === "circle" || shape === "bar" || shape === "start" || shape === "end" || shape === "note") return undefined
+    const named = ARCH_KINDS.find((kind) => classes.includes(kind))
+    if (named !== undefined) return named
+    if (icon !== undefined && QUEUE_ICONS.has(icon)) return "queue"
+    if (icon !== undefined && CACHE_ICONS.has(icon)) return "cache"
+    if ((icon !== undefined && DATABASE_ICONS.has(icon)) || shape === "cylinder") return "database"
+    return shape === "stadium" && icon === undefined ? "client" : "service"
+}
+
+/** Whether a flowchart is an architecture drawing: some node (or the frame) names its technology (`X@{ icon: … }`) or its kind (`class X queue`). */
+const isArchitecture = (vertices: readonly { readonly icon?: string; readonly classes?: readonly string[] }[]): boolean =>
+    vertices.some((vertex) => (typeof vertex.icon === "string" && vertex.icon.trim() !== "") || (vertex.classes ?? []).some((name) => (ARCH_KINDS as readonly string[]).includes(name)))
+
+/** The shape each kind is drawn in: a database and a cache upright cylinders, a queue a tube, a client a pill; a service keeps the box it was written in. */
+const KIND_SHAPES: Readonly<Partial<Record<ArchKind, DiagramShape>>> = { database: "cylinder", cache: "cylinder", queue: "tube", client: "stadium" }
+
+/**
+ * The words of an architecture node, line by line (`Order Service<br>:4001`, `orders<br>orders, payments`): the first line its name, the rest its muted
+ * detail, and the port (`:4001`, alone on a line or at the end of one) kept apart from both.
+ */
+export const splitArchLabel = (written: string): { readonly label: string; readonly port?: string; readonly detail?: string } => {
+    let port: string | undefined
+    const lines = written.split("\n").flatMap((line): string[] => {
+        if (port !== undefined) return [line]
+        const alone = /^:(\d{2,5})$/u.exec(line.trim())?.[1]
+        if (alone !== undefined) {
+            port = alone
+            return []
+        }
+        const split = splitPort(line)
+        if (split.port !== undefined) port = split.port
+        return [split.label]
+    })
+    const [label = "", ...rest] = lines.filter((line) => line.trim() !== "")
+    const detail = rest.join("\n")
+    return { label, ...(port === undefined ? {} : { port }), ...(detail === "" ? {} : { detail }) }
+}
+
 /**
  * A flowchart as a graph: each vertex a node in its shape (`[(db)]` a cylinder, `{x}` a decision, `((x))` a circle, `(x)` round, `([x])` a stadium,
  * anything else a rounded box), each subgraph a container its nodes stand in (the innermost one a node is listed in), each link an edge with its words,
@@ -185,6 +248,7 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
     // Mermaid lists an inner subgraph before the one around it, and the outer one lists the inner one's nodes too: the first listing wins.
     for (const group of subgraphs) for (const member of group.nodes) if (member !== group.id && !parent.has(member)) parent.set(member, group.id)
     const groupIds = new Set(subgraphs.map((group) => group.id))
+    const architecture = isArchitecture([...db.getVertices().values()])
     const nodes: DiagramNode[] = []
     for (const group of subgraphs) {
         const at = parent.get(group.id)
@@ -199,12 +263,17 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
         if (groupIds.has(vertex.id)) continue
         const at = parent.get(vertex.id)
         const tone = toneOf(vertex.id, vertex.classes ?? [], tones)
-        const shape = FLOW_SHAPES[vertex.type ?? ""] ?? "box"
+        const writtenShape = FLOW_SHAPES[vertex.type ?? ""] ?? "box"
+        const icon = typeof vertex.icon === "string" && vertex.icon.trim() !== "" ? vertex.icon.trim() : undefined
+        // In an architecture drawing each node is one of five kinds, drawn in the kind's shape (a `redis` written as a pill is still a cylinder).
+        const kind = architecture ? archKindOf(writtenShape, icon, vertex.classes ?? []) : undefined
+        const shape = kind === undefined ? writtenShape : (KIND_SHAPES[kind] ?? writtenShape)
         // A bar keeps the words its source wrote ("Song song"), never the id Mermaid falls back to.
         const written = shape === "bar" && (vertex.text === undefined || vertex.text === vertex.id) ? "" : plainLabel(vertex.text ?? vertex.id)
-        // A service's port stands apart from its name; a decision, a bar and a circle keep their words whole.
-        const { label, port } = shape === "box" || shape === "round" || shape === "stadium" || shape === "cylinder" ? splitPort(written) : { label: written }
-        const icon = typeof vertex.icon === "string" && vertex.icon.trim() !== "" ? vertex.icon.trim() : undefined
+        // An architecture node is its name over a muted line (its port, its tables); elsewhere a service's port stands apart from its name, and a
+        // decision, a bar and a circle keep their words whole.
+        const { label, port, detail }: { readonly label: string; readonly port?: string; readonly detail?: string } =
+            kind !== undefined ? splitArchLabel(written) : shape === "box" || shape === "round" || shape === "stadium" || shape === "cylinder" ? splitPort(written) : { label: written }
         const edit = (vertex.classes ?? []).includes(EDIT_CLASS) && shape !== "bar"
         const tooltip = plainLabel(db.getTooltip?.(vertex.id))
         nodes.push({
@@ -217,6 +286,8 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
             ...(port === undefined ? {} : { port }),
             ...(edit ? { edit: true as const } : {}),
             ...(tooltip === "" ? {} : { description: tooltip }),
+            ...(kind === undefined ? {} : { kind }),
+            ...(detail === undefined ? {} : { detail }),
         })
     }
     const links = db.getEdges().map((edge, index): DiagramEdge => {
@@ -230,16 +301,39 @@ export const flowchartGraph = (db: FlowchartDb, tones?: Readonly<Record<string, 
 }
 
 /**
- * What a flowchart's edge carries: a `call` (a plain or thick link, and a loop's back edge, which returns along the flow), drawn solid in the accent; or
- * `data` (a dotted link, `-.->`), drawn dashed and neutral. A state diagram's transitions are neither: they keep the quiet line.
+ * What a flowchart's edge carries (owner 2026-11-28, three kinds, each with its arrowhead):
+ *
+ * - `call`, an HTTP request (a plain or thick link, and a loop's back edge, which returns along the flow): a solid line in the accent, a filled arrowhead,
+ *   its words the request (`1 POST /emails`: its order, method and path);
+ * - `message`, an async message through a queue (any link into or out of a `queue` node, solid or dotted): a dashed line, an open arrowhead, its words
+ *   the event's name (`order.paid`);
+ * - `data`, a service reaching its own database or cache (a dotted link, `-.->` or `-.-`, or any link into a `database` or `cache` node): a dotted
+ *   neutral line, a small arrowhead, no words.
+ *
+ * Without the graph the node kinds are unknown, so only the stroke is read (a dotted link is data, any other a call). A state diagram's transitions are
+ * none of them: they keep the quiet line.
  */
-export type EdgeKind = "call" | "data"
+export type EdgeKind = "call" | "data" | "message"
 
-export const edgeKind = (edge: DiagramEdge): EdgeKind => (edge.dashed && edge.back !== true ? "data" : "call")
+/** The edge kinds in the legend's order. */
+export const EDGE_KINDS: readonly EdgeKind[] = ["call", "message", "data"]
 
-/** Whether a drawing needs the calls-and-data legend: a flowchart with at least one edge of each kind. */
-export const needsKindLegend = (graph: DiagramGraph): boolean =>
-    graph.kind === "flowchart" && graph.edges.some((edge) => edgeKind(edge) === "call") && graph.edges.some((edge) => edgeKind(edge) === "data")
+export const edgeKind = (edge: DiagramEdge, graph?: DiagramGraph): EdgeKind => {
+    if (edge.back === true) return "call"
+    const kindOf = (id: string): ArchKind | undefined => graph?.nodes.find((node) => node.id === id)?.kind
+    const from = kindOf(edge.source)
+    const to = kindOf(edge.target)
+    if (from === "queue" || to === "queue") return "message"
+    if (edge.dashed) return "data"
+    return to === "database" || to === "cache" ? "data" : "call"
+}
+
+/** The edge kinds a flowchart draws, in the legend's order (call, message, data); none for a state diagram. */
+export const kindsDrawn = (graph: DiagramGraph): readonly EdgeKind[] =>
+    graph.kind !== "flowchart" ? [] : EDGE_KINDS.filter((kind) => graph.edges.some((edge) => edgeKind(edge, graph) === kind))
+
+/** Whether a drawing needs the edge-kind legend: a flowchart with edges of at least two kinds. */
+export const needsKindLegend = (graph: DiagramGraph): boolean => kindsDrawn(graph).length >= 2
 
 /**
  * The hover focus of a node: the node, the nodes one edge away and the edges between them. Everything else dims while the reader points at or focuses the
@@ -412,8 +506,9 @@ export const describeDiagram = (diagram: DiagramGraph | SequenceModel, to = "to"
         if (node?.shape === "end") return "end"
         return label.get(id) || id
     }
-    // A node is named with its port, its edit mark and its description, so the text version says all the drawing shows.
-    const said = (node: DiagramNode): string => `${node.label}${node.port === undefined ? "" : ` :${node.port}`}${node.edit === true ? ` (${edits})` : ""}${node.description === undefined ? "" : `: ${node.description}`}`
+    // A node is named with its port, its detail, its edit mark and its brief, so the text version says all the drawing shows.
+    const said = (node: DiagramNode): string =>
+        `${node.label}${node.port === undefined ? "" : ` :${node.port}`}${node.detail === undefined ? "" : ` (${node.detail.replace(/\n/gu, ", ")})`}${node.edit === true ? ` (${edits})` : ""}${node.description === undefined ? "" : `: ${node.description}`}`
     const items = diagram.nodes.filter((node) => node.label !== "").map((node) => (node.parentId === undefined ? said(node) : `${said(node)} (${name(node.parentId)})`))
     const links = diagram.edges.map((edge) => `${name(edge.source)} ${to} ${name(edge.target)}${edge.label === undefined ? "" : `: ${edge.label}`}`)
     return { items, links }

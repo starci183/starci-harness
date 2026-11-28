@@ -46,20 +46,41 @@ export const portWidth = (port: string, textWidth: TextWidth): number => Math.ce
 /** The width the extras of a node take beside its words, each with its gap: the logo chip before them, the port pill and the edit chip after. */
 export const extrasWidth = (node: DiagramNode, textWidth: TextWidth): number => {
     if (node.shape === "container" || node.shape === "bar" || node.shape === "start" || node.shape === "end") return 0
-    const items = [node.icon === undefined ? 0 : ICON_SIZE, node.port === undefined ? 0 : portWidth(node.port, textWidth), node.edit === true ? EDIT_SIZE : 0].filter((width) => width > 0)
+    // An architecture node's port is on its muted second line (`metaLines`), not a pill beside the name.
+    const pill = node.port === undefined || node.kind !== undefined ? 0 : portWidth(node.port, textWidth)
+    const items = [node.icon === undefined ? 0 : ICON_SIZE, pill, node.edit === true ? EDIT_SIZE : 0].filter((width) => width > 0)
     if (items.length === 0) return 0
     // One gap between every two parts of the row: the words count as a part when there are any.
     const gaps = node.label === "" ? items.length - 1 : items.length
     return items.reduce((sum, width) => sum + width, 0) + gaps * ICON_GAP
 }
 
+/** A muted line of an architecture node: the caption size (13 of the label's 14) at its line height, and the gap above it. */
+const META_LINE = 16
+const META_SCALE = 0.93
+/** How much wider than its words a queue's tube is: its two end caps (`TUBE_CAP` of MermaidDiagram.tsx) and the room inside them. */
+const TUBE_ROOM = 64
+/** The height of a cache's "cache" tag line over its name. */
+const TAG_LINE = 18
+
+/**
+ * The muted lines under an architecture node's name (owner 2026-11-28): its port first (`:4001`), then its detail (a database's tables, a service's
+ * files), one line each; none for a node of no kind. The canvas draws the same lines (`ShapeNode`).
+ */
+export const metaLines = (node: DiagramNode): readonly string[] =>
+    node.kind === undefined ? [] : [...(node.port === undefined ? [] : [`:${node.port}`]), ...(node.detail === undefined ? [] : node.detail.split("\n"))]
+
 /** The box a node needs for its words in its shape, and for its logo chip, port pill and edit chip beside them when it has them. */
 export const nodeSize = (node: DiagramNode, direction: "LR" | "TB", textWidth: TextWidth, exits = 0): { readonly width: number; readonly height: number } => {
     const extras = extrasWidth(node, textWidth)
     // The words wrap at the box's own measure; the extras widen the box beside them instead of squeezing the words.
     const words = wrap(node.label, BOX_MAX - 32, textWidth)
-    const wide = Math.max(0, ...words.map(textWidth)) + extras
-    const tall = Math.max(words.length * LINE, extras > 0 ? CHIP_ROW - 22 : 0)
+    // An architecture node's muted lines (port, tables) stand under its name row, in the caption size; a cache's tag stands over it.
+    const meta = metaLines(node).flatMap((line) => wrap(line, BOX_MAX - 32, textWidth))
+    const metaWide = Math.max(0, ...meta.map((line) => Math.ceil(textWidth(line) * META_SCALE)))
+    const wide = Math.max(Math.max(0, ...words.map(textWidth)) + extras, metaWide)
+    const tall = Math.max(words.length * LINE, extras > 0 ? CHIP_ROW - 22 : 0) + meta.length * META_LINE + (node.kind === "cache" ? TAG_LINE : 0)
+    if (node.shape === "tube") return { width: Math.max(136, wide + TUBE_ROOM), height: Math.max(56, tall + 24) }
     switch (node.shape) {
         case "start":
         case "end":
@@ -434,7 +455,7 @@ export const layoutDiagram = async (graph: DiagramGraph, textWidth: TextWidth, m
     }
     // A step three or more edges enter (or leave) is wide enough across the flow for each its own point, END_SPREAD apart (separateEnds).
     for (const node of graph.nodes) {
-        if (node.shape !== "box" && node.shape !== "round" && node.shape !== "stadium" && node.shape !== "cylinder") continue
+        if (node.shape !== "box" && node.shape !== "round" && node.shape !== "stadium" && node.shape !== "cylinder" && node.shape !== "tube") continue
         const ins = graph.edges.filter((edge) => edge.target === node.id && edge.source !== node.id && edge.back !== true).length
         const outs = graph.edges.filter((edge) => edge.source === node.id && edge.target !== node.id && edge.back !== true).length
         const size = natural.get(node.id)

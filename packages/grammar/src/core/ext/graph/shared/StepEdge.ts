@@ -17,6 +17,18 @@ const ARROW = 10
  * into the V and stops that far short of the border too.
  */
 const ARROW_INSET = 0.75
+/** The small open V of a store link (`head: "small"`), 7px long and 7px across. */
+const ARROW_SMALL = 7
+
+/**
+ * The arrowhead's path in its own frame (the point at 0,0, pointing along +x): the open V, a closed triangle for `filled` (the stylesheet fills it with the
+ * line's colour), or a smaller V for `small`.
+ */
+const arrowPath = (head: "open" | "filled" | "small" | undefined): string => {
+    const size = head === "small" ? ARROW_SMALL : ARROW
+    const v = `M${String(-size)} ${String(-size / 2)}L0 0L${String(-size)} ${String(size / 2)}`
+    return head === "filled" ? `${v}Z` : v
+}
 /** The junction dot where an edge meets another edge's line. */
 const JOIN = 3
 /** How far a back edge runs below the line of its ends before it turns back, and how far it leaves its source first. */
@@ -109,7 +121,7 @@ export const StepEdge = ({ id, source, target, sourceX, sourceY, targetX, target
             : joinEnd
             ? h("circle", { className: "starci-graph-edge-join", cx: end[0], cy: end[1], r: JOIN })
             : // The V's frame turns with the edge, so the stylesheet's step back (half the stroke) runs along it.
-              h("g", { transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }, h("path", { className: "starci-graph-edge-arrow", d: `M${String(-ARROW)} ${String(-ARROW / 2)}L0 0L${String(-ARROW)} ${String(ARROW / 2)}` })),
+              h("g", { transform: `translate(${String(end[0])} ${String(end[1])}) rotate(${String((Math.atan2(dir[1], dir[0]) * 180) / Math.PI)})` }, h("path", { className: "starci-graph-edge-arrow", "data-head": data?.head, d: arrowPath(data?.head) })),
         given !== undefined && data?.joinStart === true ? h("circle", { className: "starci-graph-edge-join", cx: start[0], cy: start[1], r: JOIN }) : null,
         pill === undefined
             ? null

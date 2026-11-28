@@ -71,6 +71,11 @@ export interface StepEdgeData extends Record<string, unknown> {
     bareEnd?: boolean
     /** What a flow edge means (its look). */
     kind?: GraphEdgeKind
+    /**
+     * The arrowhead's look (a Mermaid architecture edge's kind, owner 2026-11-28): `open` the open V every graph draws (the default), `filled` a solid
+     * triangle (an HTTP call), `small` a smaller open V (a service reaching its own store).
+     */
+    head?: "open" | "filled" | "small"
 }
 
 const SIDES: Readonly<Record<GraphDirection, { readonly source: Position; readonly target: Position }>> = {
