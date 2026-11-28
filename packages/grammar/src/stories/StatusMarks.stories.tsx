@@ -328,3 +328,46 @@ export const StepTiles: Story = {
     </G.Stack>
   ),
 };
+
+/*
+ * The item tile (0.64.9, owner 2026-11-28 "icon tile ở header thì full size, ở nội dung list thì 24"): a tile that leads a header keeps its 40
+ * or 48; a tile that leads one line of a list's content is the round 24. Not run at 24 is the empty circle alone.
+ */
+export const ItemTiles: Story = {
+  render: () => (
+    <G.Stack gap="section">
+      {(['light', 'dark'] as const).map((theme) => (
+        <div key={theme} className={theme} data-theme={theme} style={{ background: 'var(--background)', color: 'var(--foreground)', padding: 16 }}>
+          <Matrix maxWidth={880}>
+            <State label={`${theme}: a checklist (what a case must hold): done, error, not run, skipped, running, waiting`} direction="column">
+              {(['done', 'error', 'notRun', 'skipped', 'running', 'waiting'] as const).map((state) => (
+                <G.Cluster key={state} gap="inline" align="center" wrap={false}>
+                  <G.IconTile state={state} size="item" />
+                  <G.Text>{`Order chuyển sang confirmed (${state})`}</G.Text>
+                </G.Cluster>
+              ))}
+            </State>
+            <State label={`${theme}: numbered lines (what a lesson teaches): 1, 2, 3 accent, 12 neutral`} direction="column">
+              {[1, 2, 3, 12].map((step) => (
+                <G.Cluster key={step} gap="inline" align="center" wrap={false}>
+                  <G.IconTile step={step} tone={step === 12 ? 'neutral' : 'accent'} size="item" />
+                  <G.Text>{`Điều học được số ${String(step)}`}</G.Text>
+                </G.Cluster>
+              ))}
+            </State>
+            <State label={`${theme}: header 40 beside list 24`} direction="column">
+              <G.Cluster gap="row" align="center" wrap={false}>
+                <G.IconTile step={2} tone="accent" />
+                <G.Text role="label.item">Điều kiện</G.Text>
+              </G.Cluster>
+              <G.Cluster gap="inline" align="center" wrap={false}>
+                <G.IconTile state="done" size="item" />
+                <G.Text>Wallet bị trừ đúng 1.200.000đ</G.Text>
+              </G.Cluster>
+            </State>
+          </Matrix>
+        </div>
+      ))}
+    </G.Stack>
+  ),
+};
