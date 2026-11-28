@@ -2,6 +2,11 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 6.17.22 - 2026-11-28
+
+- Changed (h-ssh-gate-docker, `stack/ssh-gate.mts`, `stack/backup-ops.mts`, `stack/manager-backup.mts`): a CI key behind the forced-command gate (`VPS_GATE: "1"`, STARCI_SSH_GATE=1) deploys a whole release, migrations included. The edge preflight (`edge-alias.mts` `edgeCollisions`), `stack jobs` and `stack task` run docker through the docker CLI of the run (DOCKER_HOST=ssh://<alias>, the dial-stdio the gate admits), never a shell over ssh, so a gated deploy no longer stops at STACK_DEPLOY_EDGE_UNREADABLE; `jobs` and `task` now open the docker transport like `deploy`. The manager backup of a `database.target: stack` database is four named operations of the gate, `db-dump`, `db-receipt`, `db-measure` and `db-decrypt`, each confined to `<backup dir>/<project>-<stamp>.tar.age` and its receipt and each argument of a closed alphabet (`backup`, `container`, `ident`, `recipients`); the owner's ungated key runs the same bodies under `sh -c`. The receipt now travels as one base64 line. Install the new gate on every gated manager: `starci app stack ci-key --env <env> --print-gate` (the text changed).
+- Added (h-ssh-gate-docker, `src/stack-ssh-gate-deploy.spec.mts`): two deploys (the first start, then expand and contract migrations with the manager backup), a rollback, verify, seed, jobs and task run under STARCI_SSH_GATE=1; every command they send over ssh goes through the generated gate under sh and is admitted, and every docker command ran on the runner.
+
 ## 6.17.21 - 2026-11-28
 
 - Fixed (h-deploy-secrets, `sync/stack-images.mts`, R251 `rules/deploy-workflow.mts` `stackDeployCaller`): every `deploy-<env>` job of ci.yml calls stack-deploy.yml with `secrets: inherit`, and the images call does whenever a sealed image job exists. A called workflow reads only the secrets its caller passes, an Environment secret of its bound job included, so the deploy job of a release read `SOPS_AGE_KEY` empty (`SOPS_AGE_KEY is explicitly empty or invalid`) though the production Environment held it. The bound job still reads its Environment's key, which wins over the repository's. R251 now requires the inheritance on a stack-deploy.yml call (`calls stack-deploy.yml without secrets: inherit`) and refuses it on any other. Run `starci app sync`.
