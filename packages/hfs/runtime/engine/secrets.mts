@@ -98,6 +98,18 @@ export function secretEnv(verifiedRuntimeRoot: unknown,env: NodeJS.ProcessEnv=pr
   return resolved;
 }
 
+/**
+ * The one age identity an inline SOPS_AGE_KEY holds, as the bare `AGE-SECRET-KEY-1...` line, or null. The value may be the bare line or a
+ * whole identity document as age-keygen writes it (keys.txt: `# created:` and `# public key:` comments, blank lines, CRLF or LF), the form
+ * a CI secret is often pasted in; sops and age read both. Any other line, or a second identity, is null. The line is the only form the
+ * selected invocation hands to age and sops, so a pasted keys.txt opens a member as the bare line does.
+ */
+export function inlineAgeIdentity(value: unknown): string | null{
+  if(typeof value!=='string')return null;
+  const lines=value.split(/\r?\n/u).map(line=>line.trim()).filter(line=>line!==''&&!line.startsWith('#'));
+  return lines.length===1&&/^AGE-SECRET-KEY-1[0-9A-Z]+$/u.test(lines[0] as string)?lines[0] as string:null;
+}
+
 /** The outcome of selecting a SOPS age identity: refused, an identity file, or the public recipient only. */
 export interface SopsIdentity {
   mode: 'refused' | 'file' | 'public-recipient';
@@ -115,6 +127,8 @@ const sopsInlineIdentity=(env: Env,name: string): SopsIdentity=>{
   const inline=env[name];
   if(!credentialPresent(inline))return sopsRefuse('disabled-inline','SOPS_AGE_KEY is explicitly empty or invalid');
   remember(inline.trim());
+  const line=inlineAgeIdentity(inline);
+  if(line!==null)remember(line);
   return {...sopsRefuse('inline-context-unqualified','the supplied SOPS_AGE_KEY awaits an owned selected-identity isolation capability; no SOPS process was launched'),inlineName:name};
 };
 const sopsFileIdentity=(env: Env,file: unknown): SopsIdentity=>{

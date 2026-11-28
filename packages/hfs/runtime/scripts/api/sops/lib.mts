@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
-import { readSecretBytes, CREDENTIAL_FILE_MAX_BYTES, sopsIdentityEnv, type SopsIdentity } from '../../../engine/secrets.mjs';
+import { readSecretBytes, CREDENTIAL_FILE_MAX_BYTES, inlineAgeIdentity, sopsIdentityEnv, type SopsIdentity } from '../../../engine/secrets.mjs';
 import { selectedAgeEnvelope } from '../../lib/sops-envelope.mjs';
 import { errorCode } from '../fs/lib.mjs';
 import { readPath } from '../../lib/env.mjs';
@@ -154,7 +154,8 @@ const CONTROLLED_ENV = new Set(['SOPS_AGE_KEY', 'SOPS_AGE_KEY_FILE', 'SOPS_AGE_K
 function isolatedSopsEnv(env: Env, inlineName: string | null = 'SOPS_AGE_KEY'): Env {
   const out = Object.fromEntries(Object.entries(env).filter(([name]) => !CONTROLLED_ENV.has(name.toUpperCase())));
   out.HOME = ''; out.USERPROFILE = ''; out.APPDATA = ''; out.XDG_CONFIG_HOME = '';
-  if (inlineName !== null) out.SOPS_AGE_KEY = env[inlineName];
+  // The child reads the bare identity line (inlineAgeIdentity) whether the value was that line or a pasted keys.txt.
+  if (inlineName !== null) out.SOPS_AGE_KEY = inlineAgeIdentity(env[inlineName]) ?? env[inlineName];
   return out;
 }
 
@@ -216,8 +217,8 @@ const selectedAdmission = (selection: IdentitySelection, inlineName: string, spe
   if (!spec || !isFormat(spec.inputType) || !isFormat(spec.outputType)) return fail();
   if (!invocation || typeof invocation.runProgram !== 'function' || typeof invocation.resolveRealTool !== 'function') return fail();
   if (!['win32', 'linux', 'darwin'].includes(process.platform)) return held('unsupported-platform');
-  const key = env[inlineName];
-  if (typeof key !== 'string' || !/^AGE-SECRET-KEY-1[0-9A-Z]+$/.test(key.trim())) return fail();
+  const key = inlineAgeIdentity(env[inlineName]);
+  if (key === null) return held('invalid-inline', 'SOPS_AGE_KEY holds no single AGE-SECRET-KEY-1 identity line (the bare line, or one identity document as age-keygen writes it)');
   return { key, spec: { ...spec, inputType: spec.inputType, outputType: spec.outputType }, invocation };
 };
 
@@ -291,8 +292,8 @@ const publicAgeCapture = (result: Capture): result is BufferCapture => captured(
   && result.stderr.length <= CREDENTIAL_FILE_MAX_BYTES;
 
 const deriveSelectedAgeRecipient = (state: AgeState, { env, cwd, invocation }: PublicAgeRequest, selection: IdentitySelection): PublicAgeOutcome => {
-  const key = env[selection.inlineName ?? ''];
-  if (typeof key !== 'string' || !/^AGE-SECRET-KEY-1[0-9A-Z]+$/.test(key.trim())) return publicAgeFailure('invalid-inline');
+  const key = inlineAgeIdentity(env[selection.inlineName ?? '']);
+  if (key === null) return publicAgeFailure('invalid-inline');
   const age = invocation.resolveRealTool('age-keygen', { env });
   if (!nativeFile(age)) return publicAgeFailure('native-tool-unavailable');
   const publicEnv = isolatedSopsEnv(env, null);
@@ -387,8 +388,7 @@ export function runSelectedUpdateKeys(bin: string | null, { file, config, inputT
   if (selection?.error?.identityRefusal !== 'inline-context-unqualified' || typeof selection.inlineName !== 'string' || !env || typeof env !== 'object') return held('selected-context-missing');
   if (!invocation || typeof invocation.runProgram !== 'function' || typeof invocation.resolveRealTool !== 'function') return held('selected-context-missing');
   if (!['yaml', 'dotenv', 'json'].includes(inputType) || !path.isAbsolute(file ?? '') || !path.isAbsolute(config ?? '')) return held('invalid-request');
-  const key = env[selection.inlineName ?? ''];
-  if (typeof key !== 'string' || !/^AGE-SECRET-KEY-1[0-9A-Z]+$/.test(key.trim())) return held('invalid-inline');
+  if (inlineAgeIdentity(env[selection.inlineName ?? '']) === null) return held('invalid-inline');
   const captures: Capture[] = [];
   try {
     const exe = bin ?? resolveSops(env), age = invocation.resolveRealTool('age-keygen', { env });

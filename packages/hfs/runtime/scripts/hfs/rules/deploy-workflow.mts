@@ -4,7 +4,8 @@
 // ci.yml starts on a push of main, the release candidates and the branches the stack declaration gives a branch profile (readBranchProfiles), nothing else.
 // An environment declared deploy.custody ci-key (a private repository without Environments) is the one unbound read of SOPS_AGE_KEY: stack-deploy.yml
 // alone (and images.yml's sealed job), behind the release-tag steps, may leave that name without an environment and read the repository's CI key
-// (unboundFindings); ci.yml passes it to stack-deploy.yml by `secrets: inherit` (ciKeyCaller).
+// (unboundFindings). Every deployment caller of ci.yml passes its secrets to stack-deploy.yml by `secrets: inherit` (stackDeployCaller): GitHub hands a
+// called workflow no secret the caller does not pass, an Environment secret of the called job included, so without it SOPS_AGE_KEY reads empty.
 import { parseWorkflow } from '../runtime-rules/workflow-source.mjs';
 import { found } from './read.mjs';
 import { appWorkflowFindings } from './app-workflow-findings.mjs';
@@ -193,6 +194,7 @@ function callerFindings(name: string, job: Parsed, doc: Parsed, refuse: Parsed) 
   const environment = record(job.with) ? job.with.environment : undefined;
   if (job.environment !== undefined) findings.push(refuse(DEPLOY, `job ${name} calls a reusable workflow, which cannot bind an environment itself; pass the name as with.environment and let the called job bind it`));
   if (!nonempty(environment)) findings.push(refuse(DEPLOY, `job ${name} must pass with.environment: the GitHub environment the called deploy job binds`));
+  if (job.uses === STACK_DEPLOY && job.secrets !== 'inherit') findings.push(refuse(DEPLOY, `job ${name} calls stack-deploy.yml without \`secrets: inherit\`: a called workflow reads only the secrets its caller passes, an Environment secret included, so its SOPS_AGE_KEY would be empty (run starci app sync)`));
   if (!validPermissions(job.permissions ?? doc.permissions)) findings.push(refuse(DEPLOY, `job ${name} must declare permissions at job or workflow scope`));
   if (!validConcurrency(job.concurrency ?? doc.concurrency)) findings.push(refuse(DEPLOY, `job ${name} must declare concurrency at job or workflow scope`));
   return findings;
@@ -255,10 +257,13 @@ function unboundFindings(name: string, job: Parsed, doc: Parsed, file: string, c
 }
 
 /**
- * A deployment caller of ci.yml that hands a ci-key environment to stack-deploy.yml passes the repository's secrets on (`secrets: inherit`), the only
- * way a called workflow whose job binds no Environment reads the repository's SOPS_AGE_KEY; every other inheritance stays refused.
+ * A deployment caller of ci.yml that hands an environment to stack-deploy.yml passes its secrets on (`secrets: inherit`). A called workflow reads only
+ * the secrets its caller passes, and that holds for an Environment secret too: without the inheritance the called job, bound to its Environment,
+ * reads SOPS_AGE_KEY empty. Bound, the Environment's SOPS_AGE_KEY wins over the repository's; a ci-key environment (no Environment) reads the
+ * repository's CI key the same way. Every other inheritance stays refused.
  */
-const ciKeyCaller = (job: Parsed, ciKey: ReadonlySet<string>) => job.uses === './.github/workflows/stack-deploy.yml' && job.secrets === 'inherit' && record(job.with) && ciKey.has(String(job.with.environment));
+const STACK_DEPLOY = './.github/workflows/stack-deploy.yml';
+const stackDeployCaller = (job: Parsed) => job.uses === STACK_DEPLOY && job.secrets === 'inherit' && record(job.with) && nonempty(job.with.environment);
 
 function deploymentJobFindings(name: string, job: Parsed, doc: Parsed, refuse: Parsed, file: string, ciKey: ReadonlySet<string>) {
   if (localCall(job)) return callerFindings(name, job, doc, refuse);
@@ -299,7 +304,7 @@ function deploymentFindings(doc: Parsed, file: string, refuse: Parsed, ciKey: Re
   if (!deployment.length) findings.push(refuse(DEPLOY, 'the deploy workflow must declare a deployment job'));
   for (const [name, job] of deployment) findings.push(...deploymentJobFindings(name, job, doc, refuse, file, ciKey));
   // The secrets and dotenv writes are judged where the deploy runs: the workflow-level env and the deployment jobs, not a check job beside them (the Sonar token of ci.yml).
-  const judged = { env: doc.env, jobs: Object.fromEntries(deployment.map(([name, job]) => [name, ciKeyCaller(job, ciKey) ? { ...job, secrets: undefined } : job])) };
+  const judged = { env: doc.env, jobs: Object.fromEntries(deployment.map(([name, job]) => [name, stackDeployCaller(job) ? { ...job, secrets: undefined } : job])) };
   for (const problem of secretProblems(judged)) findings.push(refuse(DEPLOY, problem));
   if (writesDotenv(judged)) findings.push(refuse(DEPLOY, 'deploy workflows must never write dotenv files or use env_file blobs; materialize sealed custody'));
   return findings;

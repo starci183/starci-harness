@@ -300,7 +300,7 @@ const CI_FILE = '.github/workflows/ci.yml';
 const caller = (): Doc => ({
   needs: ['plan', 'verdict'], permissions: { contents: 'read', packages: 'read', actions: 'read' },
   concurrency: { group: 'deploy-production', 'cancel-in-progress': false },
-  uses: './.github/workflows/stack-deploy.yml', with: { environment: 'production', operation: 'deploy' },
+  uses: './.github/workflows/stack-deploy.yml', secrets: 'inherit', with: { environment: 'production', operation: 'deploy' },
 });
 const pipeline = (): Doc => ({
   on: { push: { tags: ['v*'], branches: ['main', 'release/candidate-*'] }, pull_request: { branches: ['main'] }, workflow_dispatch: {} },
@@ -320,7 +320,9 @@ for (const edition of ['lite'] as const) {
       ['no environment to pass', (doc) => { delete doc.jobs['deploy-production'].with.environment; }],
       ['permissions', (doc) => { delete doc.jobs['deploy-production'].permissions; delete doc.permissions; }],
       ['concurrency', (doc) => { delete doc.jobs['deploy-production'].concurrency; }],
-      ['inherited secrets', (doc) => { doc.jobs['deploy-production'].secrets = 'inherit'; }],
+      // A called workflow reads only the secrets its caller passes, an Environment secret of its bound job included.
+      ['no inherited secrets on the stack-deploy.yml call', (doc) => { delete doc.jobs['deploy-production'].secrets; }],
+      ['inherited secrets on another call', (doc) => { doc.jobs['deploy-production'].uses = './.github/workflows/other-deploy.yml'; }],
       ['a deploy secret outside the allowlist', (doc) => { doc.jobs['deploy-production'].with.token = reference('DEPLOY_TOKEN'); }],
       ['a deploy step beside the call', (doc) => { doc.jobs['deploy-staging'] = { 'runs-on': 'ubuntu-latest', steps: [{ run: 'npx --no-install starci app stack deploy --env staging --execute' }] }; }],
     ];
