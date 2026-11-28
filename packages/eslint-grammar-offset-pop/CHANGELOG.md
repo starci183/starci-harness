@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.64.1 - 2026-11-28
+
+- Changed: peers @starci/eslint-grammar-core 0.64.1 (the `starci-grammar/type-nesting` rule), so the family installs together; no rule of its own changed.
+
 ## 0.64.0 - 2026-11-26
 
 - Versioned with @starci/grammar 0.64 (h-grammar-flowgraph-midpoint): the family minor moved with the FlowGraph spine layout (a centred spine, midpoint ports, edge kinds, merge points and bars, the step drawer); no rule changed.
