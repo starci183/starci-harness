@@ -1,12 +1,18 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { withRegionLoading } from "../../regionScope.js"
-import type { NoChildren } from "../../tier.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { TablerQuote } from "../../leaf/Icon/tabler.js"
 
-export type QuoteProps = NoChildren & {
-    /** The quoted words. Plain text keeps its line breaks. Ignored (and optional) while `isLoading`. */
+export type QuoteProps = {
+    /**
+     * The quoted words as inline content (0.64.11): a sentence that holds `Code`, strong words or a `Link`, drawn in the words element
+     * exactly where `text` stands, so a quote whose words name code looks the same as a plain one. Inline content only, never a block
+     * (a list, a paragraph, a card). When both are given, `children` wins. Ignored while `isLoading`.
+     */
+    readonly children?: ReactNode
+    /** The quoted words as plain text (kept for every caller that has only words). Plain text keeps its line breaks. Ignored (and optional) while `isLoading`. */
     readonly text?: string
     /** A short word naming where the words come from, e.g. "Brain", "Chat", "Template". Drawn above the words. */
     readonly source?: string
@@ -30,7 +36,7 @@ export type QuoteProps = NoChildren & {
  * drawer without nesting a surface in a surface. Use it to show what was said or stored, never an outcome (that is `Alert`).
  * Contract: INSET-NESTED by `--grammar-inset-nested`, STATE-8 by `isLoading`.
  */
-const QuoteInner = ({ text, source, byline, variant = "block", isLoading = false }: QuoteProps) => {
+const QuoteInner = ({ children, text, source, byline, variant = "block", isLoading = false }: QuoteProps) => {
     if (isLoading) {
         return (
             <blockquote
@@ -58,7 +64,7 @@ const QuoteInner = ({ text, source, byline, variant = "block", isLoading = false
             {/* The block opens with the quote mark (owner 2026-11-28 "có icon quote"); decorative, the blockquote already says it is a quote. */}
             {variant === "block" ? <TablerQuote className="starci-core-quote-mark" aria-hidden /> : null}
             {source == null ? null : <span className="starci-core-quote-source">{source}</span>}
-            <span className="starci-core-quote-words">{text}</span>
+            <span className="starci-core-quote-words">{children ?? text}</span>
             {byline == null || variant === "line" ? null : <span className="starci-core-quote-byline">{byline}</span>}
         </blockquote>
     )

@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.64.11 - 2026-11-28
+
+- Added (owner 2026-11-28, a quote whose words name code showed its backticks raw): `Quote` takes its words as inline `children` (a sentence holding `Code`, strong words or a `Link`), drawn in the words element exactly where `text` stands, so a quote with code names looks identical to a plain one (the block's mark, its accent rule, body-size words when nested). `text` stays for every caller with plain words; when both are given `children` wins. Inline content only, never a block. The `tier-props` rule counts `Quote` with `Text` as inline content.
+
 ## 0.64.10 - 2026-11-28
 
 - Changed (owner 2026-11-28 "sao size unhappy = stock?", law `DNA-COMMON-TYPE-NESTED-NOT-LARGER`): a `Quote variant="block"` inside a nested block (an `Accordion` or `Disclosure` body, a `Section` within a `Section`, a `SurfaceCard`) draws its words at the body role (`--grammar-type-body-size`, its line and weight) instead of `lg`, so a case's question no longer stands larger than the part heading above it; the accent rule and the quote mark keep it prominent. A block quote on the page itself keeps `lg`. CSS by context, no new prop. Docs: contexts/ui/presentation.md "Nesting and siblings" gains T4 (at most four type levels; a heading repeating the tab drops to a caption; the deepest heading and its body share the size, differ by weight) and the nested quote rule.
