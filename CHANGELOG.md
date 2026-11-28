@@ -4,6 +4,8 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.210 - 2026-11-28
 
+- Changed: the CLI requires @starci/hfs@6.17.22, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Pre-beta: this train releases @starci/hfs 6.17.22 (a CI key behind starci-ssh-gate deploys a whole release: every docker command runs on the runner through dial-stdio, and the manager backup of a stack database is the gate's named operations db-dump, db-receipt, db-measure and db-decrypt; reinstall the gate with `starci app stack ci-key --print-gate`).
 
 ## 1.1.0-alpha.209 - 2026-11-28
