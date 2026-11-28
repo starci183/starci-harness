@@ -339,6 +339,8 @@
         align-self: stretch;
         padding-inline: 0.75rem 0.25rem;
         overflow: hidden;
+        /* What is copied is a command, a key or a code: it reads in the code face (owner 2026-11-28 "code thì dùng mono font"). */
+        font-family: var(--font-mono);
         font-size: var(--grammar-text-md);
         line-height: var(--grammar-leading-md);
         white-space: pre;
