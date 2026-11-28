@@ -34,7 +34,12 @@ type IconTileShared = NoChildren & {
     readonly size?: IconTileSize
 }
 
-/** The tiles of the icon table: the list row's 40, the page head's 48 and the checklist line's round 20. */
+/**
+ * The tiles of the icon table, picked by one question (owner 2026-11-28, chốt; contexts/ui/components/identity-mark.md "IconTile sizes"): can the
+ * reader press what it leads? `head` 48: the identity beside a page title or in an empty state. `row` 40: a row pressed or selected in a list
+ * (an accordion section's head, a navigation row). `item` 20: a mark riding one line of content the reader only reads (a procedure's steps, a
+ * run's stages, conditions, what a lesson teaches, the parts of an open row). Pressable 40, read only 20, page head 48.
+ */
 export type IconTileSize = "row" | "head" | "item"
 
 /** An identity tile: the app's glyph on the tone's soft plate (an agent, a feature, a graph node's kind). */

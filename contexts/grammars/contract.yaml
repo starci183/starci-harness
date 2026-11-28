@@ -374,7 +374,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [image, initials fallback, mark, "ringed (tone danger)", "channel badge", "group cluster", "group photo", skeleton]
     grammarMayChange: [ring, fallback paint]
-    dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-ROUND, DNA-COMMON-AVATAR-CLUSTER, DNA-COMMON-AVATAR-CHANNEL-BADGE, DNA-COMMON-AGENT-NAMED, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-IMAGE-EAGER-PAINTS, DNA-COMMON-ICON-TILE-ROUND, DNA-COMMON-STATUS-MARK-40]
+    dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-ROUND, DNA-COMMON-AVATAR-CLUSTER, DNA-COMMON-AVATAR-CHANNEL-BADGE, DNA-COMMON-AGENT-NAMED, DNA-COMMON-AGENT-NAME-CHIP, DNA-COMMON-AGENT-NAME-CHIP-CAPTION, DNA-COMMON-AVATAR-ROW-GROUP, DNA-COMMON-IMAGE-EAGER-PAINTS, DNA-COMMON-ICON-TILE-ROUND, DNA-COMMON-STATUS-MARK-40, DNA-COMMON-ICON-TILE-SIZE-BY-ROLE]
     lint: [starci-grammar/avatar-row-uses-group]
 
   - id: mascot
@@ -1966,8 +1966,13 @@ mustKeep:
       owner: ui/components/identity-mark.md
     - id: DNA-COMMON-STATUS-MARK-40
       role: avatar
-      law: "A standalone status mark (B: a Timeline, Stepper or checklist marker, the all-clear, a row's leading status tile; never an Alert, whose mark is its bare 24px glyph) is the round 40px tile, never 32px; what it carries follows the reader's question: the STATUS glyph for \"how far along is it?\" (steps of one thing), the SUBJECT icon on the state's plate for \"which thing is which?\" (different things side by side), the status then trailing as an InlineStatus (owner: \"chốt 40px\")."
-      measure: { kind: box, select: '[data-grammar-mark="status"]', checks: [{ metric: width, op: "=", value: 40px }, { metric: height, op: "=", value: 40px }] }
+      law: "A standalone status mark (B: a Timeline, Stepper or checklist marker, the all-clear, a row's leading status tile; never an Alert, whose mark is its bare 24px glyph) is the round 40px tile, or the round 20px `item` tile leading a line of read-only content (DNA-COMMON-ICON-TILE-SIZE-BY-ROLE), never 32px; what it carries follows the reader's question: the STATUS glyph for \"how far along is it?\" (steps of one thing), the SUBJECT icon on the state's plate for \"which thing is which?\" (different things side by side), the status then trailing as an InlineStatus (owner: \"chốt 40px\")."
+      measure: { kind: box, select: '[data-grammar-mark="status"]:not([data-size="item"])', checks: [{ metric: width, op: "=", value: 40px }, { metric: height, op: "=", value: 40px }] }
+      owner: ui/components/identity-mark.md
+    - id: DNA-COMMON-ICON-TILE-SIZE-BY-ROLE
+      role: avatar
+      law: "An IconTile's size follows one question, can the reader press what it leads (owner 2026-11-28, chốt \"luật 48 40 20\"): 48 (`head`) beside a page title or in an empty state; 40 (`row`) leading a row pressed or selected in a list (an accordion section's head, a navigation row); 20 (`item`, round) leading one line of content the reader only reads (a procedure's steps, a run's stages, conditions, what a lesson teaches, the parts of an open row). Read-only lines are drawn as lines, never as pressable list rows; not run at 20 is the outline circle alone."
+      measure: { kind: box, select: '.starci-core-icon-tile[data-size="item"]', checks: [{ metric: width, op: "=", value: 20px }, { metric: height, op: "=", value: 20px }] }
       owner: ui/components/identity-mark.md
 
     # --- page header
