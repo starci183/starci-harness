@@ -151,9 +151,10 @@ export const installAgeSteps = (condition = ''): string[] => [
   '    echo "${AGE_SHA256}  $RUNNER_TEMP/age.tar.gz" | sha256sum -c -',
   '    mkdir -p "$RUNNER_TEMP/age-bin"',
   '    tar -xzf "$RUNNER_TEMP/age.tar.gz" -C "$RUNNER_TEMP/age-bin" --strip-components=1 age/age age/age-keygen',
+  // A GITHUB_PATH entry reaches only the LATER steps of the job, so this step proves both binaries by their absolute path.
+  '    "$RUNNER_TEMP/age-bin/age" --version',
+  '    "$RUNNER_TEMP/age-bin/age-keygen" --version',
   '    echo "$RUNNER_TEMP/age-bin" >> "$GITHUB_PATH"',
-  '    age --version',
-  '    age-keygen --version',
 ];
 
 const TAG_MATCHES_VERSION = 'node -e "const version=require(\'./package.json\').version;if(process.env.GITHUB_REF_NAME!==\'v\'+version)process.exit(1)"';
