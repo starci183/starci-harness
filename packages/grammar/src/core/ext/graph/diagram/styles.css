@@ -250,6 +250,9 @@
     border-radius: var(--grammar-radius-sm);
 }
 
+/* Outside a diagram (a tech stack row, a list's line) the logo chip is round like every mark that rides a line (owner 2026-11-28: "logo… tròn"). */
+.starci-graph-diagram-chip:not(.starci-graph-diagram .starci-graph-diagram-chip) { border-radius: var(--grammar-radius-pill); }
+
 .starci-graph-diagram-chip > :is(img, svg, picture) {
     inline-size: var(--starci-graph-diagram-chip-mark);
     block-size: var(--starci-graph-diagram-chip-mark);
