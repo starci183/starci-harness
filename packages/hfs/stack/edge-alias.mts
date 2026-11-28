@@ -6,16 +6,14 @@
 //   edgeCollisions        read-only preflight: does a short service name equal a name another container or service of that network resolves?
 //   reconcileEdgeAliases  after `docker stack deploy`: `service update --network-rm <edge>` then `--network-add name=<edge>,alias=<declared>`
 //   verifyEdgeAttachment  the service spec carries exactly the declared aliases (used by `stack verify`)
-// Docker is reached through the same seams as the neighbouring steps: ctx.spawn (the docker transport) for the deploy-time steps, and the ssh runner
-// with shell-quoted arguments for the read-only preflight.
+// Docker is reached only through ctx.spawn, the docker CLI of this invocation (DOCKER_HOST=ssh://<alias>, whose `docker system dial-stdio` is what
+// the CI key's gate admits): never as a shell command over ssh.
 import fs from 'node:fs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import type { DeployConfig } from './config.mjs';
-import { toolOutput } from './context.mjs';
+import { tool, toolOutput } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { refusal } from './errors.mjs';
-import { remoteDocker } from './remote.mjs';
-import type { Runner } from './remote.mjs';
 
 /** A service attached to an external (edge) network, with the aliases it declares. */
 export interface EdgeAttachment { service: string; network: string; aliases: string[] }
@@ -57,9 +55,12 @@ function parseJson(text: string): NetworkModel | null {
   try { return JSON.parse(text); } catch { return null; }
 }
 
-/** The names of the containers and services attached to the external network, read-only through the ssh runner (`docker network inspect`). */
-async function networkNames(run: Runner, network: string): Promise<string[]> {
-  const result = await remoteDocker(run, ['network', 'inspect', network, '--verbose', '--format', NETWORK_FORMAT]);
+type DockerCtx = Pick<StackContext, 'spawn'>;
+
+/** The names of the containers and services attached to the external network, read-only through the docker CLI (`docker network inspect`). */
+function networkNames(ctx: DockerCtx, network: string): string[] {
+  if (!SAFE_NAME.test(network)) throw refusal('STACK_DEPLOY_EDGE_NAME', `the network name ${JSON.stringify(network)} is not a plain docker name`);
+  const result = tool(ctx, 'docker', ['network', 'inspect', network, '--verbose', '--format', NETWORK_FORMAT]);
   const model = result.status === 0 ? parseJson(result.stdout) : null;
   if (model === null || typeof model !== 'object') throw refusal('STACK_DEPLOY_EDGE_UNREADABLE', `cannot read the external network ${network} (docker network inspect failed): the edge network must exist before a deploy; nothing was changed`);
   return [...Object.values(model.Containers ?? {}).map((container) => String(container.Name)), ...Object.keys(model.Services ?? {})];
@@ -70,10 +71,10 @@ async function networkNames(run: Runner, network: string): Promise<string[]> {
  * network already resolves. Returns { networks, clashes: [{ service, alias, network, holder }] }; throws STACK_DEPLOY_EDGE_UNREADABLE when a
  * network cannot be inspected. This stack's own services (`<stack>_*`) are not "others".
  */
-export async function edgeCollisions(run: Runner, config: Pick<DeployConfig, 'stack'>, bytes: string): Promise<{ networks: string[]; clashes: EdgeClash[] }> {
+export async function edgeCollisions(ctx: DockerCtx, config: Pick<DeployConfig, 'stack'>, bytes: string): Promise<{ networks: string[]; clashes: EdgeClash[] }> {
   const attachments = edgeAttachments(bytes);
   const networks = [...new Set(attachments.map((item) => item.network))];
-  const taken = await Promise.all(networks.map(async (network): Promise<[string, string[]]> => [network, (await networkNames(run, network)).filter((name) => !name.startsWith(`${config.stack}_`))]));
+  const taken = networks.map((network): [string, string[]] => [network, networkNames(ctx, network).filter((name) => !name.startsWith(`${config.stack}_`))]);
   const clashes = taken.flatMap(([network, others]) => attachments
     .filter((item) => item.network === network && others.includes(item.service))
     .map((item) => ({ service: `${config.stack}_${item.service}`, alias: item.service, network, holder: item.service })));
@@ -82,8 +83,6 @@ export async function edgeCollisions(run: Runner, config: Pick<DeployConfig, 'st
 
 /** The refusal text of one clash. */
 export const describeClash = (clash: EdgeClash): string => `service ${clash.service} would carry the implicit short-name alias ${clash.alias} on the external network ${clash.network}, which ${clash.holder} (another tenant) already resolves: rename the service or the other name; nothing was changed`;
-
-type DockerCtx = Pick<StackContext, 'spawn'>;
 
 const docker = (ctx: DockerCtx, args: string[]): string => toolOutput(ctx, 'docker', args);
 

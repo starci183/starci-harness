@@ -1,13 +1,13 @@
 // task.mts - `starci app stack task <name>`: runs ONE declared one-off command (deploy.tasks.<name>.command) inside the running task of
-// deploy.tasks.<name>.service on the manager, through the ssh runner, and relays its stdout. Which command runs is the app's declaration, never a
+// deploy.tasks.<name>.service on the manager, through the docker CLI of this invocation (DOCKER_HOST=ssh://<alias>, the transport the CI key's
+// gate admits; never a shell over ssh), and relays its stdout. Which command runs is the app's declaration, never a
 // flag: the only argument is the task name. Without --execute a dry-run line says what would run. Output is relayed as the command prints it; this
 // module never reads or prints environment values.
 import type { DeployConfig, TaskEntry } from './config.mjs';
-import { firstLine, lines as splitLines } from './context.mjs';
+import { firstLine, lines as splitLines, tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { failure, refusal } from './errors.mjs';
-import { remoteDocker, withRunner } from './remote.mjs';
-import type { ActionResult, Runner, RunnerDeps } from './remote.mjs';
+import type { ActionResult } from './remote.mjs';
 
 /** What `task` takes: the declared task name (the only operand). */
 export interface TaskOptions { name?: string | undefined; args?: string[]; execute?: boolean; sshCmd?: string | null }
@@ -20,8 +20,8 @@ function undeclared(config: DeployConfig, why: string): Error {
   return refusal('STACK_TASK_UNDECLARED', `${why}; ${listing}`);
 }
 
-function runningTask(run: Runner, service: string): string {
-  const result = remoteDocker(run, ['ps', '-q', '--filter', `label=com.docker.swarm.service.name=${service}`, '--filter', 'status=running']);
+function runningTask(ctx: Pick<StackContext, 'spawn'>, service: string): string {
+  const result = tool(ctx, 'docker', ['ps', '-q', '--filter', `label=com.docker.swarm.service.name=${service}`, '--filter', 'status=running']);
   const task = result.status === 0 ? splitLines(result.stdout)[0] : undefined;
   if (task) return task;
   const reason = result.status === 0 ? 'none is running' : firstLine(result.stderr);
@@ -29,7 +29,7 @@ function runningTask(run: Runner, service: string): string {
 }
 
 /** task: runs the declared one-off command `name`. */
-export async function runTask(ctx: StackContext, config: DeployConfig, { name, args = [], execute = false, sshCmd = null }: TaskOptions = {}, deps: RunnerDeps = {}): Promise<ActionResult> {
+export async function runTask(ctx: StackContext, config: DeployConfig, { name, args = [], execute = false }: TaskOptions = {}): Promise<ActionResult> {
   if (name === undefined || !TASK_NAME.test(String(name)) || !Object.hasOwn(config.tasks ?? {}, name)) {
     throw undeclared(config, name === undefined ? 'task takes the name of a declared task' : `no task named ${String(name).slice(0, 41)} is declared`);
   }
@@ -38,11 +38,9 @@ export async function runTask(ctx: StackContext, config: DeployConfig, { name, a
   if (!execute) {
     return { ok: true, lines: [`dry run: would run task ${name} (${declared.command.join(' ')}) in the running ${declared.service} task (add --execute)`], data: { name, status: null } };
   }
-  return withRunner(ctx, config, { sshCmd }, deps, (run, notes): ActionResult => {
-    const task = runningTask(run, `${config.stack}_${declared.service}`);
-    const result = remoteDocker(run, ['exec', task, ...declared.command]);
-    const lines = [...notes, ...splitLines(result.stdout)];
-    if (result.status !== 0) lines.push(`FAIL  task ${name} exited ${result.status}: ${firstLine(result.stderr)}`);
-    return { ok: result.status === 0, lines, data: { name, status: result.status } };
-  });
+  const task = runningTask(ctx, `${config.stack}_${declared.service}`);
+  const result = tool(ctx, 'docker', ['exec', task, ...declared.command]);
+  const lines = splitLines(result.stdout);
+  if (result.status !== 0) lines.push(`FAIL  task ${name} exited ${result.status}: ${firstLine(result.stderr)}`);
+  return { ok: result.status === 0, lines, data: { name, status: result.status } };
 }

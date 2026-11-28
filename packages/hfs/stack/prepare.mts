@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import type { DeployConfig } from './config.mjs';
 import { firstLine, lines as splitLines } from './context.mjs';
-import type { Report, StackContext } from './context.mjs';
+import type { Report, Spawn, StackContext } from './context.mjs';
 import { RELEASE_ID } from './digest.mjs';
 import { approvalMissing, refusal } from './errors.mjs';
 import { installAge } from './age-install.mjs';
@@ -299,12 +299,15 @@ export function checkPointers(run: Runner, report: Report, config: DeployConfig)
   return pointers;
 }
 
+/** The docker CLI of edge-alias.mts over this verb's ssh runner: prepare is the owner's verb and reaches docker as its other checks do. */
+const dockerOverRunner = (run: Runner): Pick<StackContext, 'spawn'> => ({ spawn: ((_command: string, args: readonly string[]) => remoteDocker(run, [...args])) as Spawn });
+
 /** The short service names of the stack source against the names the external (edge) networks already resolve (STACK_DEPLOY_ALIAS_SHARED at deploy). */
 async function checkEdgeNames(run: Runner, report: Report, config: DeployConfig): Promise<void> {
   if (!config.stackFile) return;
   let found: Awaited<ReturnType<typeof edgeCollisions>>;
   try {
-    found = await edgeCollisions(run, config, fs.readFileSync(config.stackFile, 'utf8'));
+    found = await edgeCollisions(dockerOverRunner(run), config, fs.readFileSync(config.stackFile, 'utf8'));
   } catch (error) {
     report.bad(`edge networks: ${(error as Error).message}`);
     return;

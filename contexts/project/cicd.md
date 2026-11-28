@@ -436,17 +436,22 @@ several databases, and the owner confirms it holds no data to keep; the next dep
   releases root in the log, and a missing member is refused `STACK_CONNECT_MISSING`.
 - **Least privilege, honestly.** Access to the Docker socket is root on that host, so the CI key's line in
   `authorized_keys` is `restrict` plus a forced command, the managed `starci-ssh-gate`, that admits only
-  `docker system dial-stdio` and the release store's fixed scripts. That narrows what a stolen key can run without a
+  `docker system dial-stdio` and the harness's named operations. That narrows what a stolen key can run without a
   shell; it does not make Docker access less than root, and the runbook says so. Key creation and rotation stay
-  owner-run steps. The release store's remote operations (`stack/ssh-gate.mts`) are named scripts (`pointer`, `list`, `read`, `store`, `accept`,
-  `lock-acquire`, `lock-refresh`, `lock-release`, `journal-write`, `journal-index`, `journal-read`), each with arguments of a closed alphabet. The
+  owner-run steps. Every docker command of a deploy, rollback, accept, verify, seed, post-deploy task, `stack jobs` and `stack task` (inspect,
+  ps, exec, service, stack) runs on the runner through `DOCKER_HOST=ssh://<alias>`, whose transport is that dial-stdio; nothing a deploy sends
+  over ssh is a shell command. What must run on the host itself is a named operation (`stack/ssh-gate.mts`), each with arguments of a closed
+  alphabet: the release store's (`pointer`, `list`, `read`, `store`, `accept`, `lock-acquire`, `lock-refresh`, `lock-release`, `journal-write`,
+  `journal-index`, `journal-read`) and the manager backup of a `database.target: stack` database (`stack/backup-ops.mts`: `db-dump`,
+  `db-receipt`, `db-measure`, `db-decrypt`, each confined to `<backup dir>/<project>-<stamp>.tar.age` and its receipt). The
   key's line is `restrict,command="starci-ssh-gate",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc <key>`; the gate admits
   `docker system dial-stdio` and `starci-op <name> <args>` and refuses everything else with exit 126 and no echo. The owner's key runs the same
-  bodies through `sh -c`, so the gate admits no script the store does not run. `starci app stack ci-key --env <env>` prints the owner-run steps,
-  `--print-gate` the gate text and `--public-key <file> --print-authorized-keys` the line. The gate is used only when the sealed `vps-ci` member says
-  `VPS_GATE: "1"` (`connect` then exports `STARCI_SSH_GATE=1`). Not admitted by the gate: the post-deploy tasks (`task.mts`) and the manager backup
-  and test decrypt of a `database.target: stack` database (`manager-backup.mts`) run `docker exec`-style scripts over ssh, so an environment that
-  uses them keeps an ungated key until they are named operations.
+  bodies through `sh -c`, so the gate admits no script the harness does not run. `starci app stack ci-key --env <env>` prints the owner-run steps,
+  `--print-gate` the gate text and `--public-key <file> --print-authorized-keys` the line; a harness release that changes an operation changes the
+  printed gate, which the owner installs again. The gate is used only when the sealed `vps-ci` member says `VPS_GATE: "1"` (`connect` then
+  exports `STARCI_SSH_GATE=1`). Known gap: `stack-ssh-gate-deploy.spec` proves that deploy, rollback, verify, seed, jobs and task send only
+  admitted operations in one simulated run; an owner verb (prepare, backup, server-key, ingress, standby, volume, db-upgrade) still runs its
+  scripts over the owner's ungated key, and the gate does not admit them.
 - **Public repository.** GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI private key
   never enter the repository. No secret is baked into an image (build arguments are public values), `main` is protected, the `v*` tags are
   protected and never moved or deleted, and `pull_request_target` never runs a pull request's code.
