@@ -28,11 +28,17 @@ export interface EdgeAttachment { service: string; network: string; aliases: str
 export interface EdgeClash { service: string; alias: string; network: string; holder: string }
 /** The entry of a service spec for one network. */
 interface EdgeNetwork { Target: string; Aliases?: string[] }
-/** The part of `docker network inspect --verbose` that is read. */
-interface NetworkModel { Containers?: Record<string, { Name: unknown }>; Services?: Record<string, unknown> }
+/** The two fields of `docker network inspect` that are read: the network id and the containers attached on this node. */
+interface NetworkModel { Id?: unknown; Containers?: Record<string, { Name: unknown }> | null }
+/** One line of `docker service inspect` in SERVICE_FORMAT: the service name and the networks its spec attaches. */
+interface ServiceModel { name?: unknown; networks?: { Target?: unknown }[] | null }
 
 const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/u;
-const NETWORK_FORMAT = '{{json .}}';
+// Only the fields read, never `--verbose`: the verbose answer lists every service with its VIP, and a container started by `docker run` on the
+// network reports the VIP `<nil>`, which a newer docker CLI (29) refuses to parse (`ParseAddr("<nil>")`) before any template runs. The plain answer
+// carries no VIP, so it reads the same under every CLI; the services come from their own specs (SERVICE_FORMAT) instead.
+const NETWORK_FORMAT = '{"Id":{{json .Id}},"Containers":{{json .Containers}}}';
+const SERVICE_FORMAT = '{"name":{{json .Spec.Name}},"networks":{{json .Spec.TaskTemplate.Networks}}}';
 
 // reason: a compose `networks:` value parsed from YAML, a list of names or a map of attachments
 const networkMap = (value: any): Record<string, any> => (Array.isArray(value) ? Object.fromEntries(value.map((name: unknown) => [name, null])) : value ?? {});
@@ -58,7 +64,7 @@ function safe(attachment: EdgeAttachment): void {
   }
 }
 
-function parseJson(text: string): NetworkModel | null {
+function parseJson<T>(text: string): T | null {
   try { return JSON.parse(text); } catch { return null; }
 }
 
@@ -71,13 +77,35 @@ export interface ReconcileOptions { since?: string | undefined; settleSeconds?: 
 const SETTLE_POLL_MS = 5000;
 const SETTLE_SECONDS = 600;
 
-/** The names of the containers and services attached to the external network, read-only through the docker CLI (`docker network inspect`). */
+const unreadable = (network: string, what: string): Error => refusal('STACK_DEPLOY_EDGE_UNREADABLE', `cannot read the external network ${network} (${what}): the edge network must exist before a deploy; nothing was changed`);
+
+/** The names of the services whose spec attaches the network (by its id, or by its name as an older spec may hold it), from `docker service inspect`. */
+function serviceNames(ctx: DockerCtx, network: string, id: string): string[] {
+  const listed = tool(ctx, 'docker', ['service', 'ls', '--quiet']);
+  if (listed.status !== 0) throw unreadable(network, 'docker service ls failed');
+  const ids = listed.stdout.split(/?
+/u).map((line) => line.trim()).filter(Boolean);
+  if (ids.length === 0) return [];
+  const inspected = tool(ctx, 'docker', ['service', 'inspect', '--format', SERVICE_FORMAT, ...ids]);
+  if (inspected.status !== 0) throw unreadable(network, 'docker service inspect failed');
+  return inspected.stdout.split(/?
+/u).filter((line) => line.trim() !== '').map((line) => {
+    const model = parseJson<ServiceModel>(line);
+    if (model === null || typeof model !== 'object' || typeof model.name !== 'string') throw unreadable(network, 'docker service inspect printed an unexpected line');
+    return model;
+  }).filter((model) => (model.networks ?? []).some((entry) => entry?.Target === id || entry?.Target === network)).map((model) => String(model.name));
+}
+
+/**
+ * The names of the containers and services attached to the external network, read-only through the docker CLI: the containers of this node from
+ * `docker network inspect` (NETWORK_FORMAT) and the services from their specs (serviceNames).
+ */
 function networkNames(ctx: DockerCtx, network: string): string[] {
   if (!SAFE_NAME.test(network)) throw refusal('STACK_DEPLOY_EDGE_NAME', `the network name ${JSON.stringify(network)} is not a plain docker name`);
-  const result = tool(ctx, 'docker', ['network', 'inspect', network, '--verbose', '--format', NETWORK_FORMAT]);
-  const model = result.status === 0 ? parseJson(result.stdout) : null;
-  if (model === null || typeof model !== 'object') throw refusal('STACK_DEPLOY_EDGE_UNREADABLE', `cannot read the external network ${network} (docker network inspect failed): the edge network must exist before a deploy; nothing was changed`);
-  return [...Object.values(model.Containers ?? {}).map((container) => String(container.Name)), ...Object.keys(model.Services ?? {})];
+  const result = tool(ctx, 'docker', ['network', 'inspect', network, '--format', NETWORK_FORMAT]);
+  const model = result.status === 0 ? parseJson<NetworkModel>(result.stdout) : null;
+  if (model === null || typeof model !== 'object' || typeof model.Id !== 'string') throw unreadable(network, 'docker network inspect failed');
+  return [...Object.values(model.Containers ?? {}).map((container) => String(container.Name)), ...serviceNames(ctx, network, model.Id)];
 }
 
 /**
