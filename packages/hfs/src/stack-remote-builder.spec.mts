@@ -56,7 +56,8 @@ test('without ci.imageBuilder (or with runner) images.yml and ci.yml render exac
     const setup = images.jobs[id].steps.find((step: Doc) => String(step.uses).startsWith('docker/setup-buildx-action@'));
     assert.equal(setup.if, undefined);
   }
-  assert.equal((parseWorkflow(plain['ci']!) as Doc).jobs.images.secrets, undefined);
+  // The sealed image job reads its Environment's SOPS_AGE_KEY, which a called workflow sees only by inheritance.
+  assert.equal((parseWorkflow(plain['ci']!) as Doc).jobs.images.secrets, 'inherit');
 });
 
 test('with ci.imageBuilder remote every image job tries the remote builder first and falls back to the runner, and ci.yml passes the secrets by inheritance', () => {

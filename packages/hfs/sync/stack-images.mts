@@ -371,8 +371,8 @@ function imageWorkflowVariables(stack: DeclaredStack, project: string, apps: rea
     imageWorkflowOutputs: collect ? lines(['outputs:', '  refs:', '    description: JSON object, service -> repository@sha256:digest of the images this run pushed', '    value: ${{ jobs.collect.outputs.refs }}'], '    ') : '',
     // The builder secrets reach the reusable workflow by inheritance: declaring them under workflow_call.secrets would hide the release
     // environment's own SOPS_AGE_KEY from the sealed job's expressions. A ci-key release environment's sealed job reads the repository's
-    // SOPS_AGE_KEY, which a called workflow sees only by inheritance too.
-    ciImageSecrets: (remote && jobs.length > 0) || (ciKey && sealedPlans.length > 0) ? block(['secrets: inherit'], '    ') : '',
+    // SOPS_AGE_KEY, and a sealed job bound to its Environment that Environment's SOPS_AGE_KEY: a called workflow sees either only by inheritance.
+    ciImageSecrets: (remote && jobs.length > 0) || sealedPlans.length > 0 ? block(['secrets: inherit'], '    ') : '',
     imagesCollected: collect ? 'true' : '',
   };
 }
@@ -394,8 +394,9 @@ function ciDeployVariables(stack: DeclaredStack, collected: boolean): Record<str
       '  permissions:', '    contents: read', '    packages: read', '    actions: read',
       '  concurrency:', `    group: deploy-${environment.name}`, '    cancel-in-progress: false',
       '  uses: ./.github/workflows/stack-deploy.yml',
-      // A ci-key environment binds no Environment in the called workflow, which then reads the repository's SOPS_AGE_KEY: only by inheritance.
-      ...(environment.custody === 'ci-key' ? ['  secrets: inherit'] : []),
+      // A called workflow reads only the secrets its caller passes, an Environment secret of its bound job included (R251 stackDeployCaller):
+      // without the inheritance SOPS_AGE_KEY is empty. A bound job reads its Environment's key, a ci-key one the repository's.
+      '  secrets: inherit',
       '  with:',
       `    environment: ${environment.name}`,
       '    operation: deploy',

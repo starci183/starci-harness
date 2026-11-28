@@ -10,6 +10,7 @@ import { readMap } from '../runtime/scripts/hfs/secret-store.mjs';
 import type { DeployConfig, SecretGrant, SecretSource } from './config.mjs';
 import type { StackContext } from './context.mjs';
 import { refusal } from './errors.mjs';
+import { inlineAgeIdentity } from '../runtime/engine/secrets.mjs';
 
 /** An opened sealed member: KEY -> value (a value that is not a string is never granted). */
 export type SealedMap = Record<string, unknown>;
@@ -56,7 +57,8 @@ export const configBytes = (file: string): Buffer => lfBytes(fs.readFileSync(fil
 
 /** The key that makes the version suffix of a secret name unguessable from the name alone: a local fixture key or the age identity. */
 function versionKeyOf(ctx: StackContext): string {
-  const key = ctx.env.STARCI_SECRET_VERSION_KEY || ctx.env.SOPS_AGE_KEY;
+  // A pasted keys.txt and its bare identity line are one identity, so they version the names alike (inlineAgeIdentity).
+  const key = ctx.env.STARCI_SECRET_VERSION_KEY || (inlineAgeIdentity(ctx.env.SOPS_AGE_KEY) ?? ctx.env.SOPS_AGE_KEY);
   if (!key) throw refusal('STACK_VERSION_KEY_MISSING', 'STARCI_SECRET_VERSION_KEY (a local fixture) or SOPS_AGE_KEY is needed to version the secret names');
   return key;
 }

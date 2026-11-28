@@ -267,17 +267,21 @@ for (const edition of ['lite'] as const) {
     assert.ok(sealed.steps.some((step: Doc) => step.if === '${{ inputs.release }}' && String(step.run).includes('[[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1')), 'the release-tag guard is kept');
     assert.match(JSON.stringify(sealed.steps), /secrets\.SOPS_AGE_KEY \}\}/u);
     assert.equal(parseWorkflow(rendered(edition, TWO)['images']!).jobs['image-sealed'].environment, 'production', 'environment custody keeps its binding');
-    // ci.yml hands the repository's secrets to the calls whose job binds no Environment, and only to those.
+    // ci.yml hands its secrets to every call that opens a sealed member: a called workflow reads only the secrets its caller passes, an
+    // Environment secret of a bound job included, so without the inheritance SOPS_AGE_KEY reads empty (`SOPS_AGE_KEY is explicitly empty`).
     const ci: Doc = parseWorkflow(workflows['ci']!);
-    assert.deepEqual([ci.jobs.images.secrets, ci.jobs['deploy-production'].secrets, ci.jobs['deploy-staging'].secrets], ['inherit', 'inherit', undefined]);
+    assert.deepEqual([ci.jobs.images.secrets, ci.jobs['deploy-production'].secrets, ci.jobs['deploy-staging'].secrets], ['inherit', 'inherit', 'inherit']);
     const before: Doc = parseWorkflow(rendered(edition, TWO)['ci']!);
-    assert.deepEqual([before.jobs.images.secrets, before.jobs['deploy-production'].secrets], [undefined, undefined]);
+    assert.deepEqual([before.jobs.images.secrets, before.jobs['deploy-production'].secrets, before.jobs['deploy-staging'].secrets], ['inherit', 'inherit', 'inherit'], 'environment custody inherits too');
     const unguardedImages = workflows['images']!.replaceAll('          [[ "$GITHUB_REF" == refs/tags/v* ]] || exit 1\n', '');
     assert.notEqual(unguardedImages, workflows['images']);
     assert.match(judge({ ...workflows, images: unguardedImages }).join('\n'), /images\.yml: job image-sealed leaves production without an environment .*its first steps must be the release-tag guard/u);
-    const inheritsStaging = workflows['ci']!.replace(/(  deploy-staging:\n(?:    .*\n)*?    uses: \.\/\.github\/workflows\/stack-deploy\.yml\n)/u, '$1    secrets: inherit\n');
-    assert.notEqual(inheritsStaging, workflows['ci']);
-    assert.match(judge({ ...workflows, ci: inheritsStaging }).join('\n'), /ci\.yml: inherited secrets are forbidden/u, 'only a ci-key environment inherits');
+    const withoutInherit = workflows['ci']!.replace(/(  deploy-staging:\n(?:    .*\n)*?    uses: \.\/\.github\/workflows\/stack-deploy\.yml\n)    secrets: inherit\n/u, '$1');
+    assert.notEqual(withoutInherit, workflows['ci']);
+    assert.match(judge({ ...workflows, ci: withoutInherit }).join('\n'), /ci\.yml: job deploy-staging calls stack-deploy\.yml without `secrets: inherit`/u, 'every stack-deploy caller inherits');
+    const inheritsElsewhere = workflows['ci']!.replace(/(  deploy-staging:\n(?:    .*\n)*?)    uses: \.\/\.github\/workflows\/stack-deploy\.yml\n/u, '$1    uses: ./.github/workflows/other-deploy.yml\n');
+    assert.notEqual(inheritsElsewhere, workflows['ci']);
+    assert.match(judge({ ...workflows, ci: inheritsElsewhere }).join('\n'), /ci\.yml: inherited secrets are forbidden/u, 'only a stack-deploy.yml call inherits');
     assert.match(judge({ ...workflows, 'api-deploy': text }).join('\n'), /api-deploy\.yml: job deploy leaves production without an environment .*only stack-deploy\.yml may leave a name unbound/u);
   });
 
