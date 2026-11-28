@@ -4,6 +4,8 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 1.1.0-alpha.207 - 2026-11-28
 
+- Changed: the CLI requires @starci/hfs@6.17.20, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Pre-beta: this train releases @starci/hfs 6.17.20 (the managed "install age" step proves age and age-keygen by their absolute path, since a `GITHUB_PATH` entry reaches only later steps; it stopped every prod deploy with `age: command not found`).
 
 ## 1.1.0-alpha.206 - 2026-11-27
