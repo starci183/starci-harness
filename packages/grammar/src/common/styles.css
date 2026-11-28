@@ -2570,7 +2570,7 @@
         text-underline-offset: 0.2em;
     }
 
-    .starci-core-glossary-term-word:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+    .starci-core-glossary-term-word:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
     .starci-core-fenced-code-header {
         display: flex;
@@ -6945,7 +6945,7 @@
 
     /*
      * Quote variant="block" (owner 2026-11-28 "quote bự lên, có icon quote, border left no round"): a pull quote. The quote mark in the
-     * accent in its own column, the words one step above the body (lg), a straight 3px accent rule on the start edge (`--starci-core-quote-block-edge` overrides it; the older
+     * accent in its own column, the words one step above the body (lg), a straight 3px accent rule on the start edge (the app hook
      * `--starci-core-quote-edge` styles only the line variant now) and square corners: a rule is never rounded.
      */
     .starci-core-quote[data-grammar-quote-variant="block"] {
@@ -6954,7 +6954,7 @@
         column-gap: var(--grammar-inline-gap);
         row-gap: var(--grammar-identity-gap);
         align-items: start;
-        border-inline-start: var(--starci-core-quote-block-edge, 3px solid var(--accent));
+        border-inline-start: 3px solid var(--accent);
         border-radius: 0;
     }
 
