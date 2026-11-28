@@ -1908,6 +1908,17 @@
 
     .starci-core-list-row-leading:has(> .starci-core-list-row-diff + *) { gap: var(--grammar-row-gap); }
 
+    /*
+     * A numbered row (0.64.11, owner 2026-11-28, law DNA-COMMON-ICON-TILE-SIZE-BY-ROLE): its number is the round 20 item tile even on a pressable row,
+     * centred in the 40 tile's column, so the titles of numbered rows and icon rows (a locked lesson's lock) stand in one column. Keyed on the
+     * step tile the row draws (`data-grammar-step`; its loading row marks the leading column), no prop of its own.
+     */
+    .starci-core-list-row-leading:has(> .starci-core-icon-tile[data-grammar-step][data-size="item"]),
+    .starci-core-list-row-leading[data-grammar-leading-step="true"] {
+        justify-content: center;
+        inline-size: var(--grammar-tile-row-size);
+    }
+
     /* The label over the value: the caption role, in the pair's ink; never struck through. */
     .starci-core-list-row-diff-label {
         display: block;

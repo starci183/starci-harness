@@ -355,6 +355,14 @@ export const ItemTiles: Story = {
                 </G.Cluster>
               ))}
             </State>
+            <State label={`${theme}: a pressable list whose rows are numbered (a course catalog): each number the round 20 (leading: { step }), an icon row's tile 40, titles in one column`} direction="column">
+              <G.Section kind="list" ariaLabel="Các bài học" empty={null} items={[
+                { id: 'l1', title: 'HTTP', description: 'Frontend gọi backend qua một request.', leading: { step: 1 }, href: '#l1' },
+                { id: 'l2', title: 'Database', description: 'Orders được lưu bền vững.', leading: { step: 2 }, href: '#l2' },
+                { id: 'l3', title: 'Cache', description: 'Đọc nhanh mà không hỏi database.', leading: { step: 3, tone: 'accent' }, href: '#l3' },
+                { id: 'l4', title: 'Queue', description: 'Payments xử lý sau, không chặn request.', leading: { icon: TablerCalendar } },
+              ]} />
+            </State>
             <State label={`${theme}: header 40 beside list 24`} direction="column">
               <G.Cluster gap="row" align="center" wrap={false}>
                 <G.IconTile step={2} tone="accent" />
