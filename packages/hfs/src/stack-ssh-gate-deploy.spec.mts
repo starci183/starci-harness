@@ -87,7 +87,7 @@ function scene(t: TestContext) {
     if (command !== 'docker') return { status: 127, stdout: '', stderr: `${command} is not a tool of this run` };
     docker.push([...args]);
     const answer = (stdout: string): RunResult => ({ status: 0, stdout, stderr: '' });
-    if (args[0] === 'network' && args.includes('--verbose')) return answer('{"Containers":{},"Services":{}}');
+    if (args[0] === 'network' && String(args[4]).startsWith('{"Id"')) return answer(JSON.stringify({ Id: NETWORK_ID, Containers: {} }));
     if (args[0] === 'network' && args[1] === 'inspect') return answer(`${NETWORK_ID}\n`);
     if (args[0] === 'service' && args[1] === 'inspect') return answer(JSON.stringify({ Spec: { TaskTemplate: { Networks: [{ Target: NETWORK_ID, Aliases: ['shop-api'] }] } } }));
     if (args[0] === 'ps') return answer(`${CONTAINER}\n`);
