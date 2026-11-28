@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 0.64.9 - 2026-11-28
 
+- Changed (owner 2026-11-28 "đọc kĩ accordion của heroui"): `Accordion` reads as HeroUI's: the title fills the head and the caret stands at its end, pointing down closed and turned up (-180) open; sections are split by the hairline between them, no frame. A head that leads with a row tile (a numbered item) indents its open body to the title's column. `Disclosure` keeps its caret before the words.
 - Fixed (owner 2026-11-28 "none là check hình tròn không có bg chứ", "size = 20"): the item tile is 20 (`--grammar-tile-item-size` 1.25rem, glyph `--grammar-icon-item` 0.75rem), and a line not run yet is the outline alone: its rule names `data-artwork` and `data-loading` so it outranks the neutral plate rule written after it (0.64.9-dev.1 drew the grey plate).
 - Added (owner 2026-11-28 "icon tile 24", "chưa chạy là hình tròn thôi"): `IconTile size="item"`, the round 24 tile that leads one line of a checklist (what a case must hold, what a lesson teaches): an identity glyph or `step` number on its round plate, or a status mark (`state`) at 24 with a 14 glyph. A line not run yet (`notRun`, `skipped`, no `source`) is the empty circle alone, its outline in the border ink, no ring inside. New tokens `--grammar-tile-item-size` (1.5rem) and `--grammar-icon-item` (0.875rem). The 40 and 48 tiles are unchanged.
 
