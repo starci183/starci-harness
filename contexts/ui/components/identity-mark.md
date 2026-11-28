@@ -20,15 +20,15 @@ Choice `identity-mark.choose.role`: which mark anchors the name (an avatar or in
 
 ## IconTile sizes: 48, 40, 20 (owner 2026-11-28, chốt)
 
-One question picks the size: **can the reader press it?**
+One question picks the size: **can the reader press it?** Then one more: **is it a number?** A number is always 20 (owner 2026-11-28: "1,2,3 → size 20; chỉ có icon mới 40"), even when it leads a row the reader presses.
 
 | Size | When | Examples |
 | --- | --- | --- |
 | **48** `size="head"` | the identity beside a page title, an empty state | a workflow's page head, "nothing here yet" |
-| **40** `size="row"` (default) | a row the reader presses or selects in a list: it leads something that opens, navigates or is chosen | each case head of an accordion, a navigation row, a list row with its action |
-| **20** `size="item"` | a mark that rides ONE line of content the reader only reads | the steps of a procedure (install, pair, choose a folder), the stages of a run, an order's flow, the requests a file sends, the situations a lab tests, the parts of an open case, conditions, what a lesson teaches, the conditions of a submission |
+| **40** `size="row"` (default) | an ICON leading a row the reader presses or selects in a list: it leads something that opens, navigates or is chosen | a navigation row, a list row with its action, a workflow row with its glyph |
+| **20** `size="item"` | a mark that rides ONE line of content the reader only reads, and EVERY number (`step`, a number glyph), pressable or not | the steps of a procedure (install, pair, choose a folder), the stages of a run, an order's flow, the requests a file sends, the situations a lab tests, the parts of an open case, conditions, what a lesson teaches, the conditions of a submission; the numbered case heads of an accordion (1-7) |
 
-- Pressable → 40; read only → 20; page head → 48. A list of read-only lines is drawn as lines (the 20 mark, the words, a muted line under them), never as the list section's pressable rows (their leading tile is 40).
+- A number → 20, always; an icon on a pressable row → 40; read only → 20; page head → 48. An accordion whose heads lead with a 20 number indents its open body by one item tile and one row gap. A list of read-only lines is drawn as lines (the 20 mark, the words, a muted line under them), never as the list section's pressable rows (their leading tile is 40).
 - Inside one row, the parts below its 40 head are 20: the head is what is pressed, the parts are read.
 - The 20 tile is round in every form (an identity glyph, a `step` number at the caption size, a status mark); not run is the outline circle alone.
 - Law: `DNA-COMMON-ICON-TILE-SIZE-BY-ROLE`. Story `Status marks/ItemTiles`.

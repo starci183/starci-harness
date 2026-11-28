@@ -2306,6 +2306,10 @@
     .starci-core-generic-accordion-item:has(.starci-core-generic-accordion-title .starci-core-icon-tile[data-size="row"]) .starci-core-generic-accordion-body {
         padding-inline-start: calc(var(--grammar-tile-row-size) + var(--grammar-row-gap));
     }
+    /* A head that leads with a number (owner 2026-11-28: every number is 20): the open body stands in the title's column, one item tile and one row gap in. */
+    .starci-core-generic-accordion-item:has(.starci-core-generic-accordion-title .starci-core-icon-tile[data-size="item"]) .starci-core-generic-accordion-body {
+        padding-inline-start: calc(var(--grammar-tile-item-size) + var(--grammar-row-gap));
+    }
 
     /* kind="quiet": a small muted line (owner 2026-11-23: the secondary text colour, never the link or the accent), its caret the size of its words; the touch floor still holds on a coarse pointer. */
     .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger {
