@@ -272,7 +272,7 @@ async function firstDeploy(t: TestContext, { stepOk = true, plain = false, db = 
 test('a first start deploys every service but the database at 0 replicas, migrates, and only then deploys the real stack', async (t) => {
   const { result, order, deploys } = await firstDeploy(t);
   assert.equal(result.ok, true);
-  assert.deepEqual((result.data!.steps as { step: string }[]).map((entry) => entry.step), ['render', 'provision', 'store', 'pre-pull', 'deploy-hold', 'first-start', 'deploy', 'edge', 'converge', 'verify', 'accept']);
+  assert.deepEqual((result.data!.steps as { step: string }[]).map((entry) => entry.step), ['render', 'provision', 'store', 'pre-pull', 'deploy-hold', 'first-start', 'deploy', 'converge', 'edge', 'edge-converge', 'verify', 'accept']);
   assert.ok(order.indexOf('deploy-hold') < order.indexOf('migrate') && order.indexOf('migrate') < order.indexOf('deploy'), order.join(' '));
   assert.ok(order.indexOf('deploy') < order.indexOf('converge'), 'converge waits for the real deploy');
   const [hold, real] = deploys as [typeof deploys[number], typeof deploys[number]];
@@ -306,7 +306,7 @@ test('a first start naming a database that is not a service of the stack is refu
 test('a deploy without the first-start hooks deploys the whole stack once, as before', async (t) => {
   const { result, order, deploys } = await firstDeploy(t, { plain: true });
   assert.equal(result.ok, true);
-  assert.deepEqual((result.data!.steps as { step: string }[]).map((entry) => entry.step), ['render', 'provision', 'store', 'pre-pull', 'deploy', 'edge', 'converge', 'verify', 'accept']);
+  assert.deepEqual((result.data!.steps as { step: string }[]).map((entry) => entry.step), ['render', 'provision', 'store', 'pre-pull', 'deploy', 'converge', 'edge', 'edge-converge', 'verify', 'accept']);
   assert.equal(deploys.length, 1);
   assert.deepEqual(deploys[0]!.map((file) => file.name), ['stack.yaml']);
   assert.ok(!order.includes('deploy-hold'));

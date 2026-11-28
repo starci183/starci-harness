@@ -214,7 +214,7 @@ test('a red contract migration leaves the release accepted: a red job, no rollba
 test('no accepted release: the first start is chosen by itself (hold deploy, empty proof, migrate everything, real deploy), with no backup', async (t) => {
   const { result, order, steps } = await run(t, { previous: '', expand: EXPAND, contract: CONTRACT });
   assert.equal(result.ok, true, result.lines.join('\n'));
-  assert.deepEqual(steps.slice(4, 8), ['deploy-hold', 'first-start', 'deploy', 'edge']);
+  assert.deepEqual(steps.slice(4, 8), ['deploy-hold', 'first-start', 'deploy', 'converge']);
   assert.deepEqual(AFTER_STORE(order), ['deploy-hold', 'empty?', 'migrate:first-start:preview', 'migrate:first-start:run', 'deploy', 'accept']);
   assert.ok(!order.includes('backup'));
   assert.ok(result.lines.some((line) => line.includes('is empty') && line.includes('nothing to back up')));

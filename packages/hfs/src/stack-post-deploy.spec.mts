@@ -116,7 +116,7 @@ const release = async (t: TestContext, { postDeploy, failPost = false }: { postD
 test('deploy runs the post-deploy phase after convergence and before verification', async (t) => {
   const { result, order } = await release(t, { postDeploy: ['seed-modules'] });
   assert.equal(result.ok, true);
-  assert.deepEqual((result.data as unknown as DeployData).steps.map((entry) => entry.step), ['render', 'provision', 'store', 'pre-pull', 'deploy', 'edge', 'converge', 'post-deploy', 'verify', 'accept']);
+  assert.deepEqual((result.data as unknown as DeployData).steps.map((entry) => entry.step), ['render', 'provision', 'store', 'pre-pull', 'deploy', 'converge', 'edge', 'edge-converge', 'post-deploy', 'verify', 'accept']);
   assert.ok(order.indexOf('converge') < order.indexOf('post-deploy') && order.indexOf('post-deploy') < order.indexOf('verify'));
 });
 
