@@ -730,8 +730,7 @@ const NodeDrawer = ({ node, data, words, onClose }: { readonly node: DiagramNode
             : [
                   ...(tech === undefined ? [] : [[words.tech, tech] as const]),
                   ...(node.port === undefined ? [] : [[words.port, `:${node.port}`] as const]),
-                  ...(node.detail === undefined ? [] : [[node.kind === "database" || node.kind === "cache" ? words.tables : words.detail, node.detail.replace(/
-/gu, ", ")] as const]),
+                  ...(node.detail === undefined ? [] : [[node.kind === "database" || node.kind === "cache" ? words.tables : words.detail, node.detail.replace(/\n/gu, ", ")] as const]),
               ]
     const icon = data?.icon
     return (
