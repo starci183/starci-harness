@@ -5488,9 +5488,10 @@
     }
 
     /*
-     * The item tile (0.64.9, owner 2026-11-28 "icon tile 24"): the round 24 that leads one line of a checklist, in every form (an identity glyph,
-     * a number, a status mark). Its glyph is 14 and its number the caption's size. A status mark that has not run is the empty circle: the plate
-     * gives way to its outline, nothing inside.
+     * The item tile (0.64.9, owner 2026-11-28 "icon tile 24", then 20): the round 24 that leads one line of a checklist, in every form (an identity glyph,
+     * a number, a status mark). It is 20 (owner 2026-11-28: "size = 20"), its glyph 12 and its number the caption's size. A status mark that has
+     * not run is the empty circle: no plate, its outline only, nothing inside; the rule names the artwork and loading flags so it outranks the
+     * neutral plate's rule written after it.
      */
     .starci-core-icon-tile[data-size="item"] {
         width: var(--grammar-tile-item-size);
@@ -5501,7 +5502,7 @@
     .starci-core-icon-tile[data-size="item"] :is(.starci-core-icon, .starci-core-status-glyph) { width: var(--grammar-icon-item); height: var(--grammar-icon-item); }
     .starci-core-icon-tile[data-size="item"] .starci-core-icon-tile-step { font-size: var(--grammar-type-caption-size); line-height: var(--grammar-tile-item-size); }
 
-    .starci-core-icon-tile[data-size="item"][data-grammar-mark-subject="false"]:is([data-grammar-mark-state="notRun"], [data-grammar-mark-state="skipped"]) {
+    .starci-core-icon-tile[data-size="item"][data-grammar-mark-subject="false"][data-artwork="false"][data-loading="false"]:is([data-grammar-mark-state="notRun"], [data-grammar-mark-state="skipped"]) {
         background: transparent;
         box-shadow: inset 0 0 0 var(--grammar-stroke-fine) var(--border);
     }
