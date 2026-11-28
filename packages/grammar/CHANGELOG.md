@@ -2,6 +2,10 @@
 
 Versioned history starts at beta; earlier history is in git.
 
+## 0.64.9 - 2026-11-28
+
+- Added (owner 2026-11-28 "icon tile 24", "chưa chạy là hình tròn thôi"): `IconTile size="item"`, the round 24 tile that leads one line of a checklist (what a case must hold, what a lesson teaches): an identity glyph or `step` number on its round plate, or a status mark (`state`) at 24 with a 14 glyph. A line not run yet (`notRun`, `skipped`, no `source`) is the empty circle alone, its outline in the border ink, no ring inside. New tokens `--grammar-tile-item-size` (1.5rem) and `--grammar-icon-item` (0.875rem). The 40 and 48 tiles are unchanged.
+
 ## 0.64.8 - 2026-11-28
 
 - Changed (h-grammar-arch-diagram-v2, owner 2026-11-28: one concept for every architecture diagram): a `MermaidDiagram` flowchart where some node (or the frame) names its technology (`X@{ icon }`) or its kind (`class X queue`) is an architecture drawing, read from the Mermaid source alone. Five node kinds, one shape each (`DiagramNode.kind`, `ArchKind`, `ARCH_KINDS`, `archKindOf`): `class X client|service|database|cache|queue` says it outright, else the logo (`rabbitmq`/`kafka` a queue, `redis` a cache, `postgresql`/`mongodb`/`mysql` a database), else the shape (`[( )]` a database, `([ ])` with no logo the client, any other box a service). A client is a pill, a service a rounded box, a database an upright cylinder, a cache a cylinder in its own tint with a "cache" tag (`labels.cache`), a queue a horizontal tube (new shape `tube`). Each is its name over a muted line: its port and its detail (a database's tables), one `<br>` line each (`Order Service<br>:4001`, `orders<br>orders, charges`; `splitArchLabel`, `DiagramNode.detail`, `metaLines`); the port pill stays for other flowcharts. The frame (the subgraph) is a dashed line with no fill, its logo in its chip and its name top left.

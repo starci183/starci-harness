@@ -84,11 +84,13 @@ export const InlineStatusGlyph = ({ state }: { readonly state: MarkState }): Rea
  * plate carries: a status glyph (case 1), the subject icon the app passes in (case 2), or a step number (the reader's own step of a flow).
  * A running subject tile wears a spinning ring on its edge. Internal: apps reach it through `IconTile state`, `Timeline`, `Stepper`, `EmptyNotice`.
  */
-export const StatusTile = ({ tone, state, children, hasSubject = false, label }: {
+export const StatusTile = ({ tone, state, children, hasSubject = false, label, size = "row" }: {
     readonly tone: string
     readonly state?: MarkState | undefined
     readonly children: ReactNode
     readonly hasSubject?: boolean
+    /** The round 40 of a step or a row (default), or the round 24 that leads one line of a checklist. */
+    readonly size?: "row" | "item"
     /** Names the mark when it stands alone; omitted, the mark is decorative and the words beside it say the state. */
     readonly label?: string | undefined
 }): ReactNode => (
@@ -101,6 +103,7 @@ export const StatusTile = ({ tone, state, children, hasSubject = false, label }:
         data-artwork="false"
         data-loading="false"
         data-grammar-mark="status"
+        data-size={size}
         {...(state === undefined ? {} : { "data-grammar-mark-state": state })}
         data-grammar-mark-subject={hasSubject ? "true" : "false"}
         data-contract="OVERFLOW-2 A11Y-2"
