@@ -3,6 +3,7 @@
 import { withRegionLoading } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
+import { TablerQuote } from "../../leaf/Icon/tabler.js"
 
 export type QuoteProps = NoChildren & {
     /** The quoted words. Plain text keeps its line breaks. Ignored (and optional) while `isLoading`. */
@@ -24,8 +25,8 @@ export type QuoteProps = NoChildren & {
 }
 
 /**
- * COMPOSITE - `Quote`: words taken from a source, as a `<blockquote>` on a tinted ground at the nested inset, one radius below
- * the surface that hosts it. It is not a surface: no shadow, no outline and no action, so it stands in a pane, a card or a
+ * COMPOSITE - `Quote`: words taken from a source, as a `<blockquote>`. The block (owner 2026-11-28) is a pull quote: the quote mark
+ * in the accent, the words one step larger than the body, a straight accent rule on the start edge and square corners. It is not a surface: no shadow, no outline and no action, so it stands in a pane, a card or a
  * drawer without nesting a surface in a surface. Use it to show what was said or stored, never an outcome (that is `Alert`).
  * Contract: INSET-NESTED by `--grammar-inset-nested`, STATE-8 by `isLoading`.
  */
@@ -54,6 +55,8 @@ const QuoteInner = ({ text, source, byline, variant = "block", isLoading = false
             data-tier="composite"
             {...(variant === "line" && text !== undefined ? { title: source == null ? text : `${source} ${text}` } : {})}
         >
+            {/* The block opens with the quote mark (owner 2026-11-28 "có icon quote"); decorative, the blockquote already says it is a quote. */}
+            {variant === "block" ? <TablerQuote className="starci-core-quote-mark" aria-hidden /> : null}
             {source == null ? null : <span className="starci-core-quote-source">{source}</span>}
             <span className="starci-core-quote-words">{text}</span>
             {byline == null || variant === "line" ? null : <span className="starci-core-quote-byline">{byline}</span>}
@@ -62,8 +65,8 @@ const QuoteInner = ({ text, source, byline, variant = "block", isLoading = false
 }
 
 /**
- * COMPOSITE - `Quote`: words taken from a source, as a `<blockquote>` on a tinted ground at the nested inset, one radius below
- * the surface that hosts it. It is not a surface: no shadow, no outline and no action, so it stands in a pane, a card or a
+ * COMPOSITE - `Quote`: words taken from a source, as a `<blockquote>`. The block (owner 2026-11-28) is a pull quote: the quote mark
+ * in the accent, the words one step larger than the body, a straight accent rule on the start edge and square corners. It is not a surface: no shadow, no outline and no action, so it stands in a pane, a card or a
  * drawer without nesting a surface in a surface. Use it to show what was said or stored, never an outcome (that is `Alert`).
  * Contract: INSET-NESTED by `--grammar-inset-nested`, STATE-8 by `isLoading`.
  */

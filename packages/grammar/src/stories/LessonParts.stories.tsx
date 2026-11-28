@@ -32,7 +32,7 @@ export const Glossary: Story = {
     </G.Text>
   ),
   play: async ({ canvasElement }) => {
-    const word = canvasElement.querySelector<HTMLButtonElement>('.starci-core-glossary-term-word');
+    const word = canvasElement.querySelector<HTMLElement>('.starci-core-glossary-term-word');
     if (word === null) throw new Error('the term renders');
     word.click();
   },
