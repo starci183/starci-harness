@@ -4,6 +4,7 @@ Versioned history starts at beta; earlier history is in git.
 
 ## 0.64.9 - 2026-11-28
 
+- Changed (owner 2026-11-28 "1-7 vẫn size 40 là đúng hay sai?"): a number is always the 20 item tile, a pressable head included; 40 is for an icon leading a pressable row. An accordion head that leads with a 20 number indents its open body by one item tile and one row gap. Docs: identity-mark.md "IconTile sizes" and law `DNA-COMMON-ICON-TILE-SIZE-BY-ROLE`.
 - Fixed (owner 2026-11-28 "chạy thử lần đầu thì quay xung quanh cái tròn"): at the item size (20) a `running` status mark is the circle itself turning, its outline with a success arc going round (a full success ring under reduced motion), never a small spinner inside a plate.
 - Fixed (owner 2026-11-28 "sao lại có hình tròn đồng tâm thế?"): at the item size (20) a `waiting` status mark is the empty outline circle too, like `notRun` and `skipped`; it drew the warning plate with a small ring inside it, a circle in a circle.
 - Changed (owner 2026-11-28 "sao logo… vuông không phải tròn"): a `LogoChip` outside a diagram is round (`--grammar-radius-pill`), like every mark that rides a line; inside a diagram it keeps its small rounded square beside the node's words.

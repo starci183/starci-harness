@@ -1971,7 +1971,7 @@ mustKeep:
       owner: ui/components/identity-mark.md
     - id: DNA-COMMON-ICON-TILE-SIZE-BY-ROLE
       role: avatar
-      law: "An IconTile's size follows one question, can the reader press what it leads (owner 2026-11-28, chốt \"luật 48 40 20\"): 48 (`head`) beside a page title or in an empty state; 40 (`row`) leading a row pressed or selected in a list (an accordion section's head, a navigation row); 20 (`item`, round) leading one line of content the reader only reads (a procedure's steps, a run's stages, conditions, what a lesson teaches, the parts of an open row). Read-only lines are drawn as lines, never as pressable list rows; not run at 20 is the outline circle alone."
+      law: "An IconTile's size follows one question, can the reader press what it leads (owner 2026-11-28, chốt \"luật 48 40 20\"): 48 (`head`) beside a page title or in an empty state; 40 (`row`) for an ICON leading a row pressed or selected in a list (a navigation row, a list row with its action); a NUMBER is always 20, even on a pressable head (owner 2026-11-28: \"chỉ có icon mới 40\"; the numbered case heads of an accordion are 20); 20 (`item`, round) leading one line of content the reader only reads (a procedure's steps, a run's stages, conditions, what a lesson teaches, the parts of an open row). Read-only lines are drawn as lines, never as pressable list rows; not run at 20 is the outline circle alone."
       measure: { kind: box, select: '.starci-core-icon-tile[data-size="item"]', checks: [{ metric: width, op: "=", value: 20px }, { metric: height, op: "=", value: 20px }] }
       owner: ui/components/identity-mark.md
 
