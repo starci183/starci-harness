@@ -2299,7 +2299,8 @@
      */
     .starci-core-generic-accordion-title { flex: 1 1 auto; order: 1; }
     .starci-core-generic-accordion-indicator { order: 2; margin-inline-start: auto !important; transform: none; }
-    .starci-core-generic-accordion-item[data-grammar-disclosure-state="open"] .starci-core-generic-accordion-indicator { transform: rotate(-180deg); }
+    /* Open reads off HeroUI's own flag on the indicator (`data-expanded`), the item's state attribute as well, whichever the vendor writes. */
+    :is(.starci-core-generic-accordion-indicator[data-expanded="true"], .starci-core-generic-accordion-item[data-grammar-disclosure-state="open"] .starci-core-generic-accordion-indicator, .starci-core-generic-accordion-item[data-expanded="true"] .starci-core-generic-accordion-indicator) { transform: rotate(-180deg); }
 
     /* A head that leads with a row tile (a numbered case): the open body stands in the title's column, one tile and one row gap in. */
     .starci-core-generic-accordion-item:has(.starci-core-generic-accordion-title .starci-core-icon-tile[data-size="row"]) .starci-core-generic-accordion-body {
