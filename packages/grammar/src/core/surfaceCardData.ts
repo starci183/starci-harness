@@ -61,19 +61,25 @@ export type ItemMenu = {
 
 /** The mark that leads a row. */
 export type ItemLeading =
-    | { readonly avatar: AvatarData; readonly size?: "sm" | "md"; readonly icon?: never; readonly position?: never }
-    | { readonly icon: IconSource; readonly size?: "sm" | "md"; readonly avatar?: never; readonly position?: never; readonly state?: never; readonly activity?: never }
+    | { readonly avatar: AvatarData; readonly size?: "sm" | "md"; readonly icon?: never; readonly position?: never; readonly step?: never }
+    | { readonly icon: IconSource; readonly size?: "sm" | "md"; readonly avatar?: never; readonly position?: never; readonly state?: never; readonly activity?: never; readonly step?: never }
     /**
      * A row among DIFFERENT things side by side (0.55.0, the status-mark rule, case 2 "which thing is which?": a run or workflow list, notification
      * rows): the subject icon on the round 40px plate of the state's tone. The status then trails as an `InlineStatus` (the row's `value`), never a second circle.
      */
-    | { readonly icon: IconSource; readonly state: MarkState; readonly size?: never; readonly avatar?: never; readonly position?: never; readonly activity?: never }
+    | { readonly icon: IconSource; readonly state: MarkState; readonly size?: never; readonly avatar?: never; readonly position?: never; readonly activity?: never; readonly step?: never }
     /**
      * A row of a subject the app runs (0.64.1, a workflow, a run of it): the subject's own icon on its ROUND tile of what it is doing (`IconTile activity`,
      * idle info, running warning with a spinning warning arc, error danger, each its soft pair), the same tile its page head wears. The status still trails as an `InlineStatus`.
      */
-    | { readonly icon: IconSource; readonly activity: TileActivity; readonly size?: never; readonly avatar?: never; readonly position?: never; readonly state?: never }
-    | { readonly position: number; readonly format?: "ordinal" | "hash"; readonly size?: never; readonly avatar?: never; readonly icon?: never }
+    | { readonly icon: IconSource; readonly activity: TileActivity; readonly size?: never; readonly avatar?: never; readonly position?: never; readonly state?: never; readonly step?: never }
+    | { readonly position: number; readonly format?: "ordinal" | "hash"; readonly size?: never; readonly avatar?: never; readonly icon?: never; readonly step?: never }
+    /**
+     * A row whose place in an order is its number (0.64.11, owner 2026-11-28, law `DNA-COMMON-ICON-TILE-SIZE-BY-ROLE`: "1,2,3 → size 20; chỉ có icon mới 40"):
+     * the number on the round 20 item tile (`IconTile step size="item"`, neutral, or `accent` for the reader's current one), even when the row is pressed.
+     * The leading column keeps the 40 tile's width, so the titles of a list that mixes numbered rows with icon rows (a locked lesson's lock) stand in one column.
+     */
+    | { readonly step: number; readonly tone?: "neutral" | "accent"; readonly size?: never; readonly avatar?: never; readonly icon?: never; readonly position?: never }
 
 type ListRowDestination = Pick<LinkProps, "href" | "onFollow"> | {
     readonly href?: never

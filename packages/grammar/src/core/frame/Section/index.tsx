@@ -146,7 +146,7 @@ export const FilterRow = ({ filter, isLoading }: { readonly filter: ReactNode; r
 )
 
 const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; readonly isLoading: boolean; readonly error: ErrorData | undefined }) => {
-    const ordered = list.items.length > 0 && list.items.every((item) => item.leading?.position !== undefined)
+    const ordered = list.items.length > 0 && list.items.every((item) => item.leading?.position !== undefined || item.leading?.step !== undefined)
     const Rows = ordered ? "ol" : "ul"
     const filter = <FilterRow filter={list.filter} isLoading={isLoading} />
     if (!isLoading && error !== undefined) return <>{filter}<ErrorView error={error} /></>

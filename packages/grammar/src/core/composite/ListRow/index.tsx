@@ -79,6 +79,8 @@ export type ListRowProps = NoChildren & {
 
 const Leading = ({ leading }: { readonly leading: ItemLeading }) => {
     if (leading.avatar !== undefined) return <Avatar {...leading.avatar} size={leading.size ?? "md"} isDecorative />
+    // A number is always the round 20 item tile, a pressable row included; 40 is for an icon (identity-mark.md "IconTile sizes").
+    if (leading.step !== undefined) return <IconTile step={leading.step} tone={leading.tone ?? "neutral"} size="item" />
     if (leading.icon !== undefined) {
         if (leading.activity !== undefined) return <IconTile source={leading.icon} activity={leading.activity} />
         return leading.state === undefined ? <IconTile source={leading.icon} /> : <IconTile source={leading.icon} state={leading.state} />
@@ -172,10 +174,10 @@ const ListRowView = ({ row, isLoading = false, dragDom }: ListRowProps & { reado
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
                 {hasLeading || row.diff !== undefined ? (
-                    <span className="starci-core-list-row-leading" data-grammar-leading-size={row.leading !== undefined && "state" in row.leading && row.leading.state !== undefined ? "md" : row.leading !== undefined && "size" in row.leading ? row.leading.size ?? "md" : "md"}>
+                    <span className="starci-core-list-row-leading" {...(row.leading?.step === undefined ? {} : { "data-grammar-leading-step": "true" })} data-grammar-leading-size={row.leading !== undefined && "state" in row.leading && row.leading.state !== undefined ? "md" : row.leading !== undefined && "size" in row.leading ? row.leading.size ?? "md" : "md"}>
                         {/* A diff row loads with the same gutter column (0.37.29): the mark's box is kept, its glyph not shown, so the loading row is the loaded row's box. */}
                         {row.diff === undefined ? null : <span className="starci-core-list-row-diff" data-grammar-diff-mark={row.diff} aria-hidden="true">{DIFF_GLYPHS[row.diff]}</span>}
-                        {!hasLeading ? null : row.leading?.icon === undefined ? <Skeleton shape="circle" size="md" /> : <span className="starci-core-list-row-skeleton-tile"><Skeleton shape="rect" /></span>}
+                        {!hasLeading ? null : row.leading?.step !== undefined ? <Skeleton shape="box" width="var(--grammar-tile-item-size)" height="var(--grammar-tile-item-size)" radius="full" /> : row.leading?.icon === undefined ? <Skeleton shape="circle" size="md" /> : <span className="starci-core-list-row-skeleton-tile"><Skeleton shape="rect" /></span>}
                     </span>
                 ) : null}
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
