@@ -121,16 +121,34 @@ export const judgeNeeds = (catalog: HostRoles, read: MachinesRead, needs: HostNe
 }
 
 /**
- * Judges the app at `cwd`: every environment that declares hostServices (or only `env`), and refuses with the first refused verdict's code naming
- * every refused environment. Returns the verdicts when nothing is refused (an app that declares nothing judges nothing).
+ * This host's config.yaml as read, or, on a host with no harness home at all (a CI runner running the app's published CLI: HOST_STATE_NOT_FOUND),
+ * an absent one, so the verdict is `unjudged` instead of a refusal of the verb that asked.
  */
-export const requireHostServices = (cwd: string, env?: string, read: MachinesRead = readMachines(), opsDir: string = locateOps()): NeedsVerdict[] => {
+const hostMachines = (): MachinesRead => {
+    try {
+        return readMachines()
+    } catch (error: unknown) {
+        if (error instanceof Refusal && error.code === "HOST_STATE_NOT_FOUND") return { file: "no config.yaml: this host has no harness home", exists: false, doc: { schema: "starci/machines@1", machines: {} } }
+        throw error
+    }
+}
+
+/**
+ * Judges the app at `cwd`: every environment that declares hostServices (or only `env`), and refuses with the first refused verdict's code naming
+ * every refused environment. Returns the verdicts when nothing is refused (an app that declares nothing judges nothing). config.yaml and the ops
+ * catalog are read only once an environment declares something, and a host without either (a CI runner) judges nothing: `stack deploy` on a
+ * runner refused HOST_STATE_NOT_FOUND before it started, for an app that declares no hostServices.
+ */
+export const requireHostServices = (cwd: string, env?: string, read?: MachinesRead, opsDir?: string): NeedsVerdict[] => {
     const file = stacksFileOf(cwd)
     if (file === undefined) return []
     const declared = readHostNeeds(readFileSync(file, "utf8"), file).filter((needs) => env === undefined || needs.env === env)
     if (declared.length === 0) return []
-    const catalog = loadHostRoles(opsDir)
-    const verdicts = declared.map((needs) => judgeNeeds(catalog, read, needs, targetOf(needs, opsDir)))
+    const machines = read ?? hostMachines()
+    if (!machines.exists) return declared.map((needs) => ({ env: needs.env, target: needs.machine ?? LOCAL, state: "unjudged", code: null, served: {}, detail: `not judged: this host has no config.yaml (${machines.file}); the machines live on the owner's host, never in the repository` }))
+    const ops = opsDir ?? locateOps()
+    const catalog = loadHostRoles(ops)
+    const verdicts = declared.map((needs) => judgeNeeds(catalog, machines, needs, targetOf(needs, ops)))
     const refused = verdicts.filter((verdict) => verdict.state === "refused")
     const first = refused[0]
     if (first?.code != null) throw new Refusal(first.code, refused.map((verdict) => verdict.detail).join("; "))

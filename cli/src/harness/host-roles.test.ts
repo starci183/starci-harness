@@ -306,6 +306,28 @@ void test("an app's hostServices are judged by config.yaml: served by an ordered
     writeFileSync(join(app, ".starcistacks", "application-stacks.yaml"), stacks({ production: { hostServices: { machine: "sv-a", needs: { "starci.embed": [] } } } }))
     assert.throws(() => requireHostServices(app, "production", readMachines(), opsDir), { code: "HOST_SERVICE_MISSING" })
     assert.deepEqual(requireHostServices(app, "staging", readMachines(), opsDir), [], "an environment that declares nothing judges nothing")
+    // A host with no config.yaml (a CI runner) judges nothing and refuses nothing.
+    assert.deepEqual(requireHostServices(app, "production", { file: "none", exists: false, doc: { schema: "starci/machines@1", machines: {} } }, opsDir).map((verdict) => verdict.state), ["unjudged"])
+})
+
+void test("requireHostServices reads no host state for an app that declares no hostServices: a CI runner without a harness home deploys (HOST_STATE_NOT_FOUND)", (t) => {
+    const dir = mkdtempSync(join(tmpdir(), "host-needs-ci-"))
+    t.after(() => rmSync(dir, { recursive: true, force: true }))
+    mkdirSync(join(dir, ".starcistacks"), { recursive: true })
+    writeFileSync(join(dir, ".starcistacks", "application-stacks.yaml"), stacks({ production: { deploy: {} } }))
+    const saved = { local: process.env.STARCI_LOCAL_ROOT, ops: process.env.STARCI_OPS_DIR }
+    // Inside node_modules is never a harness home, so machinesBase refuses HOST_STATE_NOT_FOUND here, as on a runner.
+    process.env.STARCI_LOCAL_ROOT = join(dir, "node_modules", "state")
+    t.after(() => {
+        if (saved.local === undefined) delete process.env.STARCI_LOCAL_ROOT
+        else process.env.STARCI_LOCAL_ROOT = saved.local
+        if (saved.ops === undefined) delete process.env.STARCI_OPS_DIR
+        else process.env.STARCI_OPS_DIR = saved.ops
+    })
+    assert.throws(() => readMachines(), { code: "HOST_STATE_NOT_FOUND" }, "the runner's state")
+    assert.deepEqual(requireHostServices(dir, "production"), [], "nothing declared, nothing read")
+    writeFileSync(join(dir, ".starcistacks", "application-stacks.yaml"), stacks({ production: { hostServices: { machine: "sv-a", needs: { "starci.embed": [] } } } }))
+    assert.deepEqual(requireHostServices(dir, "production").map((verdict) => verdict.state), ["unjudged"], "declared, yet unjudgeable on a host with no harness home")
 })
 
 void test("the remote catalog of monitor services covers the default monitoring components exactly once", () => {
