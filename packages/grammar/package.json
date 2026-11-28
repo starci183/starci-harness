@@ -181,7 +181,7 @@
     "remark-parse": "11.0.0",
     "shiki": "4.6.0",
     "storybook": "^10.6.0",
-    "stylelint": "17.15.0",
+    "stylelint": "18.1.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "8.72.0",
     "unified": "11.0.5",
