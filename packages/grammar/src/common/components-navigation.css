@@ -2277,7 +2277,8 @@
     /*
      * The trigger stands on the START edge of the content (Next v0.0.10 audit): the vendor indicator carries `margin-inline-start: auto`
      * (built for a caret after the words), and as the FIRST child of the trigger it pushed the caret and the words to the far end of the row.
-     * The caret stands before the words here, so that margin is zero (the vendor sheet's layer is not ours to order, hence `!important`).
+     * A disclosure's caret stands before the words, so that margin is zero (the vendor sheet's layer is not ours to order, hence `!important`);
+     * the accordion's caret is ordered after its title and takes the margin back (owner 2026-11-28, HeroUI's accordion).
      */
     .starci-core-disclosure-indicator,
     .starci-core-generic-accordion-indicator {
@@ -2286,11 +2287,24 @@
         transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
-    /* The caret before the words: pointing toward the reading direction closed, turned 90 degrees down when open (one glyph, never swapped). */
-    :is(.starci-core-disclosure, .starci-core-generic-accordion-item) :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: rotate(-90deg); }
-    :is(.starci-core-disclosure, .starci-core-generic-accordion-item)[data-grammar-disclosure-state="open"] :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: none; }
-    [dir="rtl"] :is(.starci-core-disclosure, .starci-core-generic-accordion-item) :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: rotate(90deg); }
-    [dir="rtl"] :is(.starci-core-disclosure, .starci-core-generic-accordion-item)[data-grammar-disclosure-state="open"] :is(.starci-core-disclosure-indicator, .starci-core-generic-accordion-indicator) { transform: none; }
+    /* A disclosure's caret before the words: pointing toward the reading direction closed, turned 90 degrees down when open (one glyph, never swapped). */
+    .starci-core-disclosure .starci-core-disclosure-indicator { transform: rotate(-90deg); }
+    .starci-core-disclosure[data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
+    [dir="rtl"] .starci-core-disclosure .starci-core-disclosure-indicator { transform: rotate(90deg); }
+    [dir="rtl"] .starci-core-disclosure[data-grammar-disclosure-state="open"] .starci-core-disclosure-indicator { transform: none; }
+
+    /*
+     * The accordion is HeroUI's (owner 2026-11-28: "đọc kĩ accordion của heroui"): the title fills the head, the caret stands at its END
+     * pointing down, and turns up (-180) when the section opens; the sections are split by the hairline between them, no frame around them.
+     */
+    .starci-core-generic-accordion-title { flex: 1 1 auto; order: 1; }
+    .starci-core-generic-accordion-indicator { order: 2; margin-inline-start: auto !important; transform: none; }
+    .starci-core-generic-accordion-item[data-grammar-disclosure-state="open"] .starci-core-generic-accordion-indicator { transform: rotate(-180deg); }
+
+    /* A head that leads with a row tile (a numbered case): the open body stands in the title's column, one tile and one row gap in. */
+    .starci-core-generic-accordion-item:has(.starci-core-generic-accordion-title .starci-core-icon-tile[data-size="row"]) .starci-core-generic-accordion-body {
+        padding-inline-start: calc(var(--grammar-tile-row-size) + var(--grammar-row-gap));
+    }
 
     /* kind="quiet": a small muted line (owner 2026-11-23: the secondary text colour, never the link or the accent), its caret the size of its words; the touch floor still holds on a coarse pointer. */
     .starci-core-disclosure[data-grammar-disclosure-kind="quiet"] .starci-core-disclosure-trigger {
