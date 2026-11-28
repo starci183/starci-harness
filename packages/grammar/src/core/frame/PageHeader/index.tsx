@@ -129,8 +129,9 @@ export const PageHeader = ({
                             </h1>
                             {status === undefined ? null : <div className="starci-core-page-header-status" data-contract="GAP-2" aria-hidden={isLoading || undefined}>{slot(status, isLoading)}</div>}
                         </div>
-                        {meta === undefined ? null : <div className="starci-core-page-header-meta" data-contract="FONT-1 TONE-2" aria-hidden={isLoading || undefined}>{slot(meta, isLoading)}</div>}
+                        {/* The description is the line under the heading, then the facts (owner 2026-11-28: what the page is about reads before its counts). */}
                         {description === undefined ? null : <div className="starci-core-page-header-description" data-contract="FONT-2 TONE-2" aria-hidden={isLoading || undefined}>{slot(description, isLoading)}</div>}
+                        {meta === undefined ? null : <div className="starci-core-page-header-meta" data-contract="FONT-1 TONE-2" aria-hidden={isLoading || undefined}>{slot(meta, isLoading)}</div>}
                     </div>
                 </div>
                 {actions === undefined ? null : <div className="starci-core-page-header-actions" data-contract="GAP-2" aria-hidden={isLoading || undefined}>{slot(actions, isLoading, "block")}</div>}
