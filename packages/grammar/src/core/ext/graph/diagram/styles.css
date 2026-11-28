@@ -228,6 +228,16 @@
  * The logo chip (LogoChip) and the edit chip: a small rounded tile of their own, the mark 18px inside. A logo fills with the chip's colour, which LogoChip
  * sets to the brand's hex when it keeps 3:1 on the chip (logoInk.ts), else the node's ink.
  */
+/*
+ * A logo chip stands outside a diagram too (owner 2026-11-28: the StarCi standard's tech stack row on the submit page): it carries its own size,
+ * mark and tint, the diagram's values, so a chip outside `.starci-graph-diagram` is not left without them (its svg had no size and vanished).
+ */
+:where(.starci-graph-diagram-chip) {
+    --starci-graph-diagram-chip-size: 26px;
+    --starci-graph-diagram-chip-mark: 18px;
+    --starci-graph-diagram-chip-fill: color-mix(in oklab, var(--foreground) 5%, var(--surface));
+}
+
 .starci-graph-diagram-chip {
     display: inline-flex;
     flex: none;
@@ -235,7 +245,7 @@
     justify-content: center;
     inline-size: var(--starci-graph-diagram-chip-size);
     block-size: var(--starci-graph-diagram-chip-size);
-    color: var(--starci-graph-diagram-ink);
+    color: var(--starci-graph-diagram-ink, var(--foreground));
     background: var(--starci-graph-diagram-chip-fill);
     border-radius: var(--grammar-radius-sm);
 }
