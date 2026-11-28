@@ -2,9 +2,7 @@
 
 Versioned history starts at beta; earlier history is in git.
 
-## Unreleased
-
-Not bumped (0.64.6 is the published version); the next release names this section.
+## 0.64.7 - 2026-11-28
 
 - Added (h-grammar-code-shiki): client highlighting for `CodeBlock`. `useCodeTokens(code, language)` of `@starci/grammar/core/ext/markdown/react` returns Shiki's tokens made in the browser for the block's `tokens`: Shiki loads by a dynamic import on first use (a page that never draws code never downloads it), with the same highlighter and css-variables theme as the server's `highlightCode`, so the colours are the code palette's in light and dark. `undefined` until ready, for no language, for one Shiki does not ship and if Shiki fails to load: the block draws plain text meanwhile; `highlightLines`, line numbers and Copy are unchanged on top of the tokens. Results are kept per page (64 texts) so a reopened block colours at once. The core stays free of Shiki (the hook lives in the markdown ext).
 - Added: `CodeBlock diff` (in place of `code`; `CodeBlockSource`): one change as rows (`CodeDiffLine`: `{ kind: "add" | "del" | "same", text }`) or a unified diff string (`git diff` output; file and hunk headers skipped). Added rows on the code palette's inserted tint, removed rows on its `deleted` tint, a `+`/`−` gutter in the side's ink that is never selected or copied, each changed row's kind in visually hidden words for a screen reader (`labels.added`, `labels.removed`), the header counting both (`labels.changes`, `2 added · 1 removed`, on the folded row too). `tokens` colour the rows (highlight `diffCode(diff)`); Copy copies the code after the change. New helpers `parseUnifiedDiff`, `diffRows`, `diffCode`, `diffAfter`; `tokenSpans` of `MarkdownArticle` is exported for the diff rows. Stories `Content/Code palette (0.55.1)/CodeBlockDiff` and `CodeBlockClientShiki` (real Shiki in the browser: TS with marked lines, bash, an unknown language, a diff; light and dark).
